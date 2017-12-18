@@ -6,10 +6,14 @@ library(biomaRt)
 library(reshape)
 
 library(colorspace)
+
+library(STRINGdb)
+
+string_db = STRINGdb$new(version="10", score_threshold=400, species = 9606, input_directory = '.')
+saveRDS(file = 'string_db', object = string_db)
 #library(plotly)
 
 source('/blackburn3/scripts/CRUNCH/V2.3/maxquant_r_gui/00_functions/shiny_function.R')
-
 
 
 
@@ -46,17 +50,17 @@ SILAC_mapped = readRDS(paste0("sig_mapped.",data_list['SILAC'],".rds"))
 SILAC_mapped$data = 'SILAC'
 #ESC_mapped = readRDS(paste0("sig_mapped.",data_list[''],".rds"))
 
-View(SILAC_mapped)
+#View(SILAC_mapped)
 column_names = c('data','id','STRING_id','mean')
 mapped_combined = rbind(ESC_mapped[,column_names],GE_mapped[,column_names],SILAC_mapped[,column_names])
 mapped_combined
 mapped_long = reshape(mapped_combined, idvar = c('id','STRING_id'), timevar = c('data'),direction = 'wide')
-View(mapped_long)
+#View(mapped_long)
 
 dim((SILAC_mapped[!is.na(SILAC_mapped$mean),]))
 length(mapped_long$mean.SILAC[!is.na(mapped_long$mean.SILAC)])
 setdiff(SILAC_mapped$id,mapped_long$id[!is.na(mapped_long$mean.SILAC)])
-View(SILAC_mapped[SILAC_mapped$id == NULL])
+#View(SILAC_mapped[SILAC_mapped$id == NULL])
 
 
 
@@ -124,8 +128,9 @@ legend(1,30,legend = names(entry_list),fill = paste(entry_list),cex = 0.7)
     
   
 
-
+i = 1
 for(i in c(1:dim(mapped_long)[1])){
+  print(i)
   col = NA #black
   if(mapped_long$mean.ESC[i] < 0 ){
     new_col = ESC_down
@@ -149,7 +154,8 @@ for(i in c(1:dim(mapped_long)[1])){
   }
   if(mapped_long$mean.SILAC[i] > 0){
     new_col =  SILAC_up
-    col = hex(mixcolor(0.5,hex2RGB(col),hex2RGB(new_col)))
+    col = new_col_mix(col,new_col)
+    #col = hex(mixcolor(0.5,hex2RGB(col),hex2RGB(new_col)))
   }
   mapped_long[i,'col'] = col
   print(col)
