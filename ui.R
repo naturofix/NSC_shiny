@@ -12,10 +12,10 @@ shinyUI(fluidPage(
     
     
     column(4,uiOutput('select_sample_ui')),
+    column(2,radioButtons('boxplot_full','Subset',c('full','subset'),selected = 'subset')),
     column(4,uiOutput('select_sample_single_ui')), #single_sample
-    column(4,
-           #textOutput('path_list_print'),
-           radioButtons('save_plot','Save Plots',c(T,F),selected = T, inline = T)),
+    column(2,
+           radioButtons('save_plot','Save Plots',c(T,F),selected = T, inline = F)),
     #column(4, verbatimTextOutput('data_info_print')
            #verbatimTextOutput('path_list_print')
            #),
@@ -24,9 +24,13 @@ shinyUI(fluidPage(
                 tabPanel('Test',textOutput('result')),
                 
                 #### SOURCE ####
+                tabPanel('Upload',tabsetPanel(
+                    tabPanel('MaxQuant')
+                         )),
+                
                 tabPanel('Source', 
                          shinyDirButton('folder', 'Folder select', 'Please select a folder'),
-                  
+                          radioButtons('re_melt','re melt',c(F,T)),
                          #verbatimTextOutput('dir_text'),
                          verbatimTextOutput('wd_path_print'),
                          #verbatimTextOutput('data_file_list'),
@@ -56,7 +60,7 @@ shinyUI(fluidPage(
       
                 ##### SELECT DATA ####
                 tabPanel('Select Data',
-                         column(6, radioButtons('data_type_radio','Select Data',choiceNames = c('List','Uniprot','Enrichment',"Venn"),choiceValues = c('list','uniprot','enrichment','venn'),selected = 'venn',inline = T)),
+                         column(6, radioButtons('data_type_radio','Select Data',choiceNames = c('List','Uniprot','Enrichment',"Venn"),choiceValues = c('list','uniprot','enrichment','venn'),selected = 'list',inline = T)),
                          column(4, actionButton('store_button', 'Store Gene List')),
                          column(12,
                     ### _list ####
@@ -268,21 +272,41 @@ shinyUI(fluidPage(
                             tabPanel('BoxPlots', id = 'boxplot',
                                      tabsetPanel(
                                        tabPanel('ggplot', 
-                                                tabsetPanel(
+                                                tabsetPanel(selected = 'Gene',
                                                   tabPanel('All', plotOutput('boxplot_gplot')),
                                                 
                                                   tabPanel('Gene',
-                                                           actionButton('gene_boxplot','Generate Plots'),
-                                                           uiOutput('g_boxplots_plots')),
+                                                           #column(6,sliderInput('boxplot_range','Boxplot Range',min = 0,max = 10,sep = 1, value = c(0:3))),
+                                                           column(9,#uiOutput('boxplot_range_ui'),
+                                                                  uiOutput('boxplot_gene_select')),
+                                                           column(3,selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin'))),
+                                                           column(12,
+                                                           column(4,radioButtons('re_run_boxplots','Re Run Boxplots',c(F,T))),
+                                                           column(4,radioButtons('boxplot_sd_lim','sd cutoff',c(T,F))),
+                                                           column(4,radioButtons('boxplot_p_values','include p value',c(T,F)))
+                                                           ),
+                                                           #selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin')),
+                                                           column(12,
+                                                           column(2,numericInput('boxplot_title_size','Title Size',value = 24)),
+                                                           column(2,numericInput('boxplot_text_size','Text Size',value = 15)),
+                                                           column(2,numericInput('boxplot_x_axis_size','X Axis Size',value = 15)),
+                                                           column(2,numericInput('boxplot_y_axis_size','Y Axis Size',value = 14)),
+                                                           
+                                                           column(2,numericInput('boxplot_p_value_size','p value size',value = 6))
+                                                           ),
+                                                           
+                                                           #actionButton('gene_boxplot','Generate Plots'),
+                                                           column(6,uiOutput('g_boxplots_plots')),
+                                                           column(6,uiOutput('g_boxplots_plots_ts'))),
                                                   tabPanel('Sample',
                                                            actionButton('sample_boxplot','Generate Plots'),
-                                                           uiOutput('g_boxplots_plots_sample')),
-                                                  tabPanel('time series',
-                                                           plotOutput('timeseries_boxplot'),
-                                                           actionButton('gene_boxplot_ts','Generate Plots'),
-                                                           uiOutput('g_boxplots_plots_ts')
+                                                           uiOutput('g_boxplots_plots_sample'))
+                                                  #tabPanel('time series',
+                                                  #         plotOutput('timeseries_boxplot'),
+                                                  #         actionButton('gene_boxplot_ts','Generate Plots')
+                                                           #uiOutput('g_boxplots_plots_ts')
                                                            
-                                                           )
+                                                  #         )
                                                 )),
                                        tabPanel('pdf',
               
@@ -341,7 +365,6 @@ shinyUI(fluidPage(
      tabPanel('Enrichment',
        column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
        column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
-       column(4,selectInput('background','Select backgroundV', c('all_mapped','NULL'))),
        column(12,
        tabsetPanel(
        tabPanel('Heatmap',
@@ -353,7 +376,6 @@ shinyUI(fluidPage(
                 ),
        tabPanel("Full",
                 #c('Component', 'Function','Process', 'KEGG','Pfam','InterPro', 'Tissue','Disease')
-                tags$h5('Be patient this takes some time ... '),
                 tags$h3('Component'),
                 dataTableOutput('sn_en_table_Component'),
                 tags$h3('Function'),
