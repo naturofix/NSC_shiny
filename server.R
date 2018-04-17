@@ -2012,11 +2012,14 @@ shinyServer(function(input, output) {
   })
   
   venn_gene_list_select = reactive({
+    print('venn_gene_list_select')
     # if(!input$data_type_radio == 'venn'){
     #   venn_list = venn_store()
     # }
+    venn_column = input$venn_id_select
+    venn_column = 'id'
     if(input$venn_data_select_button == 'all' ){
-      venn_list = mapped_data()$mapped_ud[,input$venn_id_select]
+      venn_list = mapped_data()$mapped_ud[,venn_column]
     }else{
       venn_list = venn_values$gene_list
     }
@@ -3037,6 +3040,18 @@ shinyServer(function(input, output) {
                       selected = venn_data_list,
                       multiple = T)
         })
+  # output$venn_id_select = renderUI({ ### NOT SURE WHAT THIS IS MEANT TO BE
+  #   
+  #   entry_list = input$data
+  #   #entry_list = data_name_list
+  #   venn_data_list = unlist(lapply(entry_list,function(x) c(paste0(x,' down'),paste0(x,' up'))))
+  #   venn_data_list
+  #   selectInput(inputId = 'venn_id_select',  # Drop down menu to select the producer and cultivar
+  #               label = 'Select Venn Data',
+  #               choices = venn_data_list,
+  #               selected = venn_data_list,
+  #               multiple = T)
+  # })
   
   output$enrichement_data_select_ui = renderUI({
     entry_list = input$data
@@ -3099,21 +3114,51 @@ shinyServer(function(input, output) {
                   multiple = T)
     }
   })
-  
+        
         
         venn_all_reactive = reactive({
+          print('venn all reactive')
+          
+          mapped_data = mapped_data()
+          venn_list = venn_gene_list_select()
+          if(save_test == T){
+            variable_list = c('mapped_data','venn_list')
+            cmd_list = save_variable_function(variable_list)
+            lapply(cmd_list, function(x) eval(parse(text = x)))
+            try(save_input_function(input))
+            read_test = F
+            if(read_test == T){
+              
+              cmd_list = read_variable_function(variable_list)
+              cmd_list
+              for(cmd in cmd_list){
+                print(cmd)
+                try(eval(parse(text = cmd)))
+              }
+            }
+          }
+          
           entry_list = input$venn_data_select
           entry_list
           #print(entry_list)
-          mapped_ud = mapped_data()$mapped_ud
-          #dim(mapped)
-          mapped_ud = mapped_ud[mapped_ud[,input$venn_id_select] %in% venn_gene_list_select(),]
-          colour_list = mapped_data()$colour_list
+          mapped_ud = mapped_data$mapped_ud
+          dim(mapped_ud)
+          venn_column = input$venn_id_select
+          venn_column = 'id'
+          
+          mapped_ud = mapped_ud[mapped_ud[,venn_column] %in% venn_list,]
+          #mapped_ud = mapped_ud[,entry_list]
+          dim(mapped_ud)
+          
+          colour_list = mapped_data$colour_list
           #print(colour_list)
           #print(colour_list[entry_list])
           plot_data_list = list()
+          entry = entry_list[1]
           for(entry in entry_list){
-            plot_data_list[entry] = list(mapped_ud[,input$venn_id_select][mapped_ud[,entry] != 0])
+            #plot_data_list[entry] = list(mapped_ud[,entry][mapped_ud[,entry] != 0])
+            plot_data_list[entry] = list(mapped_ud[,venn_column][mapped_ud[,entry] != 0])
+            plot_data_list
             #print(plot_data_list[entry])
           }
           colour_list = colour_list[entry_list]
@@ -3205,7 +3250,9 @@ shinyServer(function(input, output) {
           }
           #v_list v_list
           mapped_ud = mapped_data()$mapped_ud
-          v_list_id = mapped_ud$id[mapped_ud[,input$venn_id_select] %in% unique(v_list)]
+          venn_column = input$venn_id_select
+          venn_column = 'id'
+          v_list_id = mapped_ud$id[mapped_ud[,venn_column] %in% unique(v_list)]
           paste(unique(v_list_id))
         })
         
@@ -3232,6 +3279,12 @@ shinyServer(function(input, output) {
                       selected = venn_data_list,
                       multiple = T)
         })
+        
+
+        
+        
+        
+        
         
         
         

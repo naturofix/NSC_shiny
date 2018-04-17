@@ -262,6 +262,8 @@ shinyUI(fluidPage(
                                 radioButtons('venn_data_select_button','Select',c('all','gene_list'),selected = 'all',inline = T),
                                  column(6,uiOutput('venn_all_select')),
                                  column(6,uiOutput('venn_intersection_ui')), # input$venn_int
+                                column(12,uiOutput('venn_id_select')),
+                                
                                  column(12,plotOutput('venn_all')),
                                  textOutput('venn_plot_path_print'),
                                  #plotOutput('venn_all_gplots'),

@@ -42,12 +42,13 @@ library(topGO)
 
 
 string_access = T
+save_test = F
 
 base_path = "/mnt/MSD_128GB/"
 function_path = paste0(base_path,"Doctorate/programming/CRUNCH/00_functions/")
 source(paste(function_path,'os_functions.R',sep= '/'))
 source(paste(function_path,'Graphs_functions.R',sep= '/'))
-
+source('functions.R')
 
 wd_path = paste0(base_path,"Doctorate/Thesis/Thesis_Data/Cleanup_Data/")
 wd_path
@@ -86,49 +87,6 @@ STRING_id_list_function = function(mapped_data,gene_list){
 
 
 #### save variable functions ####
-save_variable_function = function(variable_list){
-  cmd_list = c()
-  for(entry in variable_list){
-    cmd = paste0("saveRDS(",entry,",'temp/",entry,".rds')")
-    print(cmd)
-    cmd_list = c(cmd_list,cmd)
-    #eval(parse(text = cmd))
-  }
-  ### TO GET DATA BACK OUT ###
-  #cmd_list = save_variable_function(variable_list)
-  #lapply(cmd_list, function(cmd) eval(parse(text = cmd)))
-  #save_input_function(input)
-  return(cmd_list)
-}
-
-save_input_function = function(input){
-  save_input = list()
-  input_list = names(reactiveValuesToList(input))
-  
-  for(entry in input_list){
-    cmd = paste0("save_input[['",entry,"']] = input$",entry)
-    print(cmd)
-    
-    eval(parse(text = cmd))
-  }
-  #input = readRDS('temp/save_input.rds')
-  saveRDS(save_input,'temp/save_input.rds')
-}
-
-read_variable_function = function(variable_list){
-  cmd_list = c()
-  for(entry in variable_list){
-    cmd = paste0(entry, " = readRDS('temp/",entry,".rds')")
-    print(cmd)
-    cmd_list = c(cmd_list,cmd)
-    #eval(parse(text = cmd))
-  }
-  #cmd_list = read_variable_function(variable_list)
-  #for(cmd in cmd_list){
-  #  eval(parse(text = cmd))
-  #}
-  return(cmd_list)
-}
 
 
 run_enrichment_function = function(ontology,path_list,STRING_id_list,string_db,mapped_st,annot,sample_path_line,backgroundV,input){
