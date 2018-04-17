@@ -13,7 +13,7 @@ shinyUI(fluidPage(
     
     column(4,uiOutput('select_sample_ui')),
     column(2,radioButtons('boxplot_full','Subset',c('full','subset'),selected = 'subset')),
-    column(4,uiOutput('select_sample_single_ui')), #single_sample
+    
     column(2,
            radioButtons('save_plot','Save Plots',c(T,F),selected = T, inline = F)),
     #column(4, verbatimTextOutput('data_info_print')
@@ -30,7 +30,7 @@ shinyUI(fluidPage(
                 
                 tabPanel('Source', 
                          shinyDirButton('folder', 'Folder select', 'Please select a folder'),
-                          radioButtons('re_melt','re melt',c(F,T)),
+                          #radioButtons('re_melt','re melt',c(F,T)),
                          #verbatimTextOutput('dir_text'),
                          verbatimTextOutput('wd_path_print'),
                          #verbatimTextOutput('data_file_list'),
@@ -41,31 +41,56 @@ shinyUI(fluidPage(
                 #### TABLES ####
                 tabPanel('Tables',
                          tabsetPanel(
-                           tabPanel('ALL', dataTableOutput('data_table')),
-                           tabPanel('sig', dataTableOutput('sig_table')),
+                           tabPanel('Single Data Set',
+                            uiOutput('select_sample_single_ui'), #single_sample        
+                            tabsetPanel(
+                              tabPanel('ALL', dataTableOutput('data_table')),
+                              tabPanel('sig', dataTableOutput('sig_table'))
+                           )),
                            #tabPanel('GE',dataTableOutput('GE_table')),
                            #tabPanel('SILAC',dataTableOutput('SIALC_table')),
                            #tabPanel('NES_Diff',dataTableOutput('NES_Diff_table')),
                            #tabPanel('NS_Diff',dataTableOutput('NS_Diff_table')),
-                           tabPanel('Mapped',
-                                    radioButtons('re_run','re-run mapping',choiceNames = c('T','F'),choiceValues = c(T,F),selected = F,inline = T),
-                                    dataTableOutput('mapped_table')),
-                           tabPanel('Mapped up/down', dataTableOutput('mapped_ud_table')),
+                           tabPanel('Datasets combined',
+                             column(3,radioButtons('re_run','re-run mapping', c(T,F),selected = F)),
+                             column(3,radioButtons('re_melt','re-melt',c(T,F),selected = F)),
+                             
+                             column(3,radioButtons('background_re_run','background_re_run',c(T,F),selected = F)),
+                             
+                             column(3,radioButtons('background','background',c('all_mapped','subset?'),selected = 'all_mapped')),
+                             column(12,uiOutput('removed_list_ui')),
+                             column(12,tabsetPanel(
+                               tabPanel('All Data', dataTableOutput('all_mapped_table')),
+                               tabPanel('Significant Data',dataTableOutput('mapped_table')),
+                               tabPanel('Significant Data - wide', dataTableOutput('mapped_ud_table')),
+                               tabPanel('m',
+                                        dataTableOutput('m_table')
+                                        ),
+                               tabPanel('m_ts',dataTableOutput('m_ts_table'))
+                             ))),
                            tabPanel('gene_list',
                                     actionButton('write_gene_list','Write Gene List to file'),
-                                    verbatimTextOutput('gene_list_print_test')),
-                           tabPanel('m_ts',dataTableOutput('m_ts_table'))
+                                    verbatimTextOutput('gene_list_print_test'))
+                           #tabPanel('m_ts',dataTableOutput('m_ts_table'))
                          )
                 ),
       
                 ##### SELECT DATA ####
                 tabPanel('Select Data',
                          column(6, radioButtons('data_type_radio','Select Data',choiceNames = c('List','Uniprot','Enrichment',"Venn"),choiceValues = c('list','uniprot','enrichment','venn'),selected = 'list',inline = T)),
-                         column(4, actionButton('store_button', 'Store Gene List')),
+                         column(3, actionButton('store_button', 'Store Gene List')),
+                         column(1,downloadButton('gene_list_download')),
+                         
+                         
                          column(12,
                     ### _list ####
                          conditionalPanel(condition = "input.data_type_radio == 'list'",
-                                          uiOutput('select_gene_list_ui')),
+                                          radioButtons('list_type','List',choices =  c('None','Saved','Prefix','File'),selected = 'Saved',inline = T),
+                                          uiOutput('select_gene_file_prefix_ui'),
+                                          uiOutput('select_gene_file_prefix_ui_run'),
+                                          uiOutput('select_gene_file_ui_2'),
+                                          uiOutput('select_gene_list_ui'),
+                                          textOutput('gene_list_save')),
 
                     #### _uniprot ####
                          conditionalPanel(condition = "input.data_type_radio == 'uniprot'",
@@ -277,11 +302,12 @@ shinyUI(fluidPage(
                                                 
                                                   tabPanel('Gene',
                                                            #column(6,sliderInput('boxplot_range','Boxplot Range',min = 0,max = 10,sep = 1, value = c(0:3))),
-                                                           column(9,#uiOutput('boxplot_range_ui'),
+                                                           column(7,#uiOutput('boxplot_range_ui'),
                                                                   uiOutput('boxplot_gene_select')),
-                                                           column(3,selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin'))),
+                                                           column(2,radioButtons('boxplot_subset','Sub',c('select','all'))),
+                                                           column(3,selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin'),c('boxplot','dotplot'), multiple = T)),
                                                            column(12,
-                                                           column(4,radioButtons('re_run_boxplots','Re Run Boxplots',c(F,T))),
+                                                           column(4,radioButtons('re_run_boxplots','Re Run Boxplots',c(T,F),selected = F)),
                                                            column(4,radioButtons('boxplot_sd_lim','sd cutoff',c(T,F))),
                                                            column(4,radioButtons('boxplot_p_values','include p value',c(T,F)))
                                                            ),
@@ -291,8 +317,9 @@ shinyUI(fluidPage(
                                                            column(2,numericInput('boxplot_text_size','Text Size',value = 15)),
                                                            column(2,numericInput('boxplot_x_axis_size','X Axis Size',value = 15)),
                                                            column(2,numericInput('boxplot_y_axis_size','Y Axis Size',value = 14)),
-                                                           
+                                                           column(2,numericInput('boxplot_dotplot_size','dot size',value = 0.25)),
                                                            column(2,numericInput('boxplot_p_value_size','p value size',value = 6))
+                                                           
                                                            ),
                                                            
                                                            #actionButton('gene_boxplot','Generate Plots'),

@@ -144,6 +144,14 @@ shinyServer(function(input, output) {
   
   data_df_list <- reactive({
     
+    
+    #### ADD GSUB here for incorrect id #####
+    
+    id_sub_list = list(LIN28 = 'LIN28A')
+    id_sub_list
+    
+    
+    print('data_df_list')
     plates.data <- list()
     #plates.data$Plate.1 <- list(subj.ids = sample_names())
     
@@ -153,12 +161,20 @@ shinyServer(function(input, output) {
       cmd = paste0("data = readRDS('",mapped_data_path,"all_mapped.",unlist(data_name_list()[entry]),".rds')")
       print(cmd)
       eval(parse(text = cmd))
+      print(dim(data))
+      for(sub_entry in names(id_sub_list)){
+        #print(sub_entry)
+        #print(id_sub_list[sub_entry])
+        grep(sub_entry,data$id,value = T)
+        data$id = gsub(paste0('\\<',sub_entry,'\\>'),id_sub_list[[sub_entry]],data$id)
+        }
+        
       if(entry == 'ESC'){
         temp_df = plyr::ldply(data$log2_ratio_list,rbind)
         data = cbind(data,temp_df)
         colnames(data)
       }
-      
+      print(dim(data))
       if('Accession' %in% colnames(data)){
 
         data$id_acc = data$id
@@ -192,9 +208,23 @@ shinyServer(function(input, output) {
     
     print(names(plates.data))
     
-    
+    print('data_df_list done')
     plates.data
   }) # list of the all mapped dataframes - returned using data_df_list[[data_name]]
+  
+  all_gene_list = reactive({
+    data_df_list = data_df_list()
+    gene_list = c()
+    for(entry in input$data){
+      gene_list = c(gene_list,data_df_list[[entry]]$id)
+    }
+    gene_list = unique(gene_list)
+    gene_list
+  })
+  
+  output$removed_list_ui = renderUI({
+    selectInput('removed_list','Select Genes to Remove',all_gene_list(),c('SEP','HLA'),multiple = T)
+  })
   
   sig_data_list = reactive({
     sig_list = list()
@@ -331,25 +361,30 @@ shinyServer(function(input, output) {
   
   ### MAPPING DATA ####
   mapped_data = reactive({
+    print('Start : mapped data')
+    start_time = Sys.time()
     data_list = input$data
     data_select_list = data_name_list()
-    print(data_list)
-    print(data_select_list)
-    print(data_name_collapse())
-    file_name = paste0('common_sig_mapped_',data_name_collapse(),'.rds')
-    print(file_name)
+    #print(data_list)
+    #print(data_select_list)
+    #print(data_name_collapse())
+    file_name = paste0('common_all_mapped_',data_name_collapse(),'.rds')
+    #print(file_name)
     #print(list.files(path = './GO_data/'))
     #print(input$re_run)
-    print(file_name %in% list.files(path = shiny_data_path))
+    #print(file_name %in% list.files(path = shiny_data_path))
+    #print(input$data)
     if(!file_name %in% list.files(path = shiny_data_path)){
-      mapped_data = common_mapped_function(shiny_data_path,sig_data_list(),input$data,'lightgreen',string_db,data_select_list,data_name_collapse(),input$removed_list)
+      
+      mapped_data = common_mapped_function(shiny_data_path,sig_data_list(),input$data,'lightgreen',string_db(),data_df_list(),data_name_collapse(),input$removed_list)
     }else{
       if(input$re_run){
-        mapped_data = common_mapped_function(shiny_data_path,sig_data_list(),input$data,'lightgreen',string_db,data_select_list,data_name_collapse(),input$removed_list)
+        mapped_data = common_mapped_function(shiny_data_path,sig_data_list(),input$data,'lightgreen',string_db(),data_df_list(),data_name_collapse(),input$removed_list)
         }else{
           print('readRDS - mapped data')
           mapped_data_file_name = paste0(shiny_data_path,'common_sig_mapped_',data_name_collapse(),'.rds')
-
+          all_mapped_data_file_name = paste0(shiny_data_path,'common_all_mapped_',data_name_collapse(),'.rds')
+          
           payload_rds_file_name = paste0(shiny_data_path,'common_sig_mapped_payload_id_',data_name_collapse(),'.rds')
           entry_list_file_name = paste0(shiny_data_path,'entry_list_',data_name_collapse(),'.rds')
           mapped_ud_file_name = paste0(shiny_data_path,'sig_mapped_ud_',data_name_collapse(),'.rds')
@@ -357,8 +392,10 @@ shinyServer(function(input, output) {
           id_file_list = paste0(shiny_data_path,'id_list_',data_name_collapse(),'.rds')
           removed_file_list = paste0(shiny_data_path,'removed_list_',data_name_collapse(),'.rds')
           gene_file_list = paste0(shiny_data_path,'gene_list_',data_name_collapse(),'.rds')
+          all_gene_file_list = paste0(shiny_data_path,'all_gene_list_',data_name_collapse(),'.rds')
           
           mapped_data = list(mapped_data = readRDS(mapped_data_file_name),
+                             all_mapped_data = readRDS(all_mapped_data_file_name),
                              payload_id = readRDS(payload_rds_file_name),
                              entry_list = readRDS(entry_list_file_name),
                              mapped_ud = readRDS(mapped_ud_file_name),
@@ -366,6 +403,7 @@ shinyServer(function(input, output) {
                              id_list = readRDS(id_file_list),
                              removed_list = readRDS(removed_file_list),
                              gene_list = readRDS(gene_file_list)
+                             #all_gene_list = readRDS(all_gene_file_list)
                              )
         }
     }
@@ -374,9 +412,14 @@ shinyServer(function(input, output) {
     #str(mapped_data)
     #mapped_data$mapped_data
     #mapped_data$payload_id
-    print('mapped')
+
+    end_time = Sys.time()
+    print(end_time - start_time)
+    print('End : mapped data')
     mapped_data
   })
+  output$all_mapped_table = renderDataTable(mapped_data()$all_mapped_data)
+  
   output$mapped_table = renderDataTable(mapped_data()$mapped_data)
   output$mapped_ud_table = renderDataTable(mapped_data()$mapped_ud)
  
@@ -1754,6 +1797,7 @@ shinyServer(function(input, output) {
 
   
   gene_list_df = reactive({
+    print('gene_list_df')
     in_file_name = input$gs_list_filename
     print(in_file_name$datapath)
     if(is.null(in_file_name)){
@@ -1763,8 +1807,23 @@ shinyServer(function(input, output) {
     }
     print(in_file_name$datapath)
     print(df)
-    df
+    df$V1
   })
+  
+  gene_list_df_2 = reactive({
+    print('gene_list_df')
+    in_file_name = input$gs_list_filename_2
+    print(in_file_name$datapath)
+    if(is.null(in_file_name)){
+      return(NULL)
+    }else{
+      df = read.table(in_file_name$datapath, stringsAsFactors = F,sep = '\t')
+    }
+    print(in_file_name$datapath)
+    print(df)
+    df$V1
+  })
+  
   output$gene_list_df_table = renderDataTable(gene_list_df())
   
   output$data_info_print = renderText({
@@ -1792,6 +1851,7 @@ shinyServer(function(input, output) {
   output$df_STRING_id_list = renderDataTable(data.frame(gene_list = STRING_id_list()))
   
   gene_list_select_list = reactive({
+    print('gene_list_select_list')
     single_mapped_st = mapped_st_single_list()
     #path_list = c(data_name_collapse(),input$data_type_radio)
     gene_list = c('SOX2','GFAP','NES','LIN28A','LIN28B','LIN28')
@@ -1804,7 +1864,8 @@ shinyServer(function(input, output) {
       }
       if(input$data_type_radio == 'uniprot'){
         path_list = c(data_name_collapse(),input$data_type_radio)
-        gene_list = unlist(gene_list_df()[1])
+        gene_list = unlist(gene_list_df())
+        gene_list
         #file_name = basename(gene_list_df())
         file_name = 'file_name'
         path_list = c(path_list,file_name)
@@ -2024,11 +2085,76 @@ shinyServer(function(input, output) {
   
   
 
+  output$select_gene_file_prefix_ui = renderUI({
+    if(input$list_type == 'Prefix'){
+      textInput('prefix_input',"Prefix Input (sep = ', ')",value = '')
+    }
+
+  })
   
+  output$select_gene_file_ui_2 = renderUI({
+    if(input$list_type == 'File'){
+      fileInput('gs_list_filename_2', 'Select List', multiple = FALSE, accept = NULL, width = NULL,
+                buttonLabel = "Browse...", placeholder = "No file selected")
+    }
+  })
+  
+  output$select_gene_file_prefix_ui_run = renderUI({
+    if(input$list_type == 'Prefix'){
+      radioButtons('prefix_run','Run Prefix',choices = c(F,T),inline = T)
+    }
+  })
   
   
   output$select_gene_list_ui = renderUI({
-    selectInput('select_gene_list','select genes',choices = mapped_data()$mapped_data$id, selected = c('SOX2','NES','GFAP','LIN28A','ANXA6'), multiple = T)
+    print('Start : select_gene_list_ui')
+    start_time = Sys.time()
+    selected_gene_list = 'SOX2'
+    hit = 0
+    if(input$list_type == 'Prefix'){
+       if(input$prefix_input != '' & input$prefix_run == T){
+          prefix_list = unlist(strsplit(input$prefix_input,', '))
+          all_gene_list = mapped_data()$all_mapped_data$id
+          selected_gene_list = c()
+          for(prefix in prefix_list){
+            selected_gene_list = c(selected_gene_list,grep(paste0('^',prefix),all_gene_list,value = T))
+          }
+          hit = 1
+       }
+    }
+    if(input$list_type == 'File'){
+        hit = 1
+        selected_gene_list = unlist(gene_list_df_2())
+    }
+    if(input$list_type == 'Saved'){
+      hit = 1
+      selected_gene_list = readRDS(paste0(shiny_data_path,'saved_gene_list.rds'))
+    }
+    if(input$list_type == 'None'){
+     hit = 1
+     selected_gene_list = c()
+    }
+    selected_gene_list
+    end_time = Sys.time()
+    print(end_time - start_time)
+    print('End : select_gene_list_ui')
+    if(hit == 1){
+      selectInput('select_gene_list','select genes',choices = mapped_data()$all_mapped_data$id, selected_gene_list, multiple = T)
+    }  
+  })
+  
+  output$gene_list_save = renderText({
+    print('Start : gene_list_save')
+    start_time = Sys.time()
+    selected_gene_list = c('SOX2','NES','GFAP','LIN28A','ANXA6')
+    selected_gene_list = input$select_gene_list
+    if(input$list_type != 'None'){
+      saveRDS(selected_gene_list,paste0(shiny_data_path,'saved_gene_list.rds'))
+    }
+    print('Start : gene_list_save')
+    end_time = Sys.time()
+    print(end_time - start_time)
+    selected_gene_list
   })
   
   output$select_gene_list_remove_ui = renderUI({
@@ -2977,8 +3103,10 @@ shinyServer(function(input, output) {
         
         venn_all_reactive = reactive({
           entry_list = input$venn_data_select
+          entry_list
           #print(entry_list)
           mapped_ud = mapped_data()$mapped_ud
+          #dim(mapped)
           mapped_ud = mapped_ud[mapped_ud[,input$venn_id_select] %in% venn_gene_list_select(),]
           colour_list = mapped_data()$colour_list
           #print(colour_list)
@@ -3002,10 +3130,11 @@ shinyServer(function(input, output) {
         #Thesis_Data/Cleanup_Data/images/shiny/Venn/ESC_GE_NES_Diff_NS_Diff_SILAC/ALL_ESC_down_ESC_up_GE_down_GE_up.pdf
         
         output$venn_all = renderPlot({
-
+          print('Start : venn all')
           #plot_path = paste(venn_image_path(),plot_name,spe='/')
           #pdf(plot_name)
           plot_data_list = venn_all_reactive()$plot_data_list
+          plot_data_list
           plot_data_list_name = input$venn_data_select
           colour_list = venn_all_reactive()$colour_list
           plot_name = latex_filename_function(paste((plot_data_list_name),collapse='_'))
@@ -3293,6 +3422,8 @@ shinyServer(function(input, output) {
   
     ### BOXPLOTS ####
         m = reactive({
+          print('Start : m')
+          start_time = Sys.time()
           data_select_list = input$data
           #if(input$boxplot_full == 'full'){
           #  data_select_list = rownames(data_df())
@@ -3311,11 +3442,15 @@ shinyServer(function(input, output) {
           }else{
             print('readRDS(m)')
             m = readRDS(m_file)
+            print('done')
           }
+          print('End : m')
+          print(Sys.time() - start_time)
           m
         })
         
         m_ts = reactive({
+          print('m_ts')
           m_file = paste0(shiny_data_path,'/',data_name_collapse(),'_m_ts.rds')
           print(m_file)
           print(file.exists(m_file))
@@ -3333,10 +3468,10 @@ shinyServer(function(input, output) {
             print('readRDS(m_ts)')
             m_ts = readRDS(m_file)
           }
-          
+          print('done m_ts')
           m_ts
         })
-        
+        output$m_table = renderDataTable(m())
         output$m_ts_table = renderDataTable(m_ts())
       #### ___pdfs ####
         
@@ -3406,10 +3541,22 @@ shinyServer(function(input, output) {
     })
     
     output$boxplot_gene_select = renderUI({
+      print('boxplot_gene_select')
       gene_list = gene_list()
+      gene_list = gene_list[order(gene_list)]
+      
+      
+      if(input$boxplot_subset == 'select'){
+        selected_genes = gene_list[1:2]
+      }else{
+        selected_genes = gene_list
+      }
       #sliderInput('boxplot_range','boxplots displayed',min = 1,max = length(gene_list), value =  c(1,2),step = 1,width = 800)
-      selectInput('boxplot_gene_select', 'Select Genes', gene_list, gene_list[1:2],multiple = T, width = 1000)
-      })
+     
+        selectInput('boxplot_gene_select', 'Select Genes', gene_list, selected_genes,multiple = T, width = 1000)
+
+      
+        })
 
     
     output$boxplot_plot_text = renderText({
@@ -3451,30 +3598,7 @@ shinyServer(function(input, output) {
         print(boxplot_hit)
         if(boxplot_hit == 0 | input$re_run_boxplots == TRUE){
           print('generate images')
-          
-          test_plots_save = T
-          if(test_plots_save == T){
-            print('saveRDS')
-            m = m()
-            saveRDS(m,'temp/m.rds')
-            data_df = data_df()
-            saveRDS(data_df,'temp/data_df.rds')
-            saveRDS(sample_list,'temp/sample_list.rds')
-            saveRDS(sample_path_line,'temp/sample_path_line.rds')
-            saveRDS(input,'temp/input.rds')
-            saveRDS(output,'temp/output.rds')
-          }
-          test_plot_read = F
-          if(test_plot_read == T){
-            m = readRDS('temp/m.rds')
-            data_df = readRDS('temp/data_df.rds')
-            sample_list = readRDS('temp/sample_list.rds')
-            sample_path_line = readRDS('temp/sample_path_line.rds')
-            input = readRDS('temp/input.rds')
-            output = readRDS('temp/output.rds')
-          }
-          
-          
+          print('test')
           renderPlots(m(), data_df(), sample_list, gene_list ,sample_path_line,input, output, 'gplot')
         }else{
           print('upload images')
@@ -3725,7 +3849,20 @@ shinyServer(function(input, output) {
       plot(log_2,fold_change)
     })
     
+    #### DOWNLOADS ####
+    
+    output$gene_list_download <- downloadHandler(
+      #filename = paste0(getwd(),'/list/gene_list.csv'),
+      filename = paste0('list_name'),
+      
+      content = function(file) {
+        write.table(gene_list(), file, col.names = F, row.names = F)
+      }
+    )
+    
 })
+
+
 
 ##### MAXQUANT #####
 

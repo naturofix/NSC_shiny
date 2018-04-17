@@ -15,13 +15,13 @@
 #                        H9_04 = "4", H10_04 = "4", H9_08 = "8", H10_08 = "8", H10_12 = "12  ", H9_12 = "12",
 #                        order = c('0','1','2', '4','8','12'))
 # saveRDS(timeseries_list,ts_file_path)
-
+#### CRAN packages ####
 library(shiny)
 library(gplots)
 library(ggplot2)
 theme_set(theme_bw())
 library(gtools)
-library(STRINGdb)
+
 library(colortools)
 library(colorspace)
 library(reshape2)
@@ -30,8 +30,16 @@ library(shinyFiles)
 #library(biomaRt)
 library(DT)
 library(stringr)
-library(topGO)
+
 library(shinydashboard)
+
+
+#### bioconductor packages ####
+#source("https://bioconductor.org/biocLite.R")
+#biocLite("topGO")
+library(STRINGdb)
+library(topGO)
+
 
 string_access = T
 
@@ -77,6 +85,50 @@ STRING_id_list_function = function(mapped_data,gene_list){
 }
 
 
+#### save variable functions ####
+save_variable_function = function(variable_list){
+  cmd_list = c()
+  for(entry in variable_list){
+    cmd = paste0("saveRDS(",entry,",'temp/",entry,".rds')")
+    print(cmd)
+    cmd_list = c(cmd_list,cmd)
+    #eval(parse(text = cmd))
+  }
+  ### TO GET DATA BACK OUT ###
+  #cmd_list = save_variable_function(variable_list)
+  #lapply(cmd_list, function(cmd) eval(parse(text = cmd)))
+  #save_input_function(input)
+  return(cmd_list)
+}
+
+save_input_function = function(input){
+  save_input = list()
+  input_list = names(reactiveValuesToList(input))
+  
+  for(entry in input_list){
+    cmd = paste0("save_input[['",entry,"']] = input$",entry)
+    print(cmd)
+    
+    eval(parse(text = cmd))
+  }
+  #input = readRDS('temp/save_input.rds')
+  saveRDS(save_input,'temp/save_input.rds')
+}
+
+read_variable_function = function(variable_list){
+  cmd_list = c()
+  for(entry in variable_list){
+    cmd = paste0(entry, " = readRDS('temp/",entry,".rds')")
+    print(cmd)
+    cmd_list = c(cmd_list,cmd)
+    #eval(parse(text = cmd))
+  }
+  #cmd_list = read_variable_function(variable_list)
+  #for(cmd in cmd_list){
+  #  eval(parse(text = cmd))
+  #}
+  return(cmd_list)
+}
 
 
 run_enrichment_function = function(ontology,path_list,STRING_id_list,string_db,mapped_st,annot,sample_path_line,backgroundV,input){
@@ -404,13 +456,28 @@ prep_tf_files = function(){
 }
 
 
-common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list,start_col,string_db,data_list,data_name_collapse,removed_list){
-  test = F
+common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list,start_col,string_db,data_df_list,data_name_collapse,removed_list){
+  
+  variable_list = c('shiny_data_path',"sig_data_list","data_select_list","start_col",'string_db',"data_df_list","data_name_collapse","removed_list")
+  
+  test = T
   if(test == T){
-    data_select_list = data_name_list
-    start_col = 'red'
-    d_num = 5
+    cmd_list = save_variable_function(variable_list)
+    for(cmd in cmd_list){
+      print(cmd)
+      eval(parse(text = cmd))
+    }
+    #save_input_function(input)
   }
+  read_test = 'F'
+  if(read_test == T){
+    cmd_list = read_variable_function(variable_list)
+    for(cmd in cmd_list){
+      print(cmd)
+      eval(parse(text = cmd))
+    }
+  }
+  print(variable_list)
   #data_name_collapse = paste(data_select_list,collapse = '_')
   
   print('joining selected datasets using commmon_mapped_function, please be patient...')
@@ -424,19 +491,28 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
   
   cmd = paste0(entry,"_sig_mapped = sig_data_list[['",entry,"']]")
   eval(parse(text = cmd))
-  cmd = paste0(entry,"_sig_mapped_test = readRDS('data/string_mapped/all_mapped.",unlist(data_list[entry]),".rds')")
-  eval(parse(text = cmd))
-  cmd = paste0(entry,"_sig_mapped$data = '",entry,"'")
+  cmd = paste0(entry,"_all_mapped = data_df_list[['",entry,"']]")
   eval(parse(text = cmd))
   
+  cmd = paste0(entry,"_all_mapped$data = '",entry,"'")
+  eval(parse(text = cmd))
+  
+  cmd = paste0(entry,"_sig_mapped$data = '",entry,"'")
+  eval(parse(text = cmd))
+  entry = data_select_list[2]
+  entry
   if(length(data_select_list) > 1){
     for(entry in data_select_list[2:length(data_select_list)]){ 
-      cmd = paste0(entry,"_sig_mapped = sig_data_list[['",entry,"']]")
-      
-      #cmd = paste0(entry,"_sig_mapped = readRDS('./GO_data/sig_mapped.",unlist(data_list[entry]),".rds')")
+      cmd = paste0(entry,"_all_mapped = data_df_list[['",entry,"']]")
       eval(parse(text = cmd))
+      
+      cmd = paste0(entry,"_all_mapped$data = '",entry,"'")
+      eval(parse(text = cmd))
+      
+      cmd = paste0(entry,"_sig_mapped = sig_data_list[['",entry,"']]")
+      eval(parse(text = cmd))
+      
       cmd = paste0(entry,"_sig_mapped$data = '",entry,"'")
-      print(cmd)
       eval(parse(text = cmd))
       } # generate dataframes from rds files
   }
@@ -445,86 +521,55 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
   #column_names = c('data','id','STRING_id','mean')
   if(length(data_select_list) > 0){
     
+    cmd = paste0('all_data = ',data_select_list[1],'_all_mapped')
+    eval(parse(text = cmd))
     
     cmd = paste0('data = ',data_select_list[1],'_sig_mapped')
-
     eval(parse(text = cmd))
- 
+
     if('mean' %in% colnames(data)){
       column_names = c('id','STRING_id','mean','Accession','id_acc')
     }else(
       column_names = c('id','STRING_id','slope','Accession','id_acc')
     )
+    
+    print(colnames(data))
+    print(column_names)
+    
+    all_sub_data = all_data[,column_names]
+    colnames(all_sub_data) =  c('id','STRING_id',data_select_list[1],paste(data_select_list[1],'Accession',sep='_'),'id_acc')
+    
     sub_data = data[,column_names]
-    # if('Accession' %in% colnames(data)){
-    #   column_names = c(column_names,'Accession')
-    #   
-    #   sub_data$id_acc = sub_data$id
-    #   sub_data$id_acc[duplicated(sub_data$id)] = paste(sub_data$id[duplicated(sub_data$id)],sub_data$Accession[duplicated(sub_data$id)],sep = '_')
-    #   #sub_data$id_acc
-    # }else{
-    #   sub_data = data[,column_names]
-    #   sub_data$Accession = NA
-    #   sub_data$id_acc = sub_data$id
-    # }
-    # dup_i = 1
-    # if(TRUE %in% duplicated(sub_data$id_acc)){
-    #   print(sub_data$id_acc[duplicated(sub_data$id_acc)])
-    #   
-    #   sub_data$id_acc[duplicated(sub_data$id_acc)] = paste(sub_data$id_acc[duplicated(sub_data$id_acc)],dup_i,sep='__')
-    #   
-    # }
-    # while(TRUE %in% duplicated(sub_data$id_acc)){
-    #   print(sub_data$id_acc[duplicated(sub_data$id_acc)])
-    #   sub_data$id_acc[duplicated(sub_data$id_acc)] = gsub(paste0('__',dup_i),paste0('__',dup_i+1),sub_data$id_acc[duplicated(sub_data$id_acc)])
-    #   dup_i = dup_i + 1
-    # }
-
-    #sub_data = data[,column_names]
     colnames(sub_data) =  c('id','STRING_id',data_select_list[1],paste(data_select_list[1],'Accession',sep='_'),'id_acc')
     
+    
+    
+    all_mapped_combined = all_sub_data
     mapped_combined = sub_data
     if(length(data_select_list) > 1){
       for(entry in data_select_list[2:length(data_select_list)]){
-        cmd = paste0('data = ',entry,'_sig_mapped')
-
+        
+        cmd = paste0('all_data = ',entry,'_all_mapped')
         eval(parse(text = cmd))
+        cmd = paste0('data = ',entry,'_sig_mapped')
+        eval(parse(text = cmd))
+        
+        
         if('mean' %in% colnames(data)){
           column_names = c('id','STRING_id','mean','Accession','id_acc')
         }else(
           column_names = c('id','STRING_id','slope','Accession','id_acc')
         )
-        sub_data = data[,column_names]
-        # if('Accession' %in% colnames(data)){
-        #   column_names = c(column_names,'Accession')
-        #   sub_data = data[,column_names]
-        #   sub_data$id_acc = sub_data$id
-        #   sub_data$id_acc[duplicated(sub_data$id)] = paste(sub_data$id[duplicated(sub_data$id)],sub_data$Accession[duplicated(sub_data$id)],sep = '_')
-        #   #sub_data$id_acc
-        #   
-        # }else{
-        #   sub_data = data[,column_names]
-        #   sub_data$Accession = NA
-        #   sub_data$id_acc = sub_data$id
-        # }
-        # 
-        # if(TRUE %in% duplicated(sub_data$id_acc)){
-        #   print(sub_data$id_acc[duplicated(sub_data$id_acc)])
-        #   sub_data$id_acc[duplicated(sub_data$id_acc)] = paste(sub_data$id_acc[duplicated(sub_data$id_acc)],dup_i,sep='__')
-        # }
-        # while(TRUE %in% duplicated(sub_data$id_acc)){
-        #   print(sub_data$id_acc[duplicated(sub_data$id_acc)])
-        #   sub_data$id_acc[duplicated(sub_data$id_acc)] = gsub(paste0('__',dup_i),paste0('__',dup_i+1),sub_data$id_acc[duplicated(sub_data$id_acc)])
-        #   
-        #   dup_i = dup_i + 1
-        # }
         
+        all_sub_data = all_data[,column_names]
+        colnames(all_sub_data) =  c('id','STRING_id',entry,paste(entry,'Accession',sep='_'),'id_acc')
+        
+        sub_data = data[,column_names]
         colnames(sub_data) =  c('id','STRING_id',entry,paste(entry,'Accession',sep='_'),'id_acc')
-
-        #colnames(sub_data) =   column_names = c('data','id','STRING_id','value')
+        
+        all_mapped_combined = merge(all_mapped_combined,all_sub_data,by = c('id','id_acc','STRING_id'), all = TRUE)
         mapped_combined = merge(mapped_combined,sub_data,by = c('id','id_acc','STRING_id'), all = TRUE)
-                          
-        #mapped_combined = rbind(mapped_combined,sub_data)
+
       }
     }
   } # combine all the data frames togther into a long dataset
@@ -539,63 +584,27 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
   #merge_sub[merge_sub$id == 'HLA',]
   
   for(entry in data_select_list){
+    all_mapped_combined[,entry][is.na(all_mapped_combined[,entry])] = 0
     mapped_combined[,entry][is.na(mapped_combined[,entry])] = 0
   }
+  all_mapped_long_w = all_mapped_combined
   mapped_long_w = mapped_combined
   
   #removed_list = c('SEP')
+  all_gene_list = all_mapped_long_w$id
   gene_list = mapped_long_w$id
+  
+  
+  all_mapped_long_w = all_mapped_long_w[!is.na(all_mapped_long_w$id),]
+  all_mapped_long_w = all_mapped_long_w[!all_mapped_long_w$id %in% removed_list,]
   mapped_long_w = mapped_long_w[!is.na(mapped_long_w$id),]
   mapped_long_w = mapped_long_w[!mapped_long_w$id %in% removed_list,]
   
   head(mapped_combined)
-  #mapped_combined_old = mapped_combined[,c(1:4)]
-  #mapped_combined_old
-  #head(mapped_combined_old)
-  #mapped_long_w = reshape(mapped_combined_old, idvar = c('id','STRING_id'), timevar = c('data'),direction = 'wide')
-  #head(mapped_long_w)
-  #mapped_long_w[mapped_long_w$id == 'NEFL',]
-  #mapped_long_w[mapped_long_w$id == 'HLA',]
-  #mapped_melt = melt(mapped_combined_old, id.vars = c('id','STRING_id'),measure.vars = c('value','data'))
   
-  #mapped_melt = melt(mapped_combined, id.vars = c('id','STRING_id','id_acc','Accession','data'),measure.vars = c('value'))
-  #head(mapped_melt)
-  #mapped_melt[mapped_melt$id == 'NEFL',]
-  #mapped_melt[mapped_melt$id == 'HLA',]
-  
-  #for(entry in data_select_list){
-  #  print(entry)
-  #  mapped_melt[,entry] = 0
-  #  mapped_melt[,entry][mapped_melt$data == entry] = mapped_melt$value[mapped_melt$data == entry]  
-    
-  #}
-  #colname_melt = colnames(mapped_melt)[!colnames(mapped_melt) %in% c('data','variable','value')]
-  #colname_melt = colnames(mapped_melt)[!colnames(mapped_melt) %in% c('data','variable','value')]
-  
-  #colname_melt
-  #mapped_melt = mapped_melt[,colname_melt]
-  #head(mapped_melt)
-  #mapped_long_w = mapped_melt
-  
-  #colnames(mapped_combined)
-  #colnames(mapped_long_w)
-  #colnames(mapped_long_w_melt)
-  #head(mapped_long_w_melt)
   i = grep('STRING_id',colnames(mapped_long_w))
   i
-  #mapped_long_w = reshape(mapped_combined, idvar = c('id_acc'), timevar = c('data'),direction = 'wide')
-  #t_w = reshape(t, idvar = c('id','STRING_id','id_acc'), timevar = c('data'),direction = 'wide')
-  #t_w
-  #mapped_long_w_melt = melt(mapped_combined, id.vars = c('id','STRING_id','Accession','value'))
-
-  #mapped_long_w[,c((i+1):length(colnames(mapped_long_w)))][is.na(mapped_long_w[,c((i+1):length(colnames(mapped_long_w)))])] = 0
-  #print(colnames(mapped_long_w))
-  #new_colnames = (sub('value.','',colnames(mapped_long_w)))
-  #colnames(mapped_long_w) = new_colnames
-  #head(mapped_long_w)
-  #print('melt')
-  #mapped_long_m = melt(mapped_combined, id.vars = c('id','STRING_id','data'),measure.vars = data_select_list)
-  #print(colnames(mapped_long_m))
+  
   
   check_dfs = F
   if(check_dfs == T){
@@ -635,6 +644,10 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
 
 
   print('colour label')
+  
+  all_mapped_long_w$col = NA
+  all_mapped_long_w$label = NA
+  
   mapped_long_w$col = NA
   mapped_long_w$label = NA
   #apply(mapped_long_w, 1, function(x) print(x['col']))
@@ -642,6 +655,11 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
     mapped_long_w$col = apply(mapped_long_w, 1, function(x) col_select_function(x[entry],colour_list[paste(entry,'up')],colour_list[paste(entry,'down')],x['col']))
     mapped_long_w$label = apply(mapped_long_w, 1, function(x) label_select_function(x[entry],entry,x['label']))
   }
+  
+  x = all_mapped_long_w[1,]
+  all_mapped_long_w$col = sapply(all_mapped_long_w$id, function(x) mapped_long_w$col[match(x['id'], mapped_long_w$id)])
+  all_mapped_long_w$label = sapply(all_mapped_long_w$label, function(x) mapped_long_w$col[match(x['id'], mapped_long_w$label)])
+  
 
   test_entry_list = setNames(mapped_long_w$col,mapped_long_w$label)
   unique(names(test_entry_list))
@@ -658,7 +676,11 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
   #saveRDS(entry_list,'legend_list.rds')
 
   print('payload id')
-  payload_id = string_db()$post_payload(mapped_long_w$STRING_id, colors=mapped_long_w$col)
+  print(mapped_long_w$col)
+  payload_id = string_db$post_payload(mapped_long_w$STRING_id, colors=mapped_long_w$col)
+  
+  #all_payload_id = string_db$post_payload(all_mapped_long_w$STRING_id, colors=all_mapped_long_w$col)
+  
   #rds_file_name = paste0(shiny_data_path,'payload_id_',data_name_collapse,'.rds')
   #saveRDS(mapped_ud,rds_file_name)
   
@@ -684,31 +706,52 @@ common_mapped_function = function(shiny_data_path,sig_data_list,data_select_list
   rds_file_name = paste0(shiny_data_path,'common_sig_mapped_',data_name_collapse,'.rds')
   print(rds_file_name)
   saveRDS(mapped_long_w,rds_file_name)
+  all_rds_file_name = paste0(shiny_data_path,'common_all_mapped_',data_name_collapse,'.rds')
+  print(all_rds_file_name)
+  saveRDS(all_mapped_long_w,all_rds_file_name)
+  
+  
   payload_rds_file_name = paste0(shiny_data_path,'common_sig_mapped_payload_id_',data_name_collapse,'.rds')
   saveRDS(payload_id,payload_rds_file_name)
+  #payload_rds_file_name = paste0(shiny_data_path,'common_all_mapped_payload_id_',data_name_collapse,'.rds')
+  #saveRDS(all_payload_id,payload_rds_file_name)
+  
   entry_list_file_name = paste0(shiny_data_path,'entry_list_',data_name_collapse,'.rds')
   saveRDS(entry_list,entry_list_file_name)
+  
   id_list = list()
   id_list[mapped_long_w$STRING_id] = mapped_long_w$id
-  #id_list[mapped_long_w$STRING_id] = list(mapped_long_w$id)
-  #lapply(mapped_long_w$STRING_id, function(x) id_list[x] = list(unique(mapped_long_w$id[mapped_long_w$STRING_id == x])))
   id_file_list = paste0(shiny_data_path,'id_list_',data_name_collapse,'.rds')
   saveRDS(id_list,id_file_list)
+  
+  all_id_list = list()
+  all_id_list[all_mapped_long_w$STRING_id] = all_mapped_long_w$id
+  all_id_file_list = paste0(shiny_data_path,'all_id_list_',data_name_collapse,'.rds')
+  saveRDS(all_id_list,id_file_list)
+  
+  
   
   removed_file_list = paste0(shiny_data_path,'removed_list_',data_name_collapse,'.rds')
   saveRDS(removed_list,removed_file_list)
   
   gene_file_list = paste0(shiny_data_path,'gene_list_',data_name_collapse,'.rds')
   saveRDS(gene_list,gene_file_list)
+  all_gene_file_list = paste0(shiny_data_path,'all_gene_list_',data_name_collapse,'.rds')
+  saveRDS(all_gene_list,all_gene_file_list)
+  
   
   results_list = list(mapped_data = mapped_long_w,
+                      all_mapped_data = all_mapped_long_w,
                       mapped_ud = mapped_ud,
                       payload_id = payload_id,
+                      #all_payload_id = all_payload_id,
                       entry_list = entry_list,
                       colour_list = colour_list,
                       id_list = id_list,
+                      all_id_list = all_id_list,
                       removed_list = removed_list,
-                      gene_line = gene_list)
+                      gene_line = gene_list,
+                      all_gene_list = all_gene_list)
   return(results_list)
 }
 
@@ -877,13 +920,37 @@ renderImages = function(gene_list,boxplot_path,input,output,prefix){
   }
 }
 
+
+
 renderPlots = function(m, data_df, sample_list, gene_list, sample_path_line, input, output, prefix = 'gplot'){
+  save_test = F
+  if(save_test == T){
+    variable_list = c('m','data_df','sample_list','gene_list','sample_path_line','prefix')
+    cmd_list = save_variable_function(variable_list)
+    lapply(cmd_list, function(cmd) eval(parse(text = cmd)))
+    save_input_function(input)
+  }
+  read_test = F
+  if(read_test == T){
+    variable_list = c('m','data_df','sample_list','gene_list','sample_path_line','prefix')
+    
+    cmd_list = read_variable_function(variable_list)
+    
+    for(cmd in cmd_list){
+      eval(parse(text = cmd))
+    }
+    #sapply(cmd_list, function(cmd) eval(parse(text = cmd)))
+    
+    input = readRDS('temp/save_input.rds')
+  }
   
   boxplot_path = sample_path_line
   
   
   #print('gene_list')
   #print(gene_list)
+  gene = gene_list[1]
+  gene
   for(gene in gene_list){
     local({
 
@@ -893,7 +960,7 @@ renderPlots = function(m, data_df, sample_list, gene_list, sample_path_line, inp
       
       output_name = paste(gene,prefix,sep = '_')
       name = paste(gene)
-      plot_path = paste0(boxplot_path,'/',gene,'.png')
+      plot_path = paste0(sample_path_line,'/',gene,'.png')
       #print(plot_path)
       #print(file.exists(plot_path))
 
@@ -917,11 +984,11 @@ renderPlots = function(m, data_df, sample_list, gene_list, sample_path_line, inp
         #run = T
         #print(run)
         file_test = file.exists(plot_path)
-        #print(file_test)
+        print(file_test)
         #print(input$re_run_boxplots)
         if(file_test == FALSE | input$re_run_boxplots == TRUE){
-          col = sig_colour_function(sub_m)
-          col
+          #col = sig_colour_function(sub_m)
+          col = c('green','red')
           #col = c('red','green')
           #output[[output_name]] = renderPlot({
           
@@ -976,8 +1043,11 @@ renderPlots = function(m, data_df, sample_list, gene_list, sample_path_line, inp
                 p = p + labs(x = '', y =  'log2(ratio)') +
                 geom_hline(yintercept = 0) +
                 scale_x_discrete(limits = sample_list) + 
-                ggtitle(paste(name)) + 
-                 scale_fill_manual(name = 'Significantly', breaks = c(-1,1),values = col,labels = c('downregulated','upregulted'))
+                ggtitle(paste(name))  
+                 #scale_fill_manual(name = 'Significantly', breaks = c(-1,1),values = col,labels = c('downregulated','upregulted'))
+                # need this to work  
+                p = p + scale_fill_manual(name = 'Significantly', breaks = c(-1,1),values = c('red','green'),labels = c('upregulated','downregulted'),drop = FALSE)
+                
                 if(simple_plot == 'F'){
                  p = p + theme(plot.title = element_text(lineheight=.8, face="bold", hjust = 0.5, size = input$boxplot_title_size), 
                       axis.title = element_text(size = input$boxplot_text_size),
@@ -1051,21 +1121,40 @@ renderPlots = function(m, data_df, sample_list, gene_list, sample_path_line, inp
 
 #renderPlots_ts(m_ts(), sample_list, gene_list, timeseries_list() ,sample_path_line(),input, output, 'gplot_ts')
 
-renderPlots_ts = function(m, sample_list, gene_list, timeseries_list, sample_path, input, output, prefix = 'gplot'){
-  test = F
-  if(test == T){
-    m = m_ts()
-    timeseries_list = timeseries_list()
-    sample_path = sample_path_line()
-    gene = gene_list[1]
-    
+renderPlots_ts = function(m_ts, sample_list, gene_list, timeseries_list, sample_path, input, output, prefix = 'gplot'){
+  print('global : renderPlots_ts')
+  save_test = F
+  if(save_test == T){
+    variable_list = c('m_ts', 'sample_list', 'gene_list', 'timeseries_list', 'sample_path','prefix')
+    cmd_list = save_variable_function(variable_list)
+    print(cmd_list)
+    lapply(cmd_list, function(cmd) eval(parse(text = cmd)))
+    save_input_function(input)
   }
+  read_test = F
+  if(read_test == T){
+    #variable_list = c('m','data_df','sample_list','gene_list','sample_path_line','prefix')
+    
+    cmd_list = read_variable_function(variable_list)
+    
+    for(cmd in cmd_list){
+      print(cmd)
+      eval(parse(text = cmd))
+    }
+    #sapply(cmd_list, function(cmd) eval(parse(text = cmd)))
+    
+    input = readRDS('temp/save_input.rds')
+  }
+  
+  
   boxplot_path = sample_path
   #print(boxplot_path)
   
   create_dir_function(boxplot_path)
   #print('gene_list')
   #print(gene_list)
+  gene = gene_list[1]
+  gene
   for(gene in gene_list){
     local({
       
@@ -1077,17 +1166,17 @@ renderPlots_ts = function(m, sample_list, gene_list, timeseries_list, sample_pat
       output_name = paste(gene,prefix,sep = '_')
       name = paste(gene)
       print(output_name)
-      sub_m = m[m$id == gene,]
+      sub_m = m_ts[m_ts$id == gene,]
       sub_m = sub_m[!is.na(sub_m$ts),]
       #View(sub_m)
       #print(dim(sub_m))
-      if(dim(sub_m)[1] > 0){        
+      if(dim(sub_m[!is.na(sub_m$value),])[1] > 1){        
          if(file.exists(plot_path) == FALSE | input$re_run_boxplots == TRUE){
           print('generating image')
-          col = sig_colour_function(sub_m)
           #col = sig_colour_function(sub_m)
-          #col = c('red','green')
-          saveRDS(sub_m,'temp/sub_m.rds')
+          #col = sig_colour_function(sub_m)
+          col = c('green','red')
+      #    saveRDS(sub_m,'temp/sub_m.rds')
           
           #pdf(paste('shiny_gplots/',gene,'.pdf'))
           
@@ -1108,7 +1197,7 @@ renderPlots_ts = function(m, sample_list, gene_list, timeseries_list, sample_pat
                   axis.text.x = element_text(size = input$boxplot_x_axis_size,face = 'bold'),
                   axis.text.y = element_text(size = input$boxplot_y_axis_size)
                   )
-          p = p + scale_fill_manual(name = 'Significantly', breaks = c(-1,1),values = col,labels = c('downregulated','upregulted'))
+          p = p + scale_fill_manual(name = 'Significantly', breaks = c(-1,1),values = c('red','green'),labels = c('upregulated','downregulted'))
 
             
           # p = ggplot(sub_m, aes(x = data,y = value,fill = sig)) + 
