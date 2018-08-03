@@ -1,5 +1,14 @@
 library(shiny)
 shinyServer(function(input, output) {
+  
+  observeEvent(input$debug_button,{
+    print('debug')
+    browser()
+    print('debug')
+    print('debug')
+    print('debug')
+  })
+  
   shinyDirChoose(input, 'folder', roots=c(data = wd_path))
   
   #shinyDirChoose(input, 'dir', roots = c(home = '/Users/sgarnett/Documents/Doctorate/Thesis/Thesis_Data/Cleanup_Data'), filetypes = c('', 'txt'))
@@ -14,20 +23,22 @@ shinyServer(function(input, output) {
   #string_db = readRDS("string_db")
   
   wd_path_select = reactive({
+    print('wd_path_select')
     if(!is.null(input$folder)){
       wd_path = paste(c(data_root,paste(paste(input$folder$path),collapse='/')),collapse= '/')
-      print(wd_path_select)
       setwd(wd_path_select)
     }else{
       wd_path_select = wd_path
     }
     setwd(wd_path_select)
-    print(wd_path_select)
+    print('   wd_path_select : done')
+    
     wd_path_select
   })
   
   output$wd_path_print = renderPrint(print(wd_path_select()))
   output$data_file_list = renderPrint({
+    #print('data_file_list')
     file_list = list.files('./data/',pattern = '.rds')
     if(length(file_list) == 0){
       file_list = list.files('./data/')
@@ -50,6 +61,7 @@ shinyServer(function(input, output) {
       timeseries_list = list()
     }
     
+    print('   load_data : done')
     
     list(data_df = data_df, timeseries_list = timeseries_list)
     
@@ -58,24 +70,40 @@ shinyServer(function(input, output) {
   #data_df = readRDS('data_df.rds')
   data_df = reactive({
     print('data_df')
-    print('shiny_data/data_df.rds')
+    #print('shiny_data/data_df.rds')
     file_path = paste0(shiny_data_path,'data_df.rds')
-    print(file_path)
+    #print(file_path)
     data_df = readRDS(file_path)
+    
+    print('   data_df : done')
+    
     data_df
     #load_data()$data_df
     })
   
-  timeseries_list = reactive(load_data()$timeseries_list)
+  timeseries_list = reactive({
+    print('timeseries_list')
+    df = load_data()$timeseries_list
+    print('   timeseries_list : done')
+    df
+    })
   
   output$data_df_table = renderTable(data_df(),rownames = TRUE)
   
-  sample_names = reactive(rownames(data_df()))
+  sample_names = reactive({
+    print('sample_name')
+    df = rownames(data_df())
+    print('   sample_name : data')
+    df
+    })
   
   data_name_list = reactive({
+    print('data_name_list')
     data_df = data_df()
     dl = data_df$data_list
     names(dl) = rownames(data_df)
+    print('   data_name_list : done')
+    
     dl
     #paste(unlist(dl['ESC']))
     })
@@ -86,7 +114,7 @@ shinyServer(function(input, output) {
       selectInput(inputId = 'data',  # Drop down menu to select the producer and cultivar
                   label = 'Select Samples',
                   choices = sample_names(),
-                  selected = sample_names()[c(2,3)],
+                  selected = sample_names()[c(1)],
                   multiple = T)
 
     }else{
@@ -99,6 +127,7 @@ shinyServer(function(input, output) {
   })
   
   output$select_sample_single_ui = renderUI({
+    print('select_sample_single_ui')
     if(length(input$data) == 1){
       data_choices = input$data
     }else(
@@ -112,9 +141,12 @@ shinyServer(function(input, output) {
   })
   
   data_name_collapse = reactive({
+    print('data_name_collapse')
     data_list = unlist(input$data)
     data_list = data_list[order(data_list)]
-    paste(data_list,collapse = '_')
+    df = paste(data_list,collapse = '_')
+    print('   data_name_collapse : done')
+    df
   })
   # output$select_sample_single_ui_1 = renderUI({
   #   selectInput(inputId = 'single_sample_1',  # Drop down menu to select the producer and cultivar
@@ -143,6 +175,7 @@ shinyServer(function(input, output) {
   #### DATA LISTS #### 
   
   data_df_list <- reactive({
+    print('data_df_list : start')
     
     
     #### ADD GSUB here for incorrect id #####
@@ -151,17 +184,19 @@ shinyServer(function(input, output) {
     id_sub_list
     
     
-    print('data_df_list')
+    #print('data_df_list')
     plates.data <- list()
     #plates.data$Plate.1 <- list(subj.ids = sample_names())
     
     for(entry in input$data) {
-      print(getwd())
-      print("data/string_mapped/all_mapped.df_Huang2016_txt_edited_log2_ratio_different_mart_all_MCT_all_t_test.rds")
+      #print(getwd())
+      #print("data/string_mapped/all_mapped.df_Huang2016_txt_edited_log2_ratio_different_mart_all_MCT_all_t_test.rds")
       cmd = paste0("data = readRDS('",mapped_data_path,"all_mapped.",unlist(data_name_list()[entry]),".rds')")
-      print(cmd)
+      cmd
+      #print(cmd)
       eval(parse(text = cmd))
-      print(dim(data))
+      dim(data)
+      #print(dim(data))
       for(sub_entry in names(id_sub_list)){
         #print(sub_entry)
         #print(id_sub_list[sub_entry])
@@ -174,7 +209,7 @@ shinyServer(function(input, output) {
         data = cbind(data,temp_df)
         colnames(data)
       }
-      print(dim(data))
+      #print(dim(data))
       if('Accession' %in% colnames(data)){
 
         data$id_acc = data$id
@@ -187,13 +222,13 @@ shinyServer(function(input, output) {
       }
       dup_i = 1
       if(TRUE %in% duplicated(data$id_acc)){
-        print(data$id_acc[duplicated(data$id_acc)])
+        #print(data$id_acc[duplicated(data$id_acc)])
         
         data$id_acc[duplicated(data$id_acc)] = paste(data$id_acc[duplicated(data$id_acc)],dup_i,sep='__')
         
       }
       while(TRUE %in% duplicated(data$id_acc)){
-        print(data$id_acc[duplicated(data$id_acc)])
+        #print(data$id_acc[duplicated(data$id_acc)])
         data$id_acc[duplicated(data$id_acc)] = gsub(paste0('__',dup_i),paste0('__',dup_i+1),data$id_acc[duplicated(data$id_acc)])
         dup_i = dup_i + 1
       }
@@ -206,50 +241,42 @@ shinyServer(function(input, output) {
       plates.data[[entry]] <- data
     }
     
-    print(names(plates.data))
+    #print(names(plates.data))
     
-    print('data_df_list done')
+    print('   data_df_list : done')
     plates.data
   }) # list of the all mapped dataframes - returned using data_df_list[[data_name]]
   
   all_gene_list = reactive({
+    print('all gene_list')
     data_df_list = data_df_list()
     gene_list = c()
     for(entry in input$data){
       gene_list = c(gene_list,data_df_list[[entry]]$id)
     }
     gene_list = unique(gene_list)
+    print('   all gene_list : done')
+    
     gene_list
   })
   
   output$removed_list_ui = renderUI({
+    print('remove_list_ui')
     selectInput('removed_list','Select Genes to Remove',all_gene_list(),c('SEP','HLA'),multiple = T)
   })
   
   sig_data_list = reactive({
+    print('sig_data_list')
     sig_list = list()
     for(entry in input$data){
-      print(entry)
       data = data_df_list()[[entry]]
-      print(dim(data))
-      print(colnames(data))
-      
-      
+
       t_test_list_entry = data_df()[entry,'p.value']
-      print(t_test_list_entry)
       cutoff_list_entry = data_df()[entry,'data']
-      print(cutoff_list_entry)
-      
       sd_cutoff = as.numeric(data_df()[entry,'sd_cutoff'])
-      print(sd_cutoff)
-      
       cmd = paste("reduced_data = data[data$",t_test_list_entry," < 0.05 & !is.na(data$",t_test_list_entry,"),]",sep='')
-      print(cmd)
       eval(parse(text=cmd))
-      print(dim(reduced_data))
       sig_data = reduced_data[reduced_data[,cutoff_list_entry] < (-2*sd_cutoff) | reduced_data[,cutoff_list_entry] > (2*sd_cutoff),]
-      print(dim(sig_data))
-      
       sig_list[[entry]] = sig_data
       sig_up = sig_data[sig_data[,cutoff_list_entry] > 0,]
       sig_up = sig_up[!is.na(sig_up$STRING_id),]
@@ -259,6 +286,8 @@ shinyServer(function(input, output) {
       sig_list[[paste(entry,'down')]] = sig_down
       
     }
+    print('   sig_data_list : done')
+    
     sig_list
   }) # list of significant data tabels sig_data_list[[data_name]]
   
@@ -266,7 +295,7 @@ shinyServer(function(input, output) {
   output$result <- renderPrint({
     print(names(data_df_list()))
     for(entry in names(data_df_list())){
-      print(entry)
+      #print(entry)
       print(dim(data_df_list()[[entry]]))
     }
     data_df_list()
@@ -278,33 +307,9 @@ shinyServer(function(input, output) {
   # checks to see if all the id for the mapped files are valid
   table_name = 'SILAC_mapped_all'
   
-  test_table_ids_function = function(table_name){
-    cmd = paste('df = ',table_name)
-    eval(parse(text=cmd))
-    dim(df)
-    na_df = df[is.na(df$id),]
-    na_df
-    na_num = length(na_df$id)
-    na_num
-    char_df = df[unlist(lapply(df$id, function(x) identical(x, character(0)))),]
-    char_df
-    char_num = dim(char_df)[1]
-    char_num
-    
-    char_c_df = df[unlist(lapply(df$id, function(x) x == 'CHARACTER(0)')),]
-    char_c_df
-    char_c_num = dim(char_c_df)[1]
-    char_c_num
-    
-    len_df = df[unlist(lapply(df$id, function(x) !nchar(x) > 0)),]
-    len_df
-    len_num = dim(char_df)[1]
-    len_num 
-    
-    return(paste(table_name,' : ',length(df$id),',    number of na = ',na_num,'  number of character(0) = ',char_num,'  number of CHARACTER(0)) = ',char_c_num, '  nchar > 0 = ',len_num))
-  }
-  
+
   output$table_test = renderText({
+    print('table_test')
     p_list = c()
     for(entry in data_name_list){
       #print(entry)
@@ -315,6 +320,8 @@ shinyServer(function(input, output) {
       p_list = c(p_list,p)
       
     }
+    print('   table_test : done')
+    
     print(paste(p_list,collapse = ' <br> '))
   })
   #### ####
@@ -322,22 +329,33 @@ shinyServer(function(input, output) {
   #### Data Tables ####
   
   all_mapped = reactive({
-    data_df_list()[[input$single_sample]]
-  })
-  
-  sig_mapped = reactive({
-    sig_data_list()[[input$single_sample]]
-  })
-
-  sig_mapped_up = reactive({
-    data_colname = data_df[input$single_sample,'data']
-    df = sig_mapped()[sig_mapped()[,data_colname] > 0,]
+    print('all_mapped')
+    df = data_df_list()[[input$single_sample]]
+    print('   all_mapped : done')
     df
   })
   
+  sig_mapped = reactive({
+    print('sig_mapped')
+    df = sig_data_list()[[input$single_sample]]
+    print('   sig_mapped : done')
+    df
+  })
+
   sig_mapped_up = reactive({
+    print('sig_mapped_up')
+    data_colname = data_df[input$single_sample,'data']
+    df = sig_mapped()[sig_mapped()[,data_colname] > 0,]
+    print('   sig_mapped_up : done')
+    
+    df
+  })
+  
+  sig_mapped_down = reactive({
+    print('sig_mapped_down')
     data_colname = data_df[input$single_sample,'data']
     df = sig_mapped()[sig_mapped()[,data_colname] < 0,]
+    print('   sig_mapped_down : done')
     df
   })
   
@@ -352,8 +370,10 @@ shinyServer(function(input, output) {
   
   
   output$selected_data_table = renderDataTable({
+    print('select_data_table')
     df = all_mapped()
     df = df[df$id %in% gene_list(),]
+    print('   select_data_table : done')
     df
     
   })
@@ -361,7 +381,7 @@ shinyServer(function(input, output) {
   
   ### MAPPING DATA ####
   mapped_data = reactive({
-    print('Start : mapped data')
+    print('mapped data')
     start_time = Sys.time()
     data_list = input$data
     data_select_list = data_name_list()
@@ -415,7 +435,7 @@ shinyServer(function(input, output) {
 
     end_time = Sys.time()
     print(end_time - start_time)
-    print('End : mapped data')
+    print('   mapped data : done')
     mapped_data
   })
   output$all_mapped_table = renderDataTable(mapped_data()$all_mapped_data)
@@ -424,6 +444,7 @@ shinyServer(function(input, output) {
   output$mapped_ud_table = renderDataTable(mapped_data()$mapped_ud)
  
   mapped_st_single_list = reactive({
+    print('mapped_st_single_list')
     file_path = 'data/mapped_st_single_list.rds'
     if(!file.exists(file_path)){
       saveRDS(list(),file_path)
@@ -433,10 +454,13 @@ shinyServer(function(input, output) {
       mapped_st_single_list[[input$data]] = mapped_st()
     }
     saveRDS(mapped_st_single_list,file_path)
+    print('   mapped_st_single_list : done')
+    
     mapped_st_single_list
   })
   
   all_mapped_st = reactive({
+    print('all_mapped_st')
     all_mapped = FALSE
     for(data_name in input$data){
       if(all_mapped == FALSE){
@@ -445,6 +469,8 @@ shinyServer(function(input, output) {
         all_mapped = rbind(all_mapped,mapped_st_single_list()[[data_name]])
       }
     }
+    print('   all_mapped_st : done')
+    
     all_mapped
   })
   
@@ -471,9 +497,14 @@ shinyServer(function(input, output) {
     # print('dim(mapped)')
     # print(dim(mapped))
     # mapped
+    print('   mapped_st : done')
+    mapped
+    
+    
   }) # gets the STRINGdb mapping data
   
   payload_id = reactive({
+    print('payload_id')
      #if(input$mapped == 'common_mapped'){
        #payload_id = readRDS('common_mapped_payload_id.rds')
        payload_id = mapped_data()$payload_id
@@ -481,6 +512,8 @@ shinyServer(function(input, output) {
        #payload_id = mapped_data()$payload_id
       # payload_id = readRDS(paste0(shiny_data_path,'payload_id.',data_name_collapse(),'.rds'))
      #}
+    print('   payload_id : done')
+       
     payload_id
     
   })
@@ -494,6 +527,7 @@ shinyServer(function(input, output) {
   ##### ENRICHMENT ####
   
   output$select_enrichment_stat_ui = renderUI({
+    print('select_enrichment_stat_ui : ')
     if(input$enrichment_select == 'STRINGdb'){
       selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)
     }else{
@@ -502,6 +536,7 @@ shinyServer(function(input, output) {
     })
   
   enrichment_column = reactive({
+    print('enrichment_column')
     up_col = 'pvalue_fdr.up'
     down_col = 'pvalue_fdr.down'
     
@@ -518,9 +553,12 @@ shinyServer(function(input, output) {
         }
       }
     }
+    print('   enrichment_column : done')
+    
     list(up_col = up_col, down_col = down_col)
     })
   enrichment_table = reactive({
+    print('enrichment_table')
     data_name = input$single_sample
     
     #load(paste('topGO_sig',input$ontology,input$data,sep='.'))
@@ -581,10 +619,13 @@ shinyServer(function(input, output) {
       enrichment_table
       #table_path = paste0('./images/enrichment/',data_name_list()[[input$single_data]],data_df()[input$single,'data']
     }
+    print('   enrichment_table : done')
+    
     enrichment_table
   })
 
   output$sub_enrichment_plot = renderPlot({
+    print('sub_enrichment_plot')
     enrichment_table = sn_en()
     enrichment_table = enrichment_table[enrichment_table$term_description %in% input$enrich_select_term_plot,]
     plot_data = enrichment_table
@@ -614,11 +655,14 @@ shinyServer(function(input, output) {
       theme(axis.title.y = element_blank(), axis.text.y = element_text(face = 'bold'))+
       ggtitle(input$venn_int) + 
       coord_flip()
+    print('   sub_enrichment_plot : done')
+    
     print(p)
     
   })
   
   enrichment_image_path_list = reactive({
+    print('enrichment_image_path_list')
     GO_terms = input$enrich_select_term_combined
     df = combined_enrichment()
     term_list = unique(df$term_description)
@@ -630,305 +674,323 @@ shinyServer(function(input, output) {
     en_line = paste(enrichment_abreviation_list[input$select_enrichment],collapse = '_')
     plot_path_list = c(sample_path_line(),'enrichment','Combined',input$enrichment_select,input$select_sn_MT,en_line,length(term_list))
     plot_path_line = path_line_function(plot_path_list)
+    print('enrichment_image_path_list : done')
+    
     list(plot_path_list = plot_path_list, plot_path_line = plot_path_line, match_list = match_list, match_list_line = match_list_line)
   })
   
   combined_enrichment = reactive({
-    print('######## combined_enrichment ##########')
-    ontology_list = input$select_enrichment
-    data_list = input$data
-    sub_data_list = input$enrichment_data_select
-    data_name = sub_data_list[1]
-
+    print('combined_enrichment')
+    
  
-    enrichment_GO = FALSE
-    for(ontology in ontology_list){
-    if(input$sub_venn == 'basic'){
-      for(data_name in data_list){
-       for(sub_data_name in sub_data_list){
-        if(grepl(data_name,sub_data_name)){
-          sub_sample_list = c(data_name,'venn',sub_data_name)
-          #ontology = input$select_enrichment
-          if(input$enrichment_select == 'STRINGdb'){
-            
-            enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
-          }
-          if(input$enrichment_select == 'topGO'){
-            enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
-            venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
-            venn_path_line = latex_filename_function(venn_path_line)
-            venn_path_line
-          }
-          #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
-          file_name = paste0(input$enrichment_select,'.rds')
-          
-          file_path = paste(enrichment_path_line,file_name,sep = '/')
-          print(file_path)
-          #if(file.exists(file_path)){
-            print(data_name)
-            print(sub_data_name)
-
-            mapped_data = mapped_st_single_list()[[data_name]]
-            print('mapped_data')
-            sample_path_line = paste(shiny_image_path,data_name,sep='/')
-            STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == sub_data_name])
-            print('STRING_id_list')
-            print(length(STRING_id_list))
-            #string_db = string_db()
-            #path_list = sub_sample_list
-            #annot = annot()
-            #ens_list = STRING_id_list
-            
-            #saveRDS(ens_list,'temp/ens_list.rds')
-            #saveRDS(annot,'temp/annot.rds')
-            #ens_list = readRDS('temp/ens_list.rds')
-            #annot = readRDS('temp/annot.rds')
-            
-            print('run_enrichment_function')
-            #if(length(STRING_id_list) > 0){
-              
-              enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
-              print(dim(enrichment_GO_n))
-              if(dim(enrichment_GO_n)[1] > 0){
-                
-                #enrichment_GO_n = readRDS(file_path)
-                enrichment_GO_n$data = data_name
-                enrichment_GO_n$sub_data = sub_data_name
-                enrichment_GO_n$ontology = ontology
-                print(dim(enrichment_GO_n))
-                if(enrichment_GO == FALSE){
-                  enrichment_GO = enrichment_GO_n
-                }else{
-                  enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
-                }
+          ontology_list = input$select_enrichment
+          data_list = input$data
+          sub_data_list = input$enrichment_data_select
+          sub_data_list
+          data_name = sub_data_list[1]
+      
+       
+          enrichment_GO = FALSE
+          for(ontology in ontology_list){
+            if(input$sub_venn == 'basic'){
+              for(data_name in data_list){
+               for(sub_data_name in sub_data_list){
+                if(grepl(data_name,sub_data_name)){
+                  sub_sample_list = c(data_name,'venn',sub_data_name)
+                  sub_sample_list
+                  #ontology = input$select_enrichment
+                  if(input$enrichment_select == 'STRINGdb'){
+                    
+                    enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
+                  }
+                  if(input$enrichment_select == 'topGO'){
+                    enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
+                    venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
+                    venn_path_line = latex_filename_function(venn_path_line)
+                    venn_path_line
+                  }
+                  #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
+                  file_name = paste0(input$enrichment_select,'.rds')
+                  
+                  file_path = paste(enrichment_path_line,file_name,sep = '/')
+                  print(file_path)
+                  #if(file.exists(file_path)){
+                    print(data_name)
+                    print(sub_data_name)
+        
+                    mapped_data = mapped_st_single_list()[[data_name]]
+                    print('mapped_data')
+                    sample_path_line = paste(shiny_image_path,data_name,sep='/')
+                    STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == sub_data_name])
+                    print('STRING_id_list')
+                    print(length(STRING_id_list))
+                    #string_db = string_db()
+                    #path_list = sub_sample_list
+                    #annot = annot()
+                    #ens_list = STRING_id_list
+                    
+                    #saveRDS(ens_list,'temp/ens_list.rds')
+                    #saveRDS(annot,'temp/annot.rds')
+                    #ens_list = readRDS('temp/ens_list.rds')
+                    #annot = readRDS('temp/annot.rds')
+                    
+                    print('run_enrichment_function')
+                    #if(length(STRING_id_list) > 0){
+                      
+                      enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
+                      print(dim(enrichment_GO_n))
+                      if(dim(enrichment_GO_n)[1] > 0){
+                        
+                        #enrichment_GO_n = readRDS(file_path)
+                        enrichment_GO_n$data = data_name
+                        enrichment_GO_n$sub_data = sub_data_name
+                        enrichment_GO_n$ontology = ontology
+                        print(dim(enrichment_GO_n))
+                        if(enrichment_GO == FALSE){
+                          enrichment_GO = enrichment_GO_n
+                        }else{
+                          enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
+                        }
+                      }
+                    }
+                  #}
+                #}
               }
             }
-          #}
-        #}
-      }
-    }
-      }
-    
-    
-    if(input$sub_venn == 'all'){
-      data_name = data_name_collapse()
-      
-      for(sub_data_name in sub_data_list){
-        #if(grepl(data_name,sub_data_name)){
-          sub_sample_list = c(data_name,'venn',sub_data_name)
-          #ontology = input$select_enrichment
-          if(input$enrichment_select == 'STRINGdb'){
-            
-            enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
-          }
-          if(input$enrichment_select == 'topGO'){
-            enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
-            venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
-            venn_path_line = latex_filename_function(venn_path_line)
-            venn_path_line
-          }
-          enrichment_path_line
-          #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
-          file_name = paste0(input$enrichment_select,'.rds')
-          
-          file_path = paste(enrichment_path_line,file_name,sep = '/')
-          print(file_path)
-          #if(file.exists(file_path)){
-          print(data_name)
-          print(sub_data_name)
-          #if(input$sub_venn == 'all'){
-          mapped_data = mapped_st()
-          sample_path_line = sample_path_line()
-          dim(mapped_data)  
-          #}
-          # if(input$sub_venn == 'basic'){
-          #   #print(mapped_st_single_list())
-          #   mapped_data = mapped_st_single_list()[[data_name]]
-          #   sample_path_line = paste(shiny_image_path,data_name,sep='/')
-          #   sample_path_line
-          # }
-          label = gsub(':',' & ',sub_data_name)
-          print(label)
-          STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == label])
-          #print(STRING_id_list)
-          print(length(STRING_id_list))
-          #string_db = string_db()
-          #path_list = sub_sample_list
-          #annot = annot()
-          #topGO_all = topGO_all()
-          if(length(STRING_id_list) > 0){
-            enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
-            print(dim(enrichment_GO_n))
-            if(dim(enrichment_GO_n)[1] > 0){
-              #enrichment_GO_n = readRDS(file_path)
-              enrichment_GO_n$data = data_name
-              enrichment_GO_n$sub_data = sub_data_name
-              enrichment_GO_n$ontology = ontology
-              
-              print(dim(enrichment_GO_n))
-              if(enrichment_GO == FALSE){
-                enrichment_GO = enrichment_GO_n
-              }else{
-                enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
               }
-            }else{
-              
-              print('no enriched terms')
-            }
-          }else{
-            print('no STRING_ids')
-            print(STRING_id_list)
-          }
-        #}
-        #}
-      }
-    }
-      
-      
-    if(input$sub_venn == 'combined'){
-        print('######### sub_venn == combined ##############')
-        direction_list = c('down','up')
-        print(direction_list)
-        
-        data_name = data_name_collapse()
-        
-        
-        for(direction_entry in direction_list){
-          print(direction_entry)
-          print(direction_entry == 'down')
-          print(direction_entry == 'up')
-          #sub_data_list = input$enrichment_data_select
-          
-          if(direction_entry == 'down'){
-            sub_data_list = input$enrichment_data_select
-          }
-          if(direction_entry == 'up'){
-            sub_data_list = input$enrichment_data_select_2
-          }
-          print(sub_data_list)
-          sub_data_list = sub_data_list[order(sub_data_list)]
-          if(length(sub_data_list) > 0){
-        #  for(sub_data_name in sub_data_list){
-            #if(grepl(data_name,sub_data_name)){
-            sub_data_name = paste(sub_data_list,collapse = ' & ')
-            sub_sample_list = c(data_name,'venn','combined',sub_data_name)
-            #ontology = input$select_enrichment
-            if(input$enrichment_select == 'STRINGdb'){
-              
-              enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
-            }
-            if(input$enrichment_select == 'topGO'){
-              enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
-              venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
-              venn_path_line = latex_filename_function(venn_path_line)
-              venn_path_line
-            }
-            enrichment_path_line
-            #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
-            file_name = paste0(input$enrichment_select,'.rds')
             
-            file_path = paste(enrichment_path_line,file_name,sep = '/')
-            print(file_path)
-            #if(file.exists(file_path)){
-            print(data_name)
-            print(sub_data_name)
-            #if(input$sub_venn == 'all'){
-            mapped_data = mapped_st()
-            sample_path_line = sample_path_line()
-            dim(mapped_data)  
-            #}
-            # if(input$sub_venn == 'basic'){
-            #   #print(mapped_st_single_list())
-            #   mapped_data = mapped_st_single_list()[[data_name]]
-            #   sample_path_line = paste(shiny_image_path,data_name,sep='/')
-            #   sample_path_line
-            # }
-            STRING_id_list = c()
-            for(label in sub_data_list){
-              label = gsub(':',' & ',label)
-              print(label)
-              single_STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == label])
-              single_STRING_id_list
-              STRING_id_list = c(STRING_id_list,single_STRING_id_list)
-            }
-            STRING_id_list = unique(STRING_id_list)
-            STRING_id_list = STRING_id_list[!is.na(STRING_id_list)]
-            #print(STRING_id_list)
-            print(length(STRING_id_list))
-            #string_db = string_db()
-            #path_list = sub_sample_list
-            #annot = annot()
-            #topGO_all = topGO_all()
-            if(length(STRING_id_list) > 0){
-              enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
-              print(dim(enrichment_GO_n))
-              if(dim(enrichment_GO_n)[1] > 0){
-                #enrichment_GO_n = readRDS(file_path)
-                enrichment_GO_n$data = data_name
-                enrichment_GO_n$sub_data = direction_entry
-                enrichment_GO_n$ontology = ontology
-                
-                print(dim(enrichment_GO_n))
-                if(enrichment_GO == FALSE){
-                  enrichment_GO = enrichment_GO_n
-                }else{
-                  enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
-                }
-              }else{
-                
-                print('no enriched terms')
+            
+            if(input$sub_venn == 'all'){
+              data_name = data_name_collapse()
+              
+              for(sub_data_name in sub_data_list){
+                #if(grepl(data_name,sub_data_name)){
+                  sub_sample_list = c(data_name,'venn',sub_data_name)
+                  #ontology = input$select_enrichment
+                  if(input$enrichment_select == 'STRINGdb'){
+                    
+                    enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
+                  }
+                  if(input$enrichment_select == 'topGO'){
+                    enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
+                    venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
+                    venn_path_line = latex_filename_function(venn_path_line)
+                    venn_path_line
+                  }
+                  enrichment_path_line
+                  #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
+                  file_name = paste0(input$enrichment_select,'.rds')
+                  
+                  file_path = paste(enrichment_path_line,file_name,sep = '/')
+                  print(file_path)
+                  #if(file.exists(file_path)){
+                  print(data_name)
+                  print(sub_data_name)
+                  #if(input$sub_venn == 'all'){
+                  mapped_data = mapped_st()
+                  sample_path_line = sample_path_line()
+                  dim(mapped_data)  
+                  #}
+                  # if(input$sub_venn == 'basic'){
+                  #   #print(mapped_st_single_list())
+                  #   mapped_data = mapped_st_single_list()[[data_name]]
+                  #   sample_path_line = paste(shiny_image_path,data_name,sep='/')
+                  #   sample_path_line
+                  # }
+                  label = gsub(':',' & ',sub_data_name)
+                  print(label)
+                  STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == label])
+                  #print(STRING_id_list)
+                  print(length(STRING_id_list))
+                  #string_db = string_db()
+                  #path_list = sub_sample_list
+                  #annot = annot()
+                  #topGO_all = topGO_all()
+                  if(length(STRING_id_list) > 0){
+                    enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
+                    print(dim(enrichment_GO_n))
+                    if(dim(enrichment_GO_n)[1] > 0){
+                      #enrichment_GO_n = readRDS(file_path)
+                      enrichment_GO_n$data = data_name
+                      enrichment_GO_n$sub_data = sub_data_name
+                      enrichment_GO_n$ontology = ontology
+                      
+                      print(dim(enrichment_GO_n))
+                      if(enrichment_GO == FALSE){
+                        enrichment_GO = enrichment_GO_n
+                      }else{
+                        enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
+                      }
+                    }else{
+                      
+                      print('no enriched terms')
+                    }
+                  }else{
+                    print('no STRING_ids')
+                    print(STRING_id_list)
+                  }
+                #}
+                #}
               }
-            }else{
-              print('no STRING_ids')
-              print(STRING_id_list)
             }
-          }else{print('no sub_data_list')}
-  
-    }
-    }
-    }
-    print(input$sub_venn)
-    
-    print(dim(enrichment_GO))
-    View(enrichment_GO)
-    plot_data = enrichment_GO
-
-    print('column data frame')
-    if(plot_data != FALSE){
-      system.time({
-      plot_data$p_log = NA
-      plot_data$p_log[grepl('up',plot_data$sub_data)] = -log10(plot_data$pvalue_fdr[grepl('up',plot_data$sub_data)])
-      plot_data$p_log[grepl('down',plot_data$sub_data)] = log10(plot_data$pvalue_fdr[grepl('down',plot_data$sub_data)])
-      plot_data$p_log
+              
+              
+            if(input$sub_venn == 'combined'){
+                print('######### sub_venn == combined ##############')
+                direction_list = c('down','up')
+                print(direction_list)
+                
+                data_name = data_name_collapse()
+                
+                
+                for(direction_entry in direction_list){
+                  print(direction_entry)
+                  print(direction_entry == 'down')
+                  print(direction_entry == 'up')
+                  #sub_data_list = input$enrichment_data_select
+                  
+                  if(direction_entry == 'down'){
+                    sub_data_list = input$enrichment_data_select
+                  }
+                  if(direction_entry == 'up'){
+                    sub_data_list = input$enrichment_data_select_2
+                  }
+                  print(sub_data_list)
+                  sub_data_list = sub_data_list[order(sub_data_list)]
+                  if(length(sub_data_list) > 0){
+                #  for(sub_data_name in sub_data_list){
+                    #if(grepl(data_name,sub_data_name)){
+                    sub_data_name = paste(sub_data_list,collapse = ' & ')
+                    sub_sample_list = c(data_name,'venn','combined',sub_data_name)
+                    #ontology = input$select_enrichment
+                    if(input$enrichment_select == 'STRINGdb'){
+                      
+                      enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,input$background)
+                    }
+                    if(input$enrichment_select == 'topGO'){
+                      enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,ontology,NULL)
+                      venn_path_line = paste(c(shiny_image_path,gene_list_select_list()$path_list),collapse = '/')
+                      venn_path_line = latex_filename_function(venn_path_line)
+                      venn_path_line
+                    }
+                    enrichment_path_line
+                    #enrichment_path_line = enrichment_path_line_function(shiny_image_path,sub_sample_list,input$select_enrichment,input$background)
+                    file_name = paste0(input$enrichment_select,'.rds')
+                    
+                    file_path = paste(enrichment_path_line,file_name,sep = '/')
+                    print(file_path)
+                    #if(file.exists(file_path)){
+                    print(data_name)
+                    print(sub_data_name)
+                    #if(input$sub_venn == 'all'){
+                    mapped_data = mapped_st()
+                    sample_path_line = sample_path_line()
+                    dim(mapped_data)  
+                    #}
+                    # if(input$sub_venn == 'basic'){
+                    #   #print(mapped_st_single_list())
+                    #   mapped_data = mapped_st_single_list()[[data_name]]
+                    #   sample_path_line = paste(shiny_image_path,data_name,sep='/')
+                    #   sample_path_line
+                    # }
+                    STRING_id_list = c()
+                    for(label in sub_data_list){
+                      label = gsub(':',' & ',label)
+                      print(label)
+                      single_STRING_id_list = unique(mapped_data$STRING_id[mapped_data$label == label])
+                      single_STRING_id_list
+                      STRING_id_list = c(STRING_id_list,single_STRING_id_list)
+                    }
+                    STRING_id_list = unique(STRING_id_list)
+                    STRING_id_list = STRING_id_list[!is.na(STRING_id_list)]
+                    #print(STRING_id_list)
+                    print(length(STRING_id_list))
+                    #string_db = string_db()
+                    #path_list = sub_sample_list
+                    #annot = annot()
+                    #topGO_all = topGO_all()
+                    if(length(STRING_id_list) > 0){
+                      enrichment_GO_n = run_enrichment_function(ontology,sub_sample_list,STRING_id_list,string_db(),mapped_data,annot(),sample_path_line,backgroundV(),input)
+                      print(dim(enrichment_GO_n))
+                      if(dim(enrichment_GO_n)[1] > 0){
+                        #enrichment_GO_n = readRDS(file_path)
+                        enrichment_GO_n$data = data_name
+                        enrichment_GO_n$sub_data = direction_entry
+                        enrichment_GO_n$ontology = ontology
+                        
+                        print(dim(enrichment_GO_n))
+                        if(enrichment_GO == FALSE){
+                          enrichment_GO = enrichment_GO_n
+                        }else{
+                          enrichment_GO = rbind(enrichment_GO,enrichment_GO_n)
+                        }
+                      }else{
+                        
+                        print('no enriched terms')
+                      }
+                    }else{
+                      print('no STRING_ids')
+                      print(STRING_id_list)
+                    }
+                  }else{print('no sub_data_list')}
+          
+            }
+            }
+          }
+          print(input$sub_venn)
+          
+          print(dim(enrichment_GO))
+          #View(enrichment_GO)
+          plot_data = enrichment_GO
       
-      plot_data$num = NA
-      plot_data$num[grepl('up',plot_data$sub_data)] = (plot_data$hits[grepl('up',plot_data$sub_data)])
-      plot_data$num[grepl('down',plot_data$sub_data)] = -(plot_data$hits[grepl('down',plot_data$sub_data)])
-      plot_data$num
-      
-      })
-    }
-    
-    #print(p_log)
-    #plot_data$p_log = p_log
-    #View(plot_data)
-    print('done')
-    plot_data
+          print('column data frame')
+          if(plot_data != FALSE){
+            system.time({
+            plot_data$p_log = NA
+            plot_data$p_log[grepl('up',plot_data$sub_data)] = -log10(plot_data$pvalue_fdr[grepl('up',plot_data$sub_data)])
+            plot_data$p_log[grepl('down',plot_data$sub_data)] = log10(plot_data$pvalue_fdr[grepl('down',plot_data$sub_data)])
+            plot_data$p_log
+            
+            plot_data$num = NA
+            plot_data$num[grepl('up',plot_data$sub_data)] = (plot_data$hits[grepl('up',plot_data$sub_data)])
+            plot_data$num[grepl('down',plot_data$sub_data)] = -(plot_data$hits[grepl('down',plot_data$sub_data)])
+            plot_data$num
+            
+            })
+          }
+          
+          #print(p_log)
+          #plot_data$p_log = p_log
+          #View(plot_data)
+          print('   combined_enrichment : done')
+          
+          plot_data
+    #}
   })
   
   output$sn_term_select_combined_ui = renderUI({
-    if(input$run_enrich_test == TRUE){
+    print('sn_term_select_combined_ui : ')
+    #if(input$run_enrich_test == TRUE){
       term_list = combined_term_list()$term_list
-      selected_list = term_list[c(input$combined_slider[1]:input$combined_slider[2])]
-      if(input$fixed_term_combined == T){
-        selected_list = input$enrich_select_term_combined
+      term_list
+      if(!is.null(input$combined_slider[1])){
+        selected_list = term_list[c(input$combined_slider[1]:input$combined_slider[2])]
+      }else{
+        selected_list = term_list
       }
+      
+      selected_list
+      #if(input$fixed_term_combined == T){
+      #selected_list = input$enrich_select_term_combined
+     # }
+        #selected_list = term_list 
+        
       selectInput('enrich_select_term_combined','Select Term',term_list, selected_list, multiple = T)
-    }
+    #}
   })
   
   combined_term_list = reactive({
-    print('###### combined_term_list #########')
+    print('combined_term_list')
     if(input$fixed_term_combined == F){
       df = combined_enrichment()
       df = df[df$pvalue_fdr < as.numeric(input$eh_fdr),]
@@ -980,7 +1042,8 @@ shinyServer(function(input, output) {
     #term_list = combined_enrichment()$term_description
     term_list = unique(term_list)
     term_list = list(term_list = term_list)
-    print('done')
+    print('   combined_term_list : done')
+    
     term_list
   })
   
@@ -991,16 +1054,23 @@ shinyServer(function(input, output) {
   })
   
   output$combined_enrichment_table = renderDataTable({
+    print('combined_enrichment_table')
     df = combined_enrichment()
-    #df = df[df$pvalue_fdr < input$eh_fdr,]
-    term_list = input$enrich_select_term_combined
-    #term_list = df$term_description
-    df = df[df$term_description %in% term_list,]
+    dim(df)
+    if(input$run_enrich_test == TRUE){
+      #df = df[df$pvalue_fdr < input$eh_fdr,]
+      term_list = input$enrich_select_term_combined
+      term_list
+      #term_list = df$term_description
+      df = df[df$term_description %in% term_list,]
+    }
+    print('   combined_enrichment_table : data')
+    
     df
     })
   
   combined_enrichment_plot_data = reactive({
-    print('######### combined enrichment plot data ##############')
+    print('combined enrichment plot data')
     df = combined_enrichment()
     #View(plot_data)
     plot_data = df[df$pvalue_fdr < input$eh_fdr,]
@@ -1012,11 +1082,13 @@ shinyServer(function(input, output) {
     #term_list = term_list[c(0:10)]
     plot_data = plot_data[plot_data$term_description %in% term_list,]
     plot_data = plot_data[!is.na(plot_data$pvalue_fdr),]
-    print('done')
+    print('combined enrichment plot data : done')
+    
     plot_data
   })
   
   output$enrich_combined_slider = renderUI({
+    print('enrich_combined_slider : ')
     if(input$run_enrich_test == TRUE){
        term_list = combined_term_list()$term_list
        sliderInput('combined_slider','Select Subset Range', min = 0, max = length(term_list), value = c(0,10), step = 1,width = 1000)
@@ -1024,24 +1096,27 @@ shinyServer(function(input, output) {
   })
   
   output$combined_enrichment_plot_ui = renderUI({
+    print('combined_enrichment_plot_ui : ')
     if(input$run_enrich_test == TRUE){
       plotOutput('combined_enrichment_plot')
     }
   })
   
   output$combined_enrichment_plot = renderPlot({
-    #if(input$enrich_run_test == T){
-      print('########### combined_enrichment_plot ##############')
+    print('combined_enrichment_plot')
+    if(input$run_enrich_test == T){
+      #print('########### combined_enrichment_plot ##############')
       ontology_list = input$select_enrichment
       
       plot_data = combined_enrichment_plot_data()
-      View(plot_data)
+      #View(plot_data)
       print(dim(plot_data))
       if(dim(plot_data)[1] > 0){
         #View(plot_data)
         
         #w = 1/(length(unique(plot_data$data))) * 3
-        w = input$combined_width
+        #w = input$combined_width
+        w = 0.9
         #print(w)
         text_wrap = input$text_wrap
         data_list = unique(plot_data$data)
@@ -1083,29 +1158,62 @@ shinyServer(function(input, output) {
           data_order = data_list[data_list %in% c('down','up')]
           
           df_col_list = list(up = 'red',down = 'green')
+          df_col_list
         }
         
         data_order
         df_col_list
         term_list = rev(input$enrich_select_term_combined)
         term_list
-        test = TRUE
-        if(test == TRUE){
-          saveRDS(plot_data,'temp/plot_data.rds')
-          saveRDS(data_order,'temp/data_order.rds')
-          saveRDS(df_col_list,'temp/df_col_list')
-          saveRDS(term_list,'temp/term_list')
-          
-          #print('test')
-          
-          plot_data = readRDS('temp/plot_data.rds')
-          data_order = readRDS('temp/data_order.rds')
-          df_col_list = readRDS('temp/df_col_list')
-          term_list = readRDS('temp/term_list')
+        
+        save_test = T
+        if(save_test == T){
+          load_data = load_data()
+          variable_list = c('load_data','plot_data','data_order','df_col_list','term_list')
+          cmd_list = save_variable_function(variable_list)
+          lapply(cmd_list, function(x) eval(parse(text = x)))
+          try(save_input_function(input))
+          read_test = F
+          if(read_test == T){
+            variable_list = c(variable_list)
+            variable_list
+            cmd_list = read_variable_function(variable_list)
+            for(cmd in cmd_list){
+              print(cmd)
+              try(eval(parse(text = cmd)))
+            }
+          }
         }
-        #w = 0.9
-        #text_wrap = 30
-        saveRDS(plot_data,'temp/plot_data.rds')
+        #test = F
+        # if(test == TRUE){
+        #   saveRDS(plot_data,'temp/plot_data.rds')
+        #   saveRDS(data_order,'temp/data_order.rds')
+        #   saveRDS(df_col_list,'temp/df_col_list')
+        #   saveRDS(term_list,'temp/term_list')
+        #   
+        #   #print('test')
+        #   
+        #   plot_data = readRDS('temp/plot_data.rds')
+        #   data_order = readRDS('temp/data_order.rds')
+        #   df_col_list = readRDS('temp/df_col_list')
+        #   term_list = readRDS('temp/term_list')
+        # }
+        w = 0.9
+        text_wrap = 30
+        print(load_data()$data_df)
+        print(df_col_list)
+        print(data_order)
+        print(paste(df_col_list[data_order]))
+        d = rev(seq(1,length(data_order)))
+        names(d) = data_order
+        
+        
+        e = plot_data[,'data']
+        f = reorder(e, sapply(e, function(x) d[x]))
+        #View(f)
+        #str(f)
+        plot_data$data = f
+        #saveRDS(plot_data,'temp/plot_data.rds')
         if(input$sub_venn == 'basic'){
           p = ggplot(plot_data,aes_string(x = 'term_description',y = input$plot_values, fill = 'data')) 
           #geom_bar(stat = 'identity', width = w, position = 'dodge')
@@ -1127,20 +1235,24 @@ shinyServer(function(input, output) {
         }else{
           p = p +  ylab('number')
         }
-        p = p + scale_x_discrete(limits = term_list, labels = function(x) str_wrap(x, width = text_wrap)) + 
+        p = p + scale_x_discrete(limits = term_list, labels = function(x) str_wrap(x, width = text_wrap))
         
               #scale_x_discrete(labels = function(x) str_wrap(x, width = 20)) + 
-          geom_hline(yintercept = 0, col = 'black', lwd - 2) + 
+        p = p +  geom_hline(yintercept = 0, col = 'black', lwd - 2)
           
           #scale_fill_manual(breaks = data_order,values = col_list) + 
-         scale_fill_manual(breaks = data_order, values = c(df_col_list)) + 
-          
+        if(input$sub_venn == 'all'){
+          p = p + scale_fill_manual(breaks = data_order, values = paste(df_col_list[data_order]))
+        }else{
+         p = p + scale_fill_manual(breaks = data_order, values = df_col_list[data_order])
+        }
+         
           #ylab('log10(p value)') +
-          theme(axis.title.y = element_blank(), axis.text.y = element_text(face = 'bold', size = input$t_size)) +
-          coord_flip() + 
-          labs(colour = '', fill = '')
+          p = p + theme(axis.title.y = element_blank(), axis.text.y = element_text(face = 'bold', size = input$t_size))
+          p = p + coord_flip()
+          p = p + labs(colour = '', fill = '')
     
-        p = p + theme(legend.position=input$combined_legend)
+        #p = p + theme(legend.position=input$combined_legend)
      
         #}
     
@@ -1163,33 +1275,66 @@ shinyServer(function(input, output) {
         #  saveRDS(p, 'temp/p.rds')
         #}
         #print('almost done')
+        print('   combined_enrichment_plot : done')
+          
         print(p)
         
         if(input$save_plot == T){
           plot_path_line = enrichment_image_path_list()$plot_path_line
-          file_name = paste0('barplot_',input$plot_values,enrichment_image_path_list()$match_list_line)
-          values$plot_path = save_plot_function_2(plot_path_line,file_name)
+          print(plot_path_line)
+          enrichment_path = enrichment_path()
+          print(enrichment_path)
+          file_name = paste(enrichment_path,paste('barplot',input$plot_values,enrichment_image_path_list()$match_list_line,sep = '_'),sep = '/')
+          #print(input$plot_values)
+          
+          #print(enrichment_image_path_list()$match_list_line)
+          print(file_name)
+          values$plot_name = file_name
+          print(plot_path())
+          save_plot_function_2(values$plot_path,file_name)
+          
+          #save_plot_function_2(plot_path_line,file_name)
         }
       }else{
         print('no data in plot data')
         #View(plot_data)
         
       }
-     # }
+    }
   })
   
   output$combined_heatmap_plot = renderPlot({
+    print('combine_heatmap_plot')
     ontology_list = input$select_enrichment
+    ontology_list
     #plot_data = readRDS('plot_data.rds')
     plot_data = combined_enrichment_plot_data()
+    #save_test = T
+    if(save_test == T){
+      variable_list = c('plot_data')
+      cmd_list = save_variable_function(variable_list)
+      lapply(cmd_list, function(x) eval(parse(text = x)))
+      try(save_input_function(input))
+      read_test = F
+      if(read_test == T){
+        variable_list = c(variable_list)
+        cmd_list = read_variable_function(variable_list)
+        for(cmd in cmd_list){
+          print(cmd)
+          try(eval(parse(text = cmd)))
+        }
+      }
+    }
+    
     plot_data = plot_data[!(plot_data$p_log > -1.3 & plot_data$p_log < 1.3),]
+    plot_data
     #plot_data = plot_data[!(,]
-    print(dim(plot_data))
+    #print(dim(plot_data))
     plot_data$enr = NA
     plot_data$enr[plot_data$p_log < -1.3] = 'down'
     plot_data$enr[plot_data$p_log > 1.3] = 'up'
     #plot_data$p_log[plot_data$p_log < -1.3)
-    View(plot_data)
+    #View(plot_data)
     
     if(input$sub_venn == 'basic'){
       p = ggplot(plot_data,aes(y = term_description,x = data, fill = enr)) 
@@ -1214,37 +1359,45 @@ shinyServer(function(input, output) {
     p = p +  scale_y_discrete(limits = rev(input$enrich_select_term_combined) , labels = function(x) str_wrap(x, width = input$text_wrap))
     p = p +  theme(axis.title.x = element_blank(), axis.title.y = element_blank(), axis.text.y = element_text(face = 'bold')) +
       labs(colour = '', fill = '')
-    if(input$combined_legend == F){
-      p = p + theme(legend.position="none")
-    }
+    #if(input$combined_legend == F){
+    #  p = p + theme(legend.position="none")
+    #}
+    print('   combine_heatmap_plot : done')
     
     print(p)
     if(input$save_plot == T){
-      plot_path_line = enrichment_image_path_list()$plot_path_line
-      file_name = paste0('heatmap_',enrichment_image_path_list()$match_list_line)
-      values$plot_path = save_plot_function_2(plot_path_line,file_name)
+      enrichment_path = enrichment_path()
+      file_name = paste(enrichment_path,paste0('heatmap_',enrichment_image_path_list()$match_list_line),sep = '/')
+      values$plot_name = file_name
+      print(plot_path())
+      
+      #plot_path_line = enrichment_image_path_list()$plot_path_line
+      #file_name = paste0('heatmap_',enrichment_image_path_list()$match_list_line)
+      save_plot_function_2(values$plot_path,file_name)
     }
-    #print(p)
+    print(p)
     #ggplot(plot_data, aes(sub_data,term_description)) + geom_tile(aes(fill = p_log), colour = 'white') + scale_fill_gradient2()
     
   })
  
   GOdata = reactive({
-    print('sn_en')
+    print('GOdata')
     ontology = input$select_enrichment
     if(length(ontology) > 1){
       ontology = ontology[1]
     }
     path_list = gene_list_select_list()$path_list
     enrichment_path_line = enrichment_path_line_function(shiny_image_path,path_list,ontology,NULL)
-    print('try heirarchy plot')
+    #print('try heirarchy plot')
     GOdata_path = paste0(enrichment_path_line,'/topGO_GOdata.rds')
     GO_data = readRDS(GOdata_path)
+    print('   GOdata : data')
+    
     GO_data
   })
   
   sig_GOdata = reactive({
-    print('sn_en')
+    print('sig_GOdata')
     file_name_prefix = paste0(input$taxonomy,'_')
     if(input$iea == 'TRUE'){
       file_name_prefix = paste0(input$taxonomy,'_iea_')
@@ -1267,7 +1420,7 @@ shinyServer(function(input, output) {
     annot_list = readRDS(annot_file_path)
     
     sig_GOdata_path = paste0(sample_path_line(),'/',file_name_prefix,'_',ontology,'_sig_topGO_GOdata.rds')
-    print(sig_GOdata_path)
+    #print(sig_GOdata_path)
     re_run = FALSE
     if(!file.exists(sig_GOdata_path) | input$enrich_re_run == TRUE | re_run == TRUE){
       print('re run sigGOdata')
@@ -1283,17 +1436,20 @@ shinyServer(function(input, output) {
       saveRDS(sig_GOdata,sig_GOdata_path)
       
     }else{
-      print('found')
+      print('readRDS')
       sig_GOdata = readRDS(sig_GOdata_path)
       
     }
     #sig_GO_data = readRDS(sig_GOdata_path)
+    print('   sig_GOdata : data')
+    
     sig_GOdata
   })
   
   
     
   output$topGO_heirarchyPlot = renderPlot({
+    print('topGO_heirarchyPlot')
     library(Rgraphviz)
     GOdata = GOdata()
     CL = 1
@@ -1318,6 +1474,8 @@ shinyServer(function(input, output) {
     GO_ids
     #nAgo = makeNodeAttrs(GOdata,fontsize = 30)
     par(cex = 0.2)
+    print('   topGO_heirarchyPlot : done')
+    
     showSigOfNodes(GOdata, score, firstSigNodes = NULL, wantedNodes = GO_ids, sigForAll = 0.01,  putCL = CL, useInfo = c('all','def','pval','np')[1], .NO.CHAR = 50)
 
     detach('package:Rgraphviz')
@@ -1326,106 +1484,117 @@ shinyServer(function(input, output) {
   
   
   output$heir_select_enrichment = renderUI({
+    print('heir_select_enrichment : ')
     selectInput('heir_select_enrichment','Select Enrichment',input$select_enrichment)
   })
   output$sig_topGO_heirarchyPlot = renderImage({
+    print('sig_topGO_heirarchyPlot')
+    enrichment_path = enrichment_path()
+    file_name = paste(enrichment_path,paste0('heirarchy_',enrichment_image_path_list()$match_list_line),sep = '/')
+    values$plot_name = file_name
+    print(plot_path())
+    if((!file.exists(png_plot_path())) || input$heir_re_run == TRUE){
+      print('re-run')
+      #sig_topGO_heirarchy_png = reactive({
+        library(Rgraphviz)
+        GOdata = sig_GOdata()
+        CL = 1
+        
+        GO_terms = input$enrich_select_term_combined
+        full_topGO = combined_enrichment()
+        
+        full_topGO = full_topGO[full_topGO$ontology == input$heir_select_enrichment,]
+        #View(full_topGO)
+        topGO = full_topGO
+        if(input$heir_sig == T){
+          topGO = full_topGO[as.numeric(full_topGO$pvalue_fdr) < as.numeric(input$eh_fdr),]
+        }
+        
+        #View(topGO)
+        score = as.numeric(topGO[,'pvalue_fdr'])
+        names(score) = topGO$GO.ID
+        #View(score)
+        test = F
+        if(test == T){
+          saveRDS(GOdata,'temp/sig_GOdata.rds')
+          saveRDS(GO_terms,'temp/GO_terms.rds')
+          saveRDS(score, 'temp/score.rds')
+          saveRDS(topGO,'temp/topGO.rds')
+          GOdata = readRDS('temp/sig_GOdata.rds')
+          GO_terms = readRDS('temp/GO_terms.rds')
+          score = readRDS('temp/score.rds')
+          topGO = readRDS('temp/topGO.rds')
+        }
+        GO_ids = topGO$term_id[topGO$term_description %in% GO_terms]
     
     
-  #sig_topGO_heirarchy_png = reactive({
-    library(Rgraphviz)
-    GOdata = sig_GOdata()
-    CL = 1
+        #View(GO_ids)
+        #nAgo = makeNodeAttrs(GOdata,fontsize = 30)
+        firstSigNodes = input$firstSigNodes
+        if(firstSigNodes == 0){
+          firstSigNodes = NULL
+        }
+        sigForAll = input$sigForAll
+        putCL = input$putCL
+        putWN = input$putWN
+        useInfo = input$useInfo
+        print('heirarchy')
+        #plot_path_line = enrichment_image_path_list()$plot_path_line
+        #file_name = paste0('heirarchy_',enrichment_image_path_list()$match_list_line)
+        #file_name_path = paste(plot_path_line,file_name,sep='/')
+        
+        
+        #if(input$save_plot == T){
+          #par(cex = input$heir_cex)
+        #  showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
+        #  file_output_path = save_plot_function_2(plot_path_line,file_name,c('pdf'))
+        #  values$plot_name = file_output_path
+          #par()
+        #}
     
-    GO_terms = input$enrich_select_term_combined
-    full_topGO = combined_enrichment()
+        
+        #if(input$heir_re_run == TRUE){
+          
+          png(paste0(plot_path(),'.png'), width = 4, height = 4, units = 'in', res = 600)
+          par(cex = input$heir_cex)
+          showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
+          dev.off()
+        #}
+        
+        if(input$save_plot == T){
+          #par(cex = 1)
+          par(cex = input$heir_cex)
+          showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
     
-    full_topGO = full_topGO[full_topGO$ontology == input$heir_select_enrichment,]
-    View(full_topGO)
-    topGO = full_topGO
-    if(input$heir_sig == T){
-      topGO = full_topGO[as.numeric(full_topGO$pvalue_fdr) < as.numeric(input$eh_fdr),]
+          save_plot_function_2(values$plot_path,file_name,c('pdf'))
+        }
+        
+    }else{
+      print('found image')
     }
-    
-    View(topGO)
-    score = as.numeric(topGO[,'pvalue_fdr'])
-    names(score) = topGO$GO.ID
-    #View(score)
-    test = F
-    if(test == T){
-      saveRDS(GOdata,'temp/sig_GOdata.rds')
-      saveRDS(GO_terms,'temp/GO_terms.rds')
-      saveRDS(score, 'temp/score.rds')
-      saveRDS(topGO,'temp/topGO.rds')
-      GOdata = readRDS('temp/sig_GOdata.rds')
-      GO_terms = readRDS('temp/GO_terms.rds')
-      score = readRDS('temp/score.rds')
-      topGO = readRDS('temp/topGO.rds')
-    }
-    GO_ids = topGO$term_id[topGO$term_description %in% GO_terms]
-
-
-    #View(GO_ids)
-    #nAgo = makeNodeAttrs(GOdata,fontsize = 30)
-    firstSigNodes = input$firstSigNodes
-    if(firstSigNodes == 0){
-      firstSigNodes = NULL
-    }
-    sigForAll = input$sigForAll
-    putCL = input$putCL
-    putWN = input$putWN
-    useInfo = input$useInfo
-    print('heirarchy')
-    plot_path_line = enrichment_image_path_list()$plot_path_line
-    file_name = paste0('heirarchy_',enrichment_image_path_list()$match_list_line)
-    file_name_path = paste(plot_path_line,file_name,sep='/')
-    
-    
-    #if(input$save_plot == T){
-      #par(cex = input$heir_cex)
-    #  showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
-    #  file_output_path = save_plot_function_2(plot_path_line,file_name,c('pdf'))
-    #  values$plot_name = file_output_path
-      #par()
-    #}
-    
-    if(input$heir_re_run == TRUE){
-      
-      png(paste0(file_name_path,'.png'), width = 4, height = 4, units = 'in', res = 600)
-      par(cex = input$heir_cex)
-      showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
-      dev.off()
-    }
-    
-    if(input$save_plot == T){
-      par(cex = 1)
-      par(cex = input$heir_cex)
-      showSigOfNodes(GOdata, score, firstSigNodes = firstSigNodes, wantedNodes = GO_ids, sigForAll = sigForAll,  putCL = putCL, useInfo = useInfo, .NO.CHAR = 50)
-      file_output_path = save_plot_function_2(plot_path_line,file_name,c('pdf'))
-      print(file_output_path)
-      values$plot_name = file_output_path
-    }
-    
     
     detach('package:Rgraphviz')
-    print(file_name_path)
-    file_name_path
+    #print(file_name_path)
+    #file_name_path
+    print('   sig_topGO_heirarchyPlot : done')
     
-    list(src = paste0(file_name_path,'.png'), width = input$heir_w)
+    list(src = paste0(plot_path(),'.png'), width = input$heir_w)
   })
   
 
   
 
   sub_venn_list = reactive({
+    print('sub_venn_list')
     mapped_data = mapped_st()
-    print(dim(mapped_data))
+    #print(dim(mapped_data))
     if(input$sub_venn_select == 'subset'){
       sub_data_list = input$enrichment_data_select
-      print(sub_data_list)
+      #print(sub_data_list)
       sub_data_list = gsub(':',' & ',sub_data_list)
-      print(sub_data_list)
+      #print(sub_data_list)
       mapped_data = mapped_data[mapped_data$label %in% sub_data_list,]
-      print(dim(mapped_data))
+      #print(dim(mapped_data))
     }
     #View(mapped_data)
     
@@ -1436,23 +1605,25 @@ shinyServer(function(input, output) {
       #GO_term = input$enrich_select_term
       
       string_hits = string_hits_function(enrichment_table,GO_term,mapped_data,annot())
-      print(string_hits)
+      #print(string_hits)
       id_list = mapped_data()$id_list
-      print(id_list)
+      #print(id_list)
       gene_list = id_list[string_hits]
     venn_gene_list[[GO_term]] = paste(gene_list)
     }
-    print(venn_gene_list)
+    #print(venn_gene_list)
+    print('   sub_venn_list : done')
     venn_gene_list
     
   })
   
   output$sub_venn_plot = renderPlot({
+    print('sub_venn_plot')
     m = 1.5 # numbers
     n = 1 # sample labels
     colour_list = rainbow(length(sub_venn_list()),alpha = 0.5)
     par(bty = 'n', lty = 'blank')
-    tryCatch({
+    df = tryCatch({
     venn(sub_venn_list(), 
          cexil = m, cexsn = n, 
          ilabels = T, 
@@ -1467,6 +1638,27 @@ shinyServer(function(input, output) {
            zcolor = colour_list,
            ellipse = F)
     })
+    
+    if(input$save_plot == T){
+      plot_path_line = enrichment_image_path_list()$plot_path_line
+      print(plot_path_line)
+      enrichment_path = enrichment_path()
+      print(enrichment_path)
+      file_name = paste(enrichment_path,paste0('venn_',enrichment_image_path_list()$match_list_line),sep = '/')
+      #print(input$plot_values)
+      
+      #print(enrichment_image_path_list()$match_list_line)
+      print(file_name)
+      values$plot_name = file_name
+      print(plot_path())
+      save_plot_function_2(values$plot_path,file_name)
+      
+      #save_plot_function_2(plot_path_line,file_name)
+    }
+    
+    print('   sub_venn_plot : done')
+    
+    df
   })
 
   
@@ -1480,24 +1672,28 @@ shinyServer(function(input, output) {
     plot_data = data.frame(down = log10(as.numeric(enrichment_table[,down_col])), up = (log10(as.numeric(enrichment_table[,up_col]))*-1))
     
     Term = enrichment_table$Term
-    print(Term)
+    #print(Term)
     GO.ID = enrichment_table$GO.ID
     Term[duplicated(Term)] == paste(Term[duplicated(Term)],GO.ID[duplicated(Term)],sep='_')
-    print(Term)
-    print(duplicated(Term))
+    #print(Term)
+    #print(duplicated(Term))
     
     Term = paste(Term,GO.ID)
     rownames(plot_data) = Term
-    print(dim(plot_data))
+    #print(dim(plot_data))
+    print('   enrichment plot data : data')
+    
     plot_data
     })
   
   output$enrich_slider_2 = renderUI({
+    print('enriche_slider_2 : ')
     m.enrich = enrichment_plot_data()
     sliderInput(inputId = 'm_range_2','enrichment range',min(0),dim(m.enrich[1]),value = c(0,dim(m.enrich[1]),dragRange=T))
   })
   
   output$enrichment_plot = renderPlot({
+    print('enrichment_plot : ')
     
       m.enrich = enrichment_plot_data()
       par(xpd=FALSE,mar = c(4, 25, 4, 1) + 0.1,cex.axis=1,cex.main = 0.5,mfrow = c(1,1)) #c(bottom, left, top, right)
@@ -1521,6 +1717,7 @@ shinyServer(function(input, output) {
    # barplot(as.matrix(enrichment_plot_data()),horiz = T,beside = T)
   })
   enrichment_table_full = reactive({
+    print('enrichment_table_full')
     data_name = input$single_sample_3
     
     #load(paste('topGO_sig',input$ontology,input$data,sep='.'))
@@ -1530,13 +1727,13 @@ shinyServer(function(input, output) {
       #print(input$data)
       #print(data_list[input$data])
       #file_name = paste("df.topGO_",input$limit,".",input$stat,".",input$ontology,".",input$single_data,".rds",sep='')
-      print(file_name)
+      #print(file_name)
       enrichment_table = readRDS(file_name)
       enrichment_table
     }
     if(input$enrichment == 'STRINGdb'){
       table_path = paste0(column_path(),'/',input$stringdb_enrichment,'/STRINGdb/',input$stringdb_enrichment,'_all.rds')
-      print(table_path)
+      #print(table_path)
       enrichment_table = readRDS(table_path)
     }
     if(input$enrichment == 'AnimalTFDB'){
@@ -1545,15 +1742,18 @@ shinyServer(function(input, output) {
       if(input$tf_map_button == 'full'){
         table_path = paste0(enrichment_data_path(),'/',input$tf_enrichment,'.full_rds')
       }
-      print(table_path)
+      #print(table_path)
       enrichment_table = readRDS(table_path)
       enrichment_table
       #table_path = paste0('./images/enrichment/',data_name_list()[[input$single_data]],data_df()[input$single,'data']
     }
+    print('   enrichment_table_full : done')
+    
     enrichment_table
   })
   
   output$select_term_ui = renderUI({
+    print('select_term_ui : ')
     selectInput(inputId = 'term_select',  # Drop down menu to select the producer and cultivar
                 label = 'Select Term',
                 choices = enrichment_table()$Term,
@@ -1569,14 +1769,16 @@ shinyServer(function(input, output) {
   
     sn_en = reactive({
       print('sn_en')
+      start = Sys.time()
+      
       ontology = input$select_enrichment
       if(length(ontology) > 1){
         ontology = ontology[1]
       }
-      print(ontology)
+      #print(ontology)
       STRING_id_list = STRING_id_list_function(mapped_st(),gene_list())
-      print(gene_list_select_list()$path_list)
-      print(length(STRING_id_list))
+      #print(gene_list_select_list()$path_list)
+      #print(length(STRING_id_list))
       path_list = gene_list_select_list()$path_list
       string_db = string_db()
       mapped_st = mapped_st()
@@ -1586,7 +1788,9 @@ shinyServer(function(input, output) {
       enrichment_GO = run_enrichment_function(ontology,gene_list_select_list()$path_list,STRING_id_list,string_db(),mapped_st(),annot(),sample_path_line(), backgroundV(),input)
       #run_enrichment_function = function(ontology,path_list,STRING_id_list,string_db,mapped_st,annot,sample_path_line,backgroundV,input){
         
-      print(dim(enrichment_GO))
+      #print(dim(enrichment_GO))
+      print(Sys.time() - start)
+      print('sn_en : done')
       return(enrichment_GO)
     })
   
@@ -1606,6 +1810,7 @@ shinyServer(function(input, output) {
   #   
   # })
   output$sn_term_select_ui = renderUI({
+    print('sn_term_select_ui : ')
     df = sn_en()
     sig_list = df$term_description[df$pvalue_fdr < 0.05]
     selectizeInput('enrich_select_term','Select Term',df$term_description, sig_list, multiple = F)
@@ -1613,6 +1818,7 @@ shinyServer(function(input, output) {
   })
   
   output$sn_term_select_plot_ui = renderUI({
+    print('sn_term_select_plot_ui : ')
     df = sn_en()
     sig_list = df$term_description[df$pvalue_fdr < input$eh_fdr]
     sig_list = unique(sig_list[order(sig_list)])
@@ -1659,7 +1865,7 @@ shinyServer(function(input, output) {
     STRING_id_list = STRING_id_list_function(mapped_st(),gene_list())
     
     enrichment_GO = run_enrichment_function('Pfam',gene_list_select_list()$path_list,STRING_id_list,string_db(),mapped_st(),annot(),sample_path_line(),backgroundV(),input)
-    View(enrichment_GO)
+    #View(enrichment_GO)
     DT::datatable(enrichment_GO, list(pageLength = 5))
   })
   
@@ -1685,15 +1891,20 @@ shinyServer(function(input, output) {
     output$sn_en_print = renderPrint(head(sn_en()))
     
     output$sn_en_table = renderDataTable({
+      print('sn_en_table')
+      start = Sys.time()
+      
       df = sn_en()
       if(input$enrichment_select == 'STRINGdb'){
         df = df[df$pvalue_fdr < input$eh_fdr,]
       }
-      
+      print(Sys.time() - start)
+      print('   sn_en_table : done')
       df
       }) 
     
     enrichment_list = reactive({
+      print('enrichment_list')
       enrichment_list = list()
       data_list = list()
       for(entry in input$enrichment_data_select){
@@ -1701,6 +1912,8 @@ shinyServer(function(input, output) {
         enrichment_list[[entry]] = sig_data$STRING_id
         data_list[[entry]] = entry
       }
+      print('   enrichment_list : done')
+      
       list(enrichment_list = enrichment_list,data_list = data_list)
     })
     
@@ -1717,19 +1930,26 @@ shinyServer(function(input, output) {
   
   
   table_path = reactive({
+    print('table_path')
     data_name = input$single_sample
     table_path = paste0(enrichment_path,data_name_list()[data_name],'/')
+    print('   table_path : done')
+    
     table_path
     })
   
   column_path = reactive({
+    print('column_path')
     data_name =     data_name = input$single_sample
     
     column_path = paste0(table_path(),data_df()[data_name,'data'],'/')
+    print('   column_path : done')
+    
     column_path
   })
     
   enrichment_data_path = reactive({
+    print('enrichment_data_path')
     table_path = ''
     data_name = input$single_sample_3
     if(input$enrichment == 'AnimalTFDB'){
@@ -1744,10 +1964,13 @@ shinyServer(function(input, output) {
       table_path = paste0(enrichment_path,data_name_list()[data_name],'/',data_df()[data_name,'data'],'/',input$tf_enrichment,'/STRINGdb')
       
     }
+    print('   enrichment_data_path : done')
+    
     table_path
   })
   
   output$enrichment_data_path_print = renderPrint({
+    #print('enrichment_data_path_print')
     print(input$tf_enrichment)
     print(enrichment_data_path())
     print(list.files(enrichment_data_path()))
@@ -1785,7 +2008,8 @@ shinyServer(function(input, output) {
 
   
   output$term_list = renderUI({
-    if(input$fix_term == 'n'){
+    print('term_list : ')
+    if(input$fix_term == F){
       selectInput('term','Select GO Term',enrichment_table()$Term,selected = NA)
     }else{
       selectInput('term','Select GO Term',input$term)
@@ -1799,28 +2023,32 @@ shinyServer(function(input, output) {
   gene_list_df = reactive({
     print('gene_list_df')
     in_file_name = input$gs_list_filename
-    print(in_file_name$datapath)
+    #print(in_file_name$datapath)
     if(is.null(in_file_name)){
       return(NULL)
     }else{
       df = read.table(in_file_name$datapath, stringsAsFactors = F,sep = '\t')
     }
-    print(in_file_name$datapath)
-    print(df)
+    #print(in_file_name$datapath)
+    #print(df)
+    print('   gene_list_df : done')
+    
     df$V1
   })
   
   gene_list_df_2 = reactive({
-    print('gene_list_df')
+    print('gene_list_df_2')
     in_file_name = input$gs_list_filename_2
-    print(in_file_name$datapath)
+    #print(in_file_name$datapath)
     if(is.null(in_file_name)){
       return(NULL)
     }else{
       df = read.table(in_file_name$datapath, stringsAsFactors = F,sep = '\t')
     }
-    print(in_file_name$datapath)
-    print(df)
+    #print(in_file_name$datapath)
+    #print(df)
+    print('   gene_list_df_2 : done')
+    
     df$V1
   })
   
@@ -1840,8 +2068,12 @@ shinyServer(function(input, output) {
   gene_list = reactive(gene_list_select_list()$gene_list)
   
   STRING_id_list = reactive({
+    print('STRING_id_list')
     mapped_data = mapped_data()$mapped_data
-    mapped_data$STRING_id[mapped_data$id %in% gene_list()]
+    df = mapped_data$STRING_id[mapped_data$id %in% gene_list()]
+    print('   STRING_id_list : done')
+    df
+    
   })
   
 
@@ -1881,9 +2113,9 @@ shinyServer(function(input, output) {
           #id_list = mapped_data()$id_list
           
           tf_list = enrichment_table()$STRING_id
-          print(tf_list)
+          #print(tf_list)
           gene_list = unlist(id_list[tf_list])
-          print(gene_list)
+          #print(gene_list)
         }
         if(input$enrichment == 'STRINGdb'){
           path_list = c(path_list,input$stringdb_enrichment,input$term)
@@ -1923,24 +2155,44 @@ shinyServer(function(input, output) {
       }
     #print(path_list)
     gene_list = gene_list[order(gene_list)]
+    print('   gene_list_select_list : done')
+    
     list(gene_list = gene_list, path_list = path_list)
 
   }) # needs work currently only using GE list
   
   path_line = reactive({
+    print('path_line')
     path_list = gene_list_select_list()$path_list
+    path_list
     #path_list = c(shiny_image_path,path_list)
     path_entry = c()
+    #path_entry = thesis_path_sub
+    path_root = paste(thesis_path_sub,shiny_image_path,sep = '/')
+    path_root = shiny_image_path
+    path_root
     if(input$save_plot == T){
       for(entry in path_list){
+        print(entry)
+        if(nchar(entry) > 30){
+          full_length = nchar(entry)
+          full_length  
+          #print(nchar(entry))
+          entry = paste(strtrim(entry,30),full_length,sep='_')
+          entry
+        }
         path_entry = c(path_entry,entry)
+        path_entry
         path_entry_line = latex_filename_function(paste(path_entry,collapse = '/'))
-        create_dir_function(paste0(shiny_image_path,path_entry_line))
+        #print(path_entry_line)
+        create_dir_function(paste0(path_root,path_entry_line))
       }
     }
-    path_line = paste0(shiny_image_path,latex_filename_function(paste(path_list,collapse='/')),'/')
+    path_line = paste0(path_root,path_entry_line,'/')
+    path_line
     values$plot_path = path_line
-    print(path_line)
+    #print(path_line)
+    print('   path_line : done')
     
     path_line
   })
@@ -1951,16 +2203,16 @@ shinyServer(function(input, output) {
   
   
   observeEvent(input$store_button,{
-    print('store_button')
-    print(venn_values$gene_list)
-    print(gene_list())
+    #print('store_button')
+    #print(venn_values$gene_list)
+    #print(gene_list())
     venn_values$gene_list = paste(gene_list())
     path_list = gene_list_select_list()$path_list
     
     venn_values$path_list = c(path_list)
     #venn_values$path_list = gene_list_select_list()$path_list
-    print('store venn')
-    print(venn_values$gene_list)
+    #print('store venn')
+    #print(venn_values$gene_list)
   })
   
   observeEvent(input$store_button_3,{
@@ -1989,17 +2241,17 @@ shinyServer(function(input, output) {
     gene_list = paste(id_list[STRING_hits_list])
     #print(gene_list)
     #gene_list = gene_list[gene_list %in% gene_list()]
-    print(length(gene_list))
+    #print(length(gene_list))
     venn_values$gene_list = gene_list
     
     path_list = gene_list_select_list()$path_list
     path_list = c(path_list,input$venn_int,paste(term_list,collapse = '_'))
-    print(path_list)
+    #print(path_list)
     venn_values$path_list = c(path_list)
   })
   
   observeEvent(input$store_button_neighbour,{
-    print('store button neighbour')
+    #print('store button neighbour')
     int = neighbour_data()$int
     id_list = mapped_data()$id_list
     gene_list = unlist(id_list[tf_list])
@@ -2007,8 +2259,8 @@ shinyServer(function(input, output) {
     #print(gene_list())
     venn_values$gene_list = paste(gene_list)
     venn_values$path_list = c(gene_list_select_list()$path_list,'neighbour')
-    print('store venn')
-    print(venn_values$gene_list)
+    #print('store venn')
+    #print(venn_values$gene_list)
   })
   
   venn_gene_list_select = reactive({
@@ -2023,9 +2275,12 @@ shinyServer(function(input, output) {
     }else{
       venn_list = venn_values$gene_list
     }
-    print('final venn')
-    print(venn_list)
+    #print('final venn')
+    #print(venn_list)
     venn_list = venn_list[!is.na(venn_list)]
+    #print('store button neighbour')
+    print('   venn_gene_list_select : done')
+    
     venn_list
     
     
@@ -2045,18 +2300,10 @@ shinyServer(function(input, output) {
     print(paste(gene_list()))
   })
   
-  create_dir_list_function = function(path_list){
-    path_entry_list = c()
-    for(entry in path_list){
-      path_entry_list = c(path_entry_list,entry)
-      path_entry_line = latex_filename_function(paste(path_entry_list,collapse='/'))
-      #print(path_entry_line)
-      create_dir_function(path_entry_line)
-    }
-    return(path_entry_line)
-  }
+
   
   gene_list_file_path = reactive({
+    print('gene_list_file_path')
     path_list = gene_list_select_list()$path_list
     path_entry_list = c()
     base_data_list = c('data','txt')
@@ -2070,6 +2317,8 @@ shinyServer(function(input, output) {
 
     sample_data_path_list = c(base_data_list,data_name_collapse())
     sample_line = create_dir_list_function(sample_data_path_list)
+    print('   gene_list_file_path : done')
+    
     list(sample_line = sample_line, list_line = list_line)
   })
   observeEvent(input$write_gene_list,{
@@ -2089,6 +2338,7 @@ shinyServer(function(input, output) {
   
 
   output$select_gene_file_prefix_ui = renderUI({
+    print('select_gene_file_prefix_ui')
     if(input$list_type == 'Prefix'){
       textInput('prefix_input',"Prefix Input (sep = ', ')",value = '')
     }
@@ -2096,6 +2346,7 @@ shinyServer(function(input, output) {
   })
   
   output$select_gene_file_ui_2 = renderUI({
+    print('select_gene_file_ui_2')
     if(input$list_type == 'File'){
       fileInput('gs_list_filename_2', 'Select List', multiple = FALSE, accept = NULL, width = NULL,
                 buttonLabel = "Browse...", placeholder = "No file selected")
@@ -2103,6 +2354,7 @@ shinyServer(function(input, output) {
   })
   
   output$select_gene_file_prefix_ui_run = renderUI({
+    print('select_gene_file_prefix_ui_run')
     if(input$list_type == 'Prefix'){
       radioButtons('prefix_run','Run Prefix',choices = c(F,T),inline = T)
     }
@@ -2110,7 +2362,8 @@ shinyServer(function(input, output) {
   
   
   output$select_gene_list_ui = renderUI({
-    print('Start : select_gene_list_ui')
+    print('select_gene_list_ui')
+    #print('Start : select_gene_list_ui')
     start_time = Sys.time()
     selected_gene_list = 'SOX2'
     hit = 0
@@ -2154,13 +2407,15 @@ shinyServer(function(input, output) {
     if(input$list_type != 'None'){
       saveRDS(selected_gene_list,paste0(shiny_data_path,'saved_gene_list.rds'))
     }
-    print('Start : gene_list_save')
     end_time = Sys.time()
     print(end_time - start_time)
+    print('   gene_list_save : done')
+
     selected_gene_list
   })
   
   output$select_gene_list_remove_ui = renderUI({
+    print('select_gene_list_remove_ui')
     removed_file_list = paste0(shiny_data_path,'removed_list_',data_name_collapse(),'.rds')
     gene_file_list = paste0(shiny_data_path,'gene_list_',data_name_collapse(),'.rds')
     
@@ -2171,6 +2426,7 @@ shinyServer(function(input, output) {
   output$removed_genes_text = renderText(paste(mapped_data()$removed_list))
   
   output$select_gene_file_ui = renderUI({
+    print('select_gene_file_ui')
     fileInput('gs_list_filename', 'Select List', multiple = FALSE, accept = NULL, width = NULL,
               buttonLabel = "Browse...", placeholder = "No file selected")
   })
@@ -2183,6 +2439,7 @@ shinyServer(function(input, output) {
 
   
   output$gene_list_3 = renderUI({
+    print('gene_list_3')
     #gene_list = readRDS('common_mapped.rds')
     selectInput('genes_3','select genes',full_gene_list)
   }) 
@@ -2199,14 +2456,20 @@ shinyServer(function(input, output) {
   output$m_name = renderText(paste0('m.enrich.',input$stat,'.',input$ontology,'.',input$data,'.rds'))
   
   m.enrich = reactive({
+    print('m.enrich')
     m.enrich = readRDS(paste0('m.enrich.',input$stat,'.',input$ontology,'.',input$single_data,'.rds'))
-  })
-  output$enrich_slider = renderUI({
+    print('   m.enrich : done')
+    m.enrich
     
+    
+    })
+  output$enrich_slider = renderUI({
+    print('enrich_slider :')
     sliderInput(inputId = 'm_range','enrichment range',min(0),dim(m.enrich())[1],value = c(0,dim(m.enrich())[1]),dragRange=T)
   })
   
   output$enrich_barplot = renderPlot({
+    print('enrich_barplot :')
     m.enrich = m.enrich()
     par(xpd=FALSE,mar = c(4, 25, 4, 1) + 0.1,cex.axis=1,cex.main = 0.5,mfrow = c(1,1)) #c(bottom, left, top, right)
     # try(barplot(rev(m.enrich[,1]),beside=TRUE,names.arg = rev(rownames(m.enrich)),las=1,col=c('red'),xlim=c(min(m.enrich,na.rm=TRUE),max(m.enrich,na.rm=TRUE)),main = paste(enrichment,'topGO',stat_select),horiz = TRUE))
@@ -2228,6 +2491,7 @@ shinyServer(function(input, output) {
   })
   
   output$single_enrich = renderPlot({
+    print('single_enrich :')
     m.enrich = m.enrich()
     par(xpd=FALSE,mar = c(1, 20, 1, 1) + 0.1,cex.axis=1,cex.main = 0.5,mfrow = c(1,1)) #c(bottom, left, top, right)
     # try(barplot(rev(m.enrich[,1]),beside=TRUE,names.arg = rev(rownames(m.enrich)),las=1,col=c('red'),xlim=c(min(m.enrich,na.rm=TRUE),max(m.enrich,na.rm=TRUE)),main = paste(enrichment,'topGO',stat_select),horiz = TRUE))
@@ -2252,13 +2516,20 @@ shinyServer(function(input, output) {
   ### STRINGdb ####
   
   annot = reactive({
+    print('annot')
+    start = Sys.time()
+    
     annot_file_path = paste0(shiny_data_path,input$taxonomy,'_annot.rds')
     annot_list_all_file_path = paste(shiny_data_path,input$taxonomy,'_annot_list_all.rds')
     annot_list_non_IEA_file_path = paste(shiny_data_path,input$taxonomy,'_annot_list_no_EIA.rds')
-    print(annot_file_path)
+    #print(annot_file_path)
     if(file.exists(annot_file_path)){
-      print('found')
+
+      rds_start = Sys.time()
       annot = readRDS(annot_file_path)
+      print(Sys.time() - rds_start)
+      print('readRDS')
+      
       #annot_list = readRDS(annot_list_file_path)
     }else{
       print('generate annot')
@@ -2280,11 +2551,15 @@ shinyServer(function(input, output) {
       saveRDS(annot_list_non_IEA,annot_list_non_IEA_file_path)
       
     }
+    print(Sys.time() - start)
+    
+    print('   annot : done')
     annot
   })
   
   base_string_db = reactive({
-    print('STRINGdb$new')
+    print('base_string_db')
+    #print('STRINGdb$new')
     file_path = paste0(shiny_data_path,input$taxonomy,'base_string_db.rds')
     taxonomy_number = input$taxonomy
     if(file.exists(file_path) & input$background_re_run == F){
@@ -2293,11 +2568,13 @@ shinyServer(function(input, output) {
       base_string_db = STRINGdb$new(version="10", species=as.numeric(taxonomy_number), score_threshold=400, input_directory=table_path())
       saveRDS(base_string_db,file_path)
     }
+    print('   base_string_db : done')
+    
     base_string_db
     })
   
   backgroundV = reactive({
-    
+    print('backgroundV')
     data_name_list = input$data
     data_name_list
     id_list = c()
@@ -2329,17 +2606,23 @@ shinyServer(function(input, output) {
     
     
     backgroundV = string_id_list
+    print('   backgroundV : done')
+    
     backgroundV
   })
   
   string_db = reactive({
     print('string_db')
+    start = Sys.time()
+    
     taxonomy_number = input$taxonomy
     file_path = paste0(shiny_data_path,taxonomy_number,'_',data_name_collapse(),'_string_db_all_mapped.rds')
-    print(file_path)
+    #print(file_path)
     if(file.exists(file_path) & input$re_run == F & input$background == 'all_mapped'){
-      print('found')
+      rds_start = Sys.time()
       result = readRDS(file_path)
+      print(Sys.time() - rds_start)
+      print(paste('readRDS',file_path))
     }else{
       print('generate string_db')
       if(input$background != 'NULL'){
@@ -2353,15 +2636,21 @@ shinyServer(function(input, output) {
 
       result = string_db
       if(input$background == 'all_mapped'){
+        rds_start = Sys.time()
         saveRDS(result,file_path)
+        print(Sys.time() - rds_start)
+        print(paste('saveRDS',file_path))
       }
     }
+    print(Sys.time() - start)
+    print('   string_db : done')
+    
     result
   })
   
 
   
-  output$string_pic = renderImage(list(src='www/vacuolar_part_STRING_UP.pdf'))
+  #output$string_pic = renderImage(list(src='www/vacuolar_part_STRING_UP.pdf'))
   
   
 
@@ -2377,14 +2666,21 @@ shinyServer(function(input, output) {
   #  values$sn = 1
   #})
   
-  values <- reactiveValues(shouldShow_sn_select = FALSE, shouldShow_sn_select_link = FALSE, plot_name = '', enrich_gene_list = FALSE, plot_path = '')
+  values <- reactiveValues(shouldShow_sn_select = FALSE, 
+                           shouldShow_sn_select_link = FALSE, 
+                           plot_name = '', 
+                           enrich_gene_list = FALSE, 
+                           plot_path = '',
+                           datasets = uploaded_datasets,
+                           upload_save = F)
   
   ##### STRING plots ####
   
       #### ___ string_hits_list ####
       string_hits_list = reactive({
+        print('string_hits_list')
         #if(values$sn == 1){
-        print('string hits')
+        #print('string hits')
         mapped_data = mapped_st()
         GO_term = input$term
         GO_id = enrichment_table()$GO.ID[enrichment_table()$Term == GO_term]
@@ -2393,8 +2689,10 @@ shinyServer(function(input, output) {
         string_GO_members
         GO_members = string_GO_members
         STRING_hits = GO_members[GO_members %in% mapped_data$STRING_id]
-        print('string hits done')
-        print(STRING_hits)
+        #print('string hits done')
+        #print(STRING_hits)
+        print('   string_hits_list : done')
+        
         STRING_hits
         #}else{
         #  string_hits_list()
@@ -2532,6 +2830,7 @@ shinyServer(function(input, output) {
       
       #### __sn_data ####
           neighbour_data = reactive({
+            print('neighbour_data')
             test = F
             if(test == T){
               mapped_data = results_list$mapped_data
@@ -2540,7 +2839,7 @@ shinyServer(function(input, output) {
               gene_list = c('SOX2','GFAP')
             }
             mapped_data = mapped_data()$mapped_data
-            print(colnames(mapped_data))
+            #print(colnames(mapped_data))
             payload_id = mapped_data()$payload_id
             entry_list = mapped_data()$entry_list
             #print(head(mapped_data))
@@ -2558,26 +2857,26 @@ shinyServer(function(input, output) {
             if(input$sn_select == 'neighbour'){
               print('get_neigbours')
               neighbors = string_db()$get_neighbors(custom_list)
-              print(neighbours)
+              #print(neighbours)
               int = c(intersect(mapped_data$STRING_id,neighbors),custom_list)
             }
             if(input$sn_select == 'interaction'){
-              print('get_neigbours')
+              #print('get_neigbours')
               neighbors = string_db()$get_interactions(custom_list)
-              print(neighbours)
+              #print(neighbours)
               
               int = c(intersect(mapped_data$STRING_id,neighbors),custom_list)
             }
             if(input$sn_select == 'sub'){
-              print('get_neigbours')
+              #print('get_neigbours')
               neighbors = string_db()$get_subnetwork(custom_list)
               int = c(intersect(mapped_data$STRING_id,neighbors),custom_list)
             }
             
             if(input$sn_select == 'cluster'){
-              print('get_neigbours')
+              #print('get_neigbours')
               neighbors = string_db()$get_clusters(custom_list)
-              print(neighbours)
+              #print(neighbours)
               
               int = c(intersect(mapped_data$STRING_id,neighbors),custom_list)
             }
@@ -2589,6 +2888,8 @@ shinyServer(function(input, output) {
             #print('plot_network')
             #p = string_db$plot_network(int,payload_id=payload_id,add_link = FALSE)
             #print(p)
+            print('   neighbour_data : data')
+            
             list(int = int)
             #legend(1,30,legend = names(entry_list),fill = paste(entry_list),cex = 0.5)
             
@@ -2597,6 +2898,7 @@ shinyServer(function(input, output) {
           #sn_plot = reactive({
       
           output$sn_image_ui = renderUI({
+            print('sn_image_ui : ')
             #image_path = paste0(path_line(),'/string.png')
             #print(image_path)
             #print(file.exists(image_path))
@@ -2604,59 +2906,85 @@ shinyServer(function(input, output) {
             if(values$shouldShow_sn_select){
               plotOutput('neighbour_plot')
             }else{
-                imageOutput('sn_image')
+              imageOutput('sn_image')
             }
           })
       
-          output$sn_thesis_path = renderText({
-            image_path = paste0(path_line(),'/string.pdf')
-            if(input$sn_select == 'neighbour'){
-              image_path = paste0(path_line(),'/string_neighbour.pdf')
-            }
-            if(file.exists(image_path)){
-              sub('./',thesis_path_sub,image_path)
-            }else{
-              print('')
-            }
-            
-          })
+          # output$sn_thesis_path = renderText({
+          #   print('sn_thesis_path')
+          #   #image_path = paste0(path_line(),'/string.pdf')
+          #   plot_name = 'string'
+          #   if(input$sn_select == 'neighbour'){
+          #    #image_path = paste0(path_line(),'/string_neighbour.pdf')
+          #     plot_name = 'string'
+          #   }
+          #   values$plot_name = plot_name
+          #   
+          #   if(file.exists(pdf_plot_path())){
+          #     pdf_plot_path
+          #     #sub('./',thesis_path_sub,image_path)
+          #   }else{
+          #     print('')
+          #   }
+          #  
+         # })
       
           output$sn_image = renderImage({
-            image_path = paste0(path_line(),'/string.png')
+            print('sn_image : ')
+            #image_path = paste0(path_line(),'/string.png')
+            plot_name = 'string'
+            
             if(input$sn_select == 'neighbour'){
-              image_path = paste0(path_line(),'/string_neighbour.pdf')
+              #image_path = paste0(path_line(),'/string_neighbour.pdf')
+              plot_name = 'string_neighbour'
+              
+            }    
+            
+            if(input$data_type_radio == 'venn'){
+              plot_name = latex_filename_function(paste(plot_name,paste(input$venn_int,collapse = '_')))
             }
-            if(file.exists(image_path)){
-              values$plot_name = 'string.pdf'
-              if(input$sn_select == 'neighbour'){
-                values$plot_name = 'string_neighbour.pdf'
-              }
-              list(src = image_path)
+            #values$plot_name = paste0(plot_name)
+            values$plot_name = plot_name
+            #if(file.exists(image_path)){
+            print(getwd())
+            print(pdf_plot_path())
+            if(file.exists(pdf_plot_path())){
+                
+              #values$plot_name = 'string.pdf'
+              #if(input$sn_select == 'neighbour'){
+              #  values$plot_name = 'string_neighbour.pdf'
+              #}
+              list(src = png_plot_path())
             }else{
               
-              list(src = image_path, alt = "No image available, Generate Plot")
+              list(src = pdf_plot_path(), alt = "No image available, Generate Plot")
             }
           })
       
           output$neighbour_plot = renderPlot({
+            print('neighbour_data : ')
             if(values$shouldShow_sn_select){
               int = neighbour_data()$int
               payload_id = mapped_data()$payload_id
-              print('plot_network')
-              string_db()$plot_network(int,payload_id=payload_id,add_link = FALSE)
-
+              #print('plot_network')
+              p = string_db()$plot_network(int,payload_id=payload_id,add_link = FALSE)
+              print(p)
               if(input$save_plot == T){
-                  plot_name = 'string'
-                  if(input$sn_select == 'neighbour'){
-                    plot_name = 'string_neighbour'
-                  }
-                  if(input$data_type_radio == 'venn'){
-                    plot_name = latex_filename_function(paste(plot_name,paste(input$venn_int,collapse = '_')))
-                  }
-                  values$plot_name = paste0(plot_name,'.pdf')
-                  save_plot_function_2(path_line(),plot_name,c('png','pdf'))
+                  #plot_name = 'string'
+                  #if(input$sn_select == 'neighbour'){
+                  #  plot_name = 'string_neighbour'
+                  #}
+                  #if(input$data_type_radio == 'venn'){
+                  #  plot_name = latex_filename_function(paste(plot_name,paste(input$venn_int,collapse = '_')))
+                  #}
+                  #values$plot_name = paste0(plot_name)
+                  print(path_line())
+                  print(plot_path())
+                  print(pdf_plot_path())
+                  print(thesis_pdf_plot_path())
+                  save_plot_function_2(values$plot_path,values$plot_name,c('png','pdf'))
                 }
-              
+              print(p)
 
             }else{
               c("")
@@ -2676,23 +3004,27 @@ shinyServer(function(input, output) {
 
           
           neighbour_table = reactive({
+            print('neighbour_table')
             int = neighbour_data()$int
             mapped_data = mapped_data()$mapped_data
             plot_data = mapped_data[mapped_data$STRING_id %in% int,]
             plot_data
             rownames(plot_data) = plot_data$id
             plot_data = plot_data[,c((grep('STRING_id',colnames(plot_data))+1):(grep('col',colnames(plot_data))-1))]
+            print('   neighbour_table : data')
+            
             plot_data
           })
           
           output$neighbour_heatmap = renderPlot({
+            print('neighbour_heatmap : ')
             if(values$shouldShow_sn_select){
               plot_data = neighbour_table()
-              print(plot_data)
+              #print(plot_data)
               plot_data[plot_data == 0] = NA
-              print(plot_data)
+              #print(plot_data)
               plot_data = plot_data[rowSums(plot_data,na.rm =T) != 0,]
-              print(plot_data)
+              #print(plot_data)
               #col_pallete = colorRampPalette(c("green", "red"), space="rgb")(64)
               heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col=redgreen(75),trace = 'none',cexRow = 1,cexCol = 1)
               }else{
@@ -2701,6 +3033,7 @@ shinyServer(function(input, output) {
           })
          ### ____legend ####
           output$legend = renderPlot({
+            print('legend')
             #if(values$shouldShow_sn_select){
               entry_list = mapped_data()$entry_list
               plot(c(1,120),c(120,1),axes = F, frame.plot=F, ann= F)
@@ -2728,6 +3061,7 @@ shinyServer(function(input, output) {
           })
           
           output$sn_url_select = renderText({
+            
             if(values$shouldShow_sn_select_link){
               STRING_hits = neighbour_data()$int
               get_link = string_db()$get_link(STRING_hits,payload_id = payload_id())
@@ -2742,12 +3076,13 @@ shinyServer(function(input, output) {
       
   
   pdf_file_name = reactive({
-    metric = 'mean'
+    print('pdf_file_name')
+    #metric = 'mean'
     if(input$single_data %in% timecourse_data){
       metric = 'slope'
     }
     file_name = paste0('images/STRINGdb/',input$single_data,'/',metric,'/',ontology_path_name[input$ontology],'/STRING/',latex_filename_function(input$term),'/',latex_filename_function(input$term),'_STRING.pdf')
-    print(file_name)
+    print('   pdf_file_name : done')
     file_name
     })
   
@@ -2792,7 +3127,11 @@ shinyServer(function(input, output) {
   })
   
   GO_composite_file = reactive({
+    print('GO_composite_file')
     file_name = paste0('images/STRINGdb/GO_full_comparison/0.01/topGO/fisher_weight01/',ontology_path_name[input$ontology],'/single/crop/',latex_filename_function(input$term),'.pdf')
+    
+    print('   GO_composite_file : done')
+    
     file_name
   })
   
@@ -2800,7 +3139,7 @@ shinyServer(function(input, output) {
     #pdf("www/myreport.pdf")
     #hist(rnorm(100))
     #dev.off()
-    print(GO_composite_file())
+    #print(GO_composite_file())
     file_name = GO_composite_file()
     #file_name = 'vacuolar_part_STRING_UP.pdf'
     tags$iframe(style="height:600px; width:100%", src=file_name)
@@ -2839,22 +3178,26 @@ shinyServer(function(input, output) {
 
   ### probably not used anymoer
   select_data = reactive({
+    print('select data')
     gene_list = gene_list()
-    print(gene_list)
+    #print(gene_list)
     ESC_data = ESC_mapped_all[ESC_mapped_all$id %in% gene_list,]
     GE_data = GE_mapped_all[GE_mapped_all$id %in% gene_list,]
     SILAC_data = SILAC_mapped_all[SILAC_mapped_all$id %in% gene_list,]
     NES_data = NES_Diff_mapped_all[NES_Diff_mapped_all$id %in% gene_list,]
     NS_data = NS_Diff_mapped_all[NS_Diff_mapped_all$id %in% gene_list,]
     
-    print('Select')
-    print(ESC_data)
+    #print('Select')
+    #print(ESC_data)
+    print('   select data : done')
+    
     list(ESC_data = ESC_data, GE_data = GE_data, SILAC_data = SILAC_data, NES_data = NES_data, NS_data = NS_data)
     
   })
   ###
 
   heatmap_data = reactive({
+    print('heatmap_data')
     
     old = F
     if(old == T){
@@ -2874,17 +3217,17 @@ shinyServer(function(input, output) {
       #gene_list = c('SOX2','LIN28','TUBB3','GFAP')
       gene_list = gene_list()
       
-      print('gene_list')
-      print(length(gene_list))
-      print(gene_list)
+      #print('gene_list')
+      #print(length(gene_list))
+      #print(gene_list)
       plot_data =  data.frame(id = gene_list)
-      print(plot_data)
+      #print(plot_data)
       plot_data
-      print(ESC_sig)
-      print(GE_sig)
-      print(SILAC_sig)
-      print(NES_sig)
-      print(NS_sig)
+      #print(ESC_sig)
+      #print(GE_sig)
+      #print(SILAC_sig)
+      #print(NES_sig)
+      #print(NS_sig)
       plot_data$ESC = ESC_sig$mean[match(plot_data$id,ESC_sig$id)]
       plot_data$GE = GE_sig$mean[match(plot_data$id,GE_sig$id)]
       plot_data$SILAC = SILAC_sig$mean[match(plot_data$id,SILAC_sig$id)]
@@ -2894,15 +3237,15 @@ shinyServer(function(input, output) {
     gene_list = gene_list()
     plot_data =  data.frame(id = gene_list)
     for(entry in sample_names()){
-      print(entry)
+      #print(entry)
       sig_data = sig_data_list()[[entry]]
       cutoff_list_entry = data_df()[entry,'data']
-      print(cutoff_list_entry)
+      #print(cutoff_list_entry)
       plot_data[,entry] = sig_data[,cutoff_list_entry][match(plot_data$id,sig_data$id)]
     }
     
     #print(plot_data)
-    View(plot_data)
+    #View(plot_data)
     plot_data
     rownames(plot_data) = plot_data$id
     plot_data$id = NULL
@@ -2917,37 +3260,126 @@ shinyServer(function(input, output) {
     #print(colnames(plot_data))
     plot_data = plot_data[rownames(plot_data)[order(rownames(plot_data))],]
     plot_data
+    full_data = plot_data
+    if(input$heatmap_sig == T){
+      plot_data = plot_data[apply(plot_data,1,function(x) length(x[!is.na(x)])) > 0,]
+    }
+    print('   heatmap_data : done')
     
-    list(sig_mean = plot_data)
+    list(sig_mean = plot_data, full_data = full_data)
     
     #heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col = greenred(32))
   })
 ##### HEATMAPS #####   
   output$selected_heatmap = renderPlot({
+    print('select_heatmap :')
     plot_data = heatmap_data()$sig_mean
+    save_test = T
+    if(save_test == T){
+      variable_list = c('plot_data')
+      cmd_list = save_variable_function(variable_list)
+      lapply(cmd_list, function(x) eval(parse(text = x)))
+      try(save_input_function(input))
+      read_test = F
+      if(read_test == T){
+        variable_list = c(variable_list)
+        cmd_list = read_variable_function(variable_list)
+        for(cmd in cmd_list){
+          #print(cmd)
+          try(eval(parse(text = cmd)))
+        }
+      }
+    }
+    
     #View(plot_data)
     #print(colnames(plot_data))
     #print(input$data)
     plot_data = plot_data[,input$data]
     #print(plot_data)
     col_pallete = colorRampPalette(c("green", "red"), space="rgb")(64)
-    heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col = col_pallete,trace = 'none',cexRow = 1,cexCol = 1)
-
+    col_pallete = c('green','red')
+    #heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col = col_pallete,trace = 'none',cexRow = 1,cexCol = 1)
+    
+    plot_data_g = plot_data
+    plot_data_g$id = rownames(plot_data)
+     plot_data_l = melt(plot_data_g)
+    plot_data_l$sig = NA
+    plot_data_l$sig[plot_data_l$value > 0] = 'upregulated'
+    plot_data_l$sig[plot_data_l$value < 0] = 'downregulated'
+    #plot_data_l$level = plot_data_l$sig
+    #plot_data_l$sig = factor(plot_data_l$sig)
+    #levels(plot_data_l$sig) = plot_data_l$level
+    #plot_data
+    head(plot_data_l,30)
+    value_list = list('red' = 'upregulated', 'green' = 'downregulated')
+    value_list
+    length = dim(plot_data)[1]
+    length
+    ratio = (1/length) * input$heatmap_ratio_factor
+    if(ratio > 1){
+      ratio == 1
+    }
+    p = ggplot(plot_data_l) + 
+      geom_tile(aes(x = variable, y = id, fill = sig), height = 0.9, width = 0.9) +
+      ylab(input$heatmap_ylab) + 
+      xlab(input$heatmap_xlab) +
+      coord_fixed(ratio = ratio) + 
+      #coord_fixed(ylim = 1) +
+      #scale_fill_manual(breaks = c('1', '-1'),values = c('red','green'),labels = c('upregulated','downregulated'),name = 'Significantly')
+      #scale_fill_manual(breaks = c('downregulated', 'upregulated'),values = c('green','red'),name = 'Significantly')
+    #scale_fill_manual(breaks = c('upregulated', 'downregulated'),values = c('green','red'),name = 'Significantly')
+    scale_fill_manual(breaks = c('upregulated', 'downregulated'),values = c('green','red'),labels = value_list,name = 'Significantly')
+    
+      #scale_fill_manual(breaks = c('-1', '1'),values = c('green','red'),labels = c('downregulated','upregulated'),name = 'Significantly')
+    print(p)
     if(input$save_plot == T){
       plot_name = 'neatmap_mean'
       if(input$data_type_radio == 'venn'){
         plot_name = latex_filename_function(paste(plot_name,paste(input$venn_int,collapse = '_')))
       }
-      values$plot_name = paste0(plot_name,'.pdf')
+      values$plot_name = paste0(plot_name)
       save_plot_function_2(path_line(),plot_name,c('pdf'))
     }
   })
 
+  
+  output$selected_heatmap_base = renderPlot({
+    print('select_heatmap base :')
+    plot_data = heatmap_data()$full_data
+    #data = data_df_list()[[input$single_sample]]
+    if(dim(plot_data)[1]>0){
+      plot_data_g = plot_data
+      plot_data_g$id = rownames(plot_data)
+      plot_data_l = melt(plot_data_g)
+      plot_data_l$sig = NA
+      plot_data_l$sig[plot_data_l$value > 0] = 'upregulated'
+      plot_data_l$sig[plot_data_l$value < 0] = 'downregulated'
+      head(plot_data_l,30)
+      value_list = list('red' = 'upregulated', 'green' = 'downregulated')
+      value_list
+      length = dim(plot_data)[1]
+      length
+      ratio = (1/length) * input$heatmap_ratio_factor
+      if(ratio > 1){
+        ratio == 1
+      }
+      p = ggplot(plot_data_l) + 
+        geom_tile(aes(x = variable, y = id, fill = sig), height = 0.9, width = 0.9) +
+        #ylab(input$heatmap_ylab) + 
+        #xlab(input$heatmap_xlab) +
+        #coord_fixed(ratio = ratio) + 
+        scale_fill_manual(breaks = c('upregulated', 'downregulated'),values = c('green','red'),labels = value_list,name = 'Significantly')
+       print(p)
+    }
+  })
+  
+  
   output$selected_heatmap_ggplot = renderPlot({
+    print('select_heatmap_ggplot')
     #plot_data = heatmap_data()$sig_mean
     plot_data = m()
     plot_data = plot_data[plot_data$id %in% gene_list(),]
-    saveRDS(plot_data,'temp/plot_data.rds')
+    #saveRDS(plot_data,'temp/plot_data.rds')
     
     
     p = ggplot(plot_data, aes(data,id)) + 
@@ -2966,7 +3398,8 @@ shinyServer(function(input, output) {
       axis.title.x = element_blank(),
       axis.title.y = element_blank()
     )
-     
+    print('   select_heatmap_ggplot : done')
+    
     print(q)
     # col_pallete = colorRampPalette(c("green", "red"), space="rgb")(64)
     # heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col = col_pallete,trace = 'none',cexRow = 1,cexCol = 1)
@@ -2983,30 +3416,62 @@ shinyServer(function(input, output) {
   
   
   #### __full ####
-  output$full_selected_heatmap = renderPlot({
+  full_selected_heatmap_data = reactive({
+    print('full_selected_heatmap : ')
     gene_list = gene_list()
-    print(gene_list)
-    data = data_df_list()[[input$single_sample]]
-    print(dim(data))
-    #data = NES_Diff_mapped_all
-    data_cols = paste(unlist(strsplit(data_df()[input$single_sample,'cols'],', ')))
-    print(data_cols)
-    ts_cols = c('id',data_cols)
-    print(ts_cols)
-    colnames(data)
-    #data = select_data()$NES_data
-    selected_data = data[data$id %in% gene_list,]
-    selected_data = selected_data[,ts_cols]
-    selected_data = delete.na(selected_data, length(ts_cols)-2)
-    dups = duplicated(selected_data$id)
-    while(TRUE %in% dups){
-      selected_data$id[dups] = paste0(selected_data$id[dups],'.1')
+    #print(gene_list)
+    #data = data_df_list()[[input$single_sample]]
+    data_list = data_df_list()
+    length(data)
+    data_df = data_df()
+    dim(data_df)
+    #data = data
+    dim(data)
+    sample_name_list = names(data_list)
+    sample_name = names(data_list)[2]
+    sample_name
+    heatmap_data_list = list()
+    for(sample_name in sample_name_list){
+
+      data = data_list[[sample_name]]
+      dim(data)
+      data_cols = (unlist(strsplit(data_df()[sample_name,'cols'],', ')))
+      data_cols
+      ts_cols = c('id',data_cols)
+      ts_cols
+      #print(ts_cols)
+      colnames(data)
+      #data = select_data()$NES_data
+      selected_data = data[data$id %in% gene_list,]
+      selected_data = selected_data[,ts_cols]
+      colnames(selected_data)
+      selected_data = delete.na(selected_data, length(ts_cols)-2)
       dups = duplicated(selected_data$id)
+      while(TRUE %in% dups){
+        selected_data$id[dups] = paste0(selected_data$id[dups],'.1')
+        dups = duplicated(selected_data$id)
+      }
+      selected_data$id
+      selected_data = selected_data[order(selected_data$id),]
+      plot_data = selected_data
+      rownames(plot_data) = plot_data$id
+      plot_data$id = NULL
+      heatmap_data_list[[sample_name]] = plot_data
     }
-    selected_data$id
-    plot_data = selected_data
-    rownames(plot_data) = plot_data$id
-    plot_data$id = NULL
+    heatmap_data_list
+  })
+  
+  output$heatmap_sample_select = renderUI({
+    sample_list = names(data_df_list())
+    selectInput('heatmap_full_sample','Select Sample',sample_list)
+  })
+  
+  output$full_selected_heatmap = renderPlot({
+    print('full_selected_heatmap')
+    data_list = full_selected_heatmap_data()
+    length(data_list)
+    plot_data = full_selected_heatmap_data()[[input$heatmap_full_sample]]
+    dim(plot_data)
     col_pallete = colorRampPalette(c("green",'black', "red"), space="rgb")(64)
     heatmap.2(as.matrix(plot_data),Rowv = F,Colv = F,dendrogram = c("none"),col = col_pallete,trace = 'none',cexRow = 1,cexCol = 1)
 
@@ -3054,11 +3519,15 @@ shinyServer(function(input, output) {
   # })
   
   output$enrichement_data_select_ui = renderUI({
+    print('enrichment_data_select_ui : ')
     entry_list = input$data
+    entry_list
     #entry_list = data_name_list
     if(input$sub_venn == 'basic'){
       venn_data_list = unlist(lapply(entry_list,function(x) c(paste0(x,' down'),paste0(x,' up'))))
+      venn_data_list
       selected = venn_data_list
+      selected
     }else{
       int = names(attr(venn_all_gplots_data(), 'intersection'))
       int = int[order(int)]
@@ -3086,6 +3555,7 @@ shinyServer(function(input, output) {
                 multiple = T)
   })
   output$enrichement_data_select_ui_2 = renderUI({
+    print('enrichement_data_select_ui_2 : ')
     entry_list = input$data
     #entry_list = data_name_list
     if(input$sub_venn == 'basic'){
@@ -3117,7 +3587,7 @@ shinyServer(function(input, output) {
         
         
         venn_all_reactive = reactive({
-          print('venn all reactive')
+          print('venn_all_reactive')
           
           mapped_data = mapped_data()
           venn_list = venn_gene_list_select()
@@ -3132,7 +3602,7 @@ shinyServer(function(input, output) {
               cmd_list = read_variable_function(variable_list)
               cmd_list
               for(cmd in cmd_list){
-                print(cmd)
+                #print(cmd)
                 try(eval(parse(text = cmd)))
               }
             }
@@ -3162,6 +3632,8 @@ shinyServer(function(input, output) {
             #print(plot_data_list[entry])
           }
           colour_list = colour_list[entry_list]
+          print('   venn_all_reactive : done')
+          
           list(plot_data_list = plot_data_list, colour_list = colour_list)
         })
         
@@ -3175,7 +3647,7 @@ shinyServer(function(input, output) {
         #Thesis_Data/Cleanup_Data/images/shiny/Venn/ESC_GE_NES_Diff_NS_Diff_SILAC/ALL_ESC_down_ESC_up_GE_down_GE_up.pdf
         
         output$venn_all = renderPlot({
-          print('Start : venn all')
+          print('venn all')
           #plot_path = paste(venn_image_path(),plot_name,spe='/')
           #pdf(plot_name)
           plot_data_list = venn_all_reactive()$plot_data_list
@@ -3183,7 +3655,7 @@ shinyServer(function(input, output) {
           plot_data_list_name = input$venn_data_select
           colour_list = venn_all_reactive()$colour_list
           plot_name = latex_filename_function(paste((plot_data_list_name),collapse='_'))
-          values$plot_name = paste0(plot_name,'.pdf')
+          values$plot_name = paste0(plot_name)
           m = 1.5 #numbers
           n = 1.5 # sample labels
           par(bty = 'n', lty = 'blank')
@@ -3217,9 +3689,12 @@ shinyServer(function(input, output) {
         })
         
         venn_all_gplots_data = reactive({
+          print('venn_all_gplots_data')
           plot_data_list = venn_all_reactive()$plot_data_list
           colour_list = venn_all_reactive()$colour_list
           p = gplots::venn(plot_data_list,show.plot = F)
+          print('   venn_all_gplots_data : done')
+          
           p
         })
         
@@ -3237,6 +3712,7 @@ shinyServer(function(input, output) {
         output$venn_int_text_print = renderText(print(paste(input$venn_int, collapse = '  &  ')))
         
         venn_gene_list = reactive({
+          print('venn_gene_list')
           p = attr(venn_all_gplots_data(), 'intersection')
           #print(paste(c(p[input$venn_int])))
           #v_list = sapply(input$venn_int,function(x) p[x])
@@ -3253,6 +3729,8 @@ shinyServer(function(input, output) {
           venn_column = input$venn_id_select
           venn_column = 'id'
           v_list_id = mapped_ud$id[mapped_ud[,venn_column] %in% unique(v_list)]
+          print('   venn_gene_list : done')
+          
           paste(unique(v_list_id))
         })
         
@@ -3295,13 +3773,17 @@ shinyServer(function(input, output) {
         })
         
         venn_select_gplots_data = reactive({
+          print('venn_select_gplots_data')
           plot_data_list = venn_select_reactive()$plot_data_list
           colour_list = venn_select_reactive()$colour_list
           p = gplots::venn(plot_data_list,show.plot = F)
+          print('   venn_select_gplots_data : done')
+          
           p
         })
         
         venn_select_gene_list = reactive({
+          print('venn_select_gene_list')
           p = attr(venn_select_gplots_data(), 'intersection')
           #print(paste(c(p[input$venn_int])))
           #v_list = sapply(input$venn_int,function(x) p[x])
@@ -3314,6 +3796,7 @@ shinyServer(function(input, output) {
             }
           }
           #v_list v_list
+          print('   venn_select_gene_list : done')
           paste(unique(v_list))
         })
         
@@ -3327,6 +3810,7 @@ shinyServer(function(input, output) {
         })
         
         venn_select_reactive = reactive({
+          print('venn_select_reactive')
           test = F
           if(test == T){
             mapped_ud_full = results_list$mapped_ud
@@ -3336,33 +3820,36 @@ shinyServer(function(input, output) {
           }
           int = neighbour_data()$int
           entry_list = input$venn_data_select_select
-          print(entry_list)
+          #print(entry_list)
           mapped_ud_full = mapped_data()$mapped_ud
           head(mapped_ud_full)
-          print(dim(mapped_ud_full))
+          #print(dim(mapped_ud_full))
           mapped_ud = mapped_ud_full[mapped_ud_full$STRING_id %in% int,]
-          print(dim(mapped_ud))
-          print(head(mapped_ud))
+          #print(dim(mapped_ud))
+          #print(head(mapped_ud))
           colour_list = mapped_data()$colour_list
           #print(colour_list)
           #print(colour_list[entry_list])
           plot_data_list = list()
-          print(entry_list)
+          #print(entry_list)
           for(entry in entry_list){
-            print(entry)
+            #print(entry)
             plot_data_list[entry] = list(mapped_ud$id[mapped_ud[,entry] != 0])
-            print(plot_data_list[entry])
+            #print(plot_data_list[entry])
           }
           colour_list = colour_list[entry_list]
+          print('   venn_select_reactive : done')
+          
           list(plot_data_list = plot_data_list, colour_list = colour_list)
         })
         
         output$venn_select = renderPlot({
+          print('venn_select : ')
           if(values$shouldShow_sn_select){
             plot_data_list = venn_select_reactive()$plot_data_list
-            print(plot_data_list)
+            #print(plot_data_list)
             colour_list = venn_select_reactive()$colour_list
-            print(colour_list)
+            #print(colour_list)
             tryCatch({
               venn(plot_data_list, cexil = 2, cexsn = 2,
                    ilabels = T, counts = T,
@@ -3378,6 +3865,7 @@ shinyServer(function(input, output) {
         })
 
         output$venn_select_gplots_print = renderPrint({
+          print('venn_select_gplots_print')
           if(values$shouldShow_sn_select){
             plot_data_list = venn_select_reactive()$plot_data_list
             p = gplots::venn(plot_data_list,show.plot = F)
@@ -3396,6 +3884,7 @@ shinyServer(function(input, output) {
         #### Venn GO ####
         
         output$venn_GO_select = renderUI({
+          print('venn_GO_select')
           
           entry_list = input$data
           #entry_list = data_name_list
@@ -3409,6 +3898,7 @@ shinyServer(function(input, output) {
         })
         
         venn_GO_reactive = reactive({
+          print('venn_GO_reactive')
           test = F
           if(test == T){
             mapped_ud_full = results_list$mapped_ud
@@ -3420,7 +3910,7 @@ shinyServer(function(input, output) {
           entry_list = input$venn_data_select_select
           #print(entry_list)
           mapped_ud_full = mapped_data()$mapped_ud
-          View(mapped_ud_full)
+          #View(mapped_ud_full)
           head(mapped_ud_full)
           dim(mapped_ud_full)
           mapped_ud = mapped_ud_full[mapped_ud_full$STRING_id %in% int,]
@@ -3435,10 +3925,13 @@ shinyServer(function(input, output) {
             #print(plot_data_list[entry])
           }
           colour_list = colour_list[entry_list]
+          print('   venn_GO_reactive : done')
+          
           list(plot_data_list = plot_data_list, colour_list = colour_list)
         })
         
         output$venn_GO = renderPlot({
+          print('venn_GO :')
           if(values$shouldShow){
             if(input$mapped == 'common_mapped'){
               plot_data_list = venn_GO_reactive()$plot_data_list
@@ -3459,6 +3952,7 @@ shinyServer(function(input, output) {
         })
         
         output$venn_GO_gplots_print = renderPrint({
+          print('venn_GO_gplots_print : ')
           if(values$shouldShow_sn_select){
             plot_data_list = venn_select_reactive()$plot_data_list
             p = gplots::venn(plot_data_list,show.plot = F)
@@ -3475,7 +3969,8 @@ shinyServer(function(input, output) {
   
     ### BOXPLOTS ####
         m = reactive({
-          print('Start : m')
+          print('m')
+          #print('Start : m')
           start_time = Sys.time()
           data_select_list = input$data
           #if(input$boxplot_full == 'full'){
@@ -3485,8 +3980,8 @@ shinyServer(function(input, output) {
           #data_name_collapse = paste(data_select_list,collapse = '_')
           
           m_file = paste0(shiny_data_path,'/',data_name_collapse(),'_m.rds')
-          print(m_file)
-          print(file.exists(m_file))
+          #print(m_file)
+          #print(file.exists(m_file))
           if(file.exists(m_file) == FALSE | input$re_melt == T){
             print('re-run m')
  
@@ -3499,14 +3994,15 @@ shinyServer(function(input, output) {
           }
           print('End : m')
           print(Sys.time() - start_time)
+          print("   m : done")
           m
         })
         
         m_ts = reactive({
           print('m_ts')
           m_file = paste0(shiny_data_path,'/',data_name_collapse(),'_m_ts.rds')
-          print(m_file)
-          print(file.exists(m_file))
+          #print(m_file)
+          #print(file.exists(m_file))
           if(file.exists(m_file) == FALSE | input$re_melt == T){
             print('re-running m_ts')
             timeseries_list = timeseries_list()
@@ -3521,7 +4017,7 @@ shinyServer(function(input, output) {
             print('readRDS(m_ts)')
             m_ts = readRDS(m_file)
           }
-          print('done m_ts')
+          print('   m_ts : done')
           m_ts
         })
         output$m_table = renderDataTable(m())
@@ -3534,7 +4030,7 @@ shinyServer(function(input, output) {
         for(name in gene_list){
           #/Users/sgarnett/Documents/Doctorate/Thesis/Thesis_Pictures/MQ_Gui/marker_lists/ESC_GE_SILAC_Diff/all/A1BG.pdf
           file_name = paste0('all/',name,'.pdf')
-          print(file_name)
+          #print(file_name)
           html_entry = paste0("<div id='pdf'>",
                    "<object width='700' height='700' type='application/pdf' data='",file_name,"?#zoom=100&scrollbar=0&toolbar=0&navpanes=0' id='pdf_content'>",
                    "<p>Insert your error message here, if the PDF cannot be displayed.</p>",
@@ -3571,15 +4067,15 @@ shinyServer(function(input, output) {
       ### _____all ####
       output$boxplot_gplot = renderPlot({
         data_select_list = input$data
-        print(data_select_list)
+        #print(data_select_list)
         m = m()
-        print('m')
-        print(dim(m))
-        print(unique(m$data))
+        #print('m')
+        #print(dim(m))
+        #print(unique(m$data))
         gene_list = gene_list()
-        print(gene_list)
+        #print(gene_list)
         sub_m = m[m$id == gene_list,]
-        print(dim(sub_m))
+        #print(dim(sub_m))
         ggplot(sub_m, aes(x = data,y = value,col = id)) + 
           geom_boxplot() +
           geom_hline(yintercept = 0) +
@@ -3638,7 +4134,7 @@ shinyServer(function(input, output) {
         values$boxplot_path = sample_path_line
         
         values$plot_path = paste0(sample_path_line)
-        values$plot_name = 'id.pdf'
+        values$plot_name = 'GENE_ID'
         #View(m())
         #m_data = m()[m()$id %in% gene_list,]
         boxplot_hit = 1
@@ -3648,13 +4144,18 @@ shinyServer(function(input, output) {
             boxplot_hit = 0
           }
         }
-        print(boxplot_hit)
+        #print(boxplot_hit)
         if(boxplot_hit == 0 | input$re_run_boxplots == TRUE){
-          print('generate images')
-          print('test')
-          renderPlots(m(), data_df(), sample_list, gene_list ,sample_path_line,input, output, 'gplot')
-        }else{
-          print('upload images')
+          #print('generate images')
+          #print('test')
+          if(input$boxplot_facets == T){
+            renderPlots_facets(m(), data_df(), sample_list, gene_list ,sample_path_line,input, output, 'gplot')
+          }else{
+            renderPlots(m(), data_df(), sample_list, gene_list ,sample_path_line,input, output, 'gplot')
+            
+          }
+          }else{
+          #print('upload images')
           renderImages(gene_list,sample_path_line,input,output,'gplot')
         }
         makePlotContainers(gene_list, 'gplot')
@@ -3680,14 +4181,25 @@ shinyServer(function(input, output) {
      
      output$g_boxplots_plots_sample <- renderUI({
        sample_list = input$data
-       makePlotContainers_sample(sample_list)
-     })
-     observeEvent(input$sample_boxplot,{
-       #data_select_list = input$data
        sample_list = input$data
        gene_list = gene_list()
        renderPlots_sample(m(),sample_list, gene_list, path_line(), input, output, 'gplot')
+       
+       makePlotContainers_sample(sample_list)
      })
+     # observeEvent(input$sample_boxplot,{
+     #   #data_select_list = input$data
+     #   sample_list = input$data
+     #   gene_list = gene_list()
+     #   renderPlots_sample(m(),sample_list, gene_list, path_line(), input, output, 'gplot')
+     # })
+     # 
+     # observeEvent(input$sample_boxplot,{
+     #   #data_select_list = input$data
+     #   sample_list = input$data
+     #   gene_list = gene_list()
+     #   renderPlots_sample(m(),sample_list, gene_list, path_line(), input, output, 'gplot')
+     # })
      
      #### ____ timeseries ######
      
@@ -3727,12 +4239,12 @@ shinyServer(function(input, output) {
              boxplot_hit = 0
            }
          }
-         print(boxplot_hit)
+         #print(boxplot_hit)
          if(boxplot_hit == 0 | input$re_run_boxplots == TRUE){
-           print('generate images ts')
+           #print('generate images ts')
            renderPlots_ts(m_ts(), sample_list, gene_list, timeseries_list() ,sample_path_line,input, output, 'gplot_ts')
          }else{
-           print('upload images ts')
+           #print('upload images ts')
            renderImages(gene_list,sample_path_line,input,output,'gplot_ts')
          }
          makePlotContainers(gene_list, 'gplot')
@@ -3750,6 +4262,7 @@ shinyServer(function(input, output) {
      })
      
      output$timeseries_boxplot = renderPlot({
+       print('timeseries_boxplot')
        m = m_ts()
        
        m = m[m$id %in% gene_list(),]
@@ -3769,9 +4282,12 @@ shinyServer(function(input, output) {
      })
      
      sn_enrichment = reactive({
+       print('sn_enrichment : ')
        #print(string_hits_list())
        enrichmentGO <- string_db$get_enrichment(string_hits_list(), category = "Process", methodMT = "fdr", iea = TRUE )
-        print(enrichmentGO)
+        #print(enrichmentGO)
+        print('   sn_enrichment : done')
+        
         enrichmentGO
        })
      
@@ -3812,7 +4328,7 @@ shinyServer(function(input, output) {
        geneList_up_file = paste(topGO_path(),'geneList_up.rds',sep='/')
        geneList_down_file = paste(topGO_path(),'geneList_down.rds',sep='/')
        
-       print(geneList_sig_file)
+       #print(geneList_sig_file)
        
        if(!file.exists(geneList_sig_file) | input$topGO_re_run == T){
          print('re running topGO_geneList')
@@ -3827,6 +4343,7 @@ shinyServer(function(input, output) {
        geneList_sig = readRDS(geneList_sig_file)
        geneList_up = readRDS(geneList_up_file)
        geneList_down = readRDS(geneList_down_file)
+       print('   topGO_geneList : done')
        
        topGO_gene_List = list(geneList_sig = geneList_sig,
                               geneList_up = geneList_up,
@@ -3837,6 +4354,7 @@ shinyServer(function(input, output) {
      
      
      venn_plot_path_r = reactive({
+       print('venn_plot_path_r')
        if(input$venn_data_select_button == 'all'){
          venn_dc_path = create_dir_function(paste(venn_image_path,data_name_collapse(),sep='/'))
        }else{
@@ -3848,17 +4366,22 @@ shinyServer(function(input, output) {
          venn_dc_path = create_dir_function(paste(venn_image_path,paste(data_list,collapse = '_'),sep='/'))
          
        }
+       print('   venn_plot_path_r : done')
+       
        venn_dc_path
        
      })
      
      venn_plot_name_r = reactive({
+       print('venn_plot_name_r')
        plot_name = 'sub'
        data_list = input$venn_data_select
        data_list = data_list[order(data_list)]
        if(input$venn_data_select_button == 'all'){
          plot_name = paste0('ALL_',paste(data_list,collapse = '_'))
        }
+       print('   venn_plot_name_r : done')
+       
        plot_name
      })
      
@@ -3866,8 +4389,11 @@ shinyServer(function(input, output) {
 
     
     sample_path_line = reactive({
+      print('sample_path_line')
       path_line = paste0(shiny_image_path,data_name_collapse())
       create_dir_function(path_line)
+      print('   sample_path_line : done')
+      
       path_line
     })
 
@@ -3875,16 +4401,53 @@ shinyServer(function(input, output) {
     
     output$path_list_print = renderText(path_line())
     
-    output$thesis_path_print = renderText({
-      
-      plot_name = values$plot_name
-      #plot_path =  paste0(path_line(),'/',plot_name)
-      
+    plot_path = reactive({
+      print('plot_path')
       plot_path = values$plot_path
-      #plot_path =  paste0(path_line(),'/',plot_name)
-      #values$plot_path = plot_path_2
-      plot_path = paste0(thesis_path_sub,plot_path,plot_name)
+      plot_name = values$plot_name
+      plot_path = paste0(plot_path,plot_name)
       plot_path
+    })
+    
+    enrichment_path = reactive({
+      print('enrichment_path')
+      plot_path = values$plot_path
+      #print(plot_path)
+      
+      select_enrichment_list = paste(input$enrichment_data_select,collapse = '_')
+      path_list = c(input$enrichment_select,input$select_sn_MT,select_enrichment_list)
+      #print(path_list)
+      path_entry = plot_path
+      #print(path_entry)
+      
+      if(input$save_plot == T){
+        for(entry in path_list){
+          path_entry = c(path_entry,entry)
+          #print(path_entry)
+          path_entry_line = latex_filename_function(paste(path_entry,collapse = '/'))
+          #print(path_entry_line)
+          create_dir_function(paste0(path_entry_line))
+        }
+      }
+      print(path_entry_line)
+      path_entry_line = latex_filename_function(paste(path_list,collapse = '/'))
+      print(path_entry_line)
+      print('    enrichment_path : done ')
+      path_entry_line
+      #path_entry_line
+      #print(enrichment_plot_path_list)
+      #enrichment_plot_path_list
+      
+      })
+    pdf_plot_path = reactive(paste0(plot_path(),'.pdf'))
+    png_plot_path = reactive(paste0(plot_path(),'.png'))
+    
+    
+    thesis_plot_path = reactive(paste0(thesis_path_sub,plot_path()))
+    thesis_pdf_plot_path = reactive(paste0(thesis_path_sub,pdf_plot_path()))
+    
+    output$thesis_path_print = renderText({
+      thesis_pdf_plot_path()
       })
     
     
@@ -3913,11 +4476,1719 @@ shinyServer(function(input, output) {
       }
     )
     
-})
 
 
 
-##### MAXQUANT #####
 
+##### UPLOAD #####
+    process_values = reactiveValues(file_upload = 0,
+                                    save_upload = 0, 
+                                    run_ratios = 0, 
+                                    run_t_test = 0, 
+                                    save_mart = 0, 
+                                    save_mart_base = 0,
+                                    save_mart_full = 0,
+                                    run_sep_w = 0,
+                                    run_sep_l = 0,
+                                    sep_run = 0,
+                                    mart_id = 'row_id',
+                                    sep_id = 'row_id',
+                                    mart_values = 'row_id',
+                                    dataset_select = 'expression_data')
+    output$upload_dataset_ui = renderUI({
+      datasets = values$datasets
+      selectInput('upload_dataset','Upload Dataset',datasets,selected = '_')
+    })
+    
+    output$dataset_select_ui = renderUI({
+      dataset_list = values$dataset_list
+      if(is.null(names(dataset_list))){
+        withProgress(message = 'Uploading Dataset', {
+          dataset_list = dataset_list()
+        })
+      }
+      names(dataset_list)
+      selectInput('dataset_select','Select Dataset',names(dataset_list),process_values$dataset_select)
+    })
+    
+    output$dataset_table = renderDataTable({
+      if(input$show_dataset == T){
+        if(!is.null(input$dataset_select)){
+          df = values$dataset_list[[input$dataset_select]]
+          process_values$dataset_select = input$dataset_select
+          if(!is.null(dim(df))){
+            df
+          }else{
+            df = data.frame(NULL)
+          }
+        }else{
+          df = data.frame(NULL)
+        }
+      }
+      
+    })
+    
+    dataset_list_path = reactive({
+      paste0("data/data_list/",input$upload_dataset,"_data_list.rds")
+      })
+    save_dataset_list_path = reactive({
+      #dataset_list = values$dataset_list
+      paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
+    })
+    
+    dataset_list = reactive({
+      print('dataset_list')
+      if(input$upload_dataset == '_'){
+        dataset_list = list()
+      }else{
+        print(paste("readRDS : ",dataset_list_path()))
+        dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
+      }
+      print(names(dataset_list))
+      print('   data_set_list : done')
+      #saveRDS(dataset_list,'temp/dataset_list.rds')
+      #dataset_list = readRDS('temp/dataset_list.rds')
+      values$dataset_list = dataset_list
+      dataset_list
+    })
+    
+  ### _upload ####
+    # output$file_path_ui = renderUI({
+    #   test = 'test'
+    #   test
+    #   #if(input$reload_file == 'True'){
+    #     textInput("my_file_path", label = "Full path to my file", value = file.choose(), width = 1200)
+    #   #}else{
+    #   #  textInput("my_file_path", label = "Full path to my file", value = dataset_list()['experiment_path'],width = 1200)
+    #   #}
+    # })
+    
+  output$reload_file_ui = renderUI({
+
+    if(input$upload_dataset == '_'){
+      actionButton('load_file','Load New File')
+    }
+      
+  })
+  output$upload_data_type_ui = renderUI({
+    if(!is.null(values$dataset_list[['original_data']])){
+      if(is.null(values$dataset_list[['input']])){
+        selected = 'Other'
+        
+      }else{
+        if(is.null(values$dataset_list[['input']][['data_type']])){
+          selected = 'Other'
+        }else{
+          selected = values$dataset_list[['input']][['data_type']]
+        }
+      }
+      radioButtons('upload_data_type','Data Type',c('Transcriptome','MaxQuant','Other'),selected,inline = T)
+    }
+      
+  })
+  
+    observeEvent(input$load_file,{
+      path = paste(file.choose())
+      path = gsub(paste0(getwd(),'/'),'',path)
+      values$dataset_list[['full_path']] = path
+    })
+    output$file_path_ui = renderUI({
+      if(!is.null(values$dataset_list[['full_path']])){
+        textInput("my_file_path", label = "Full path to my file", values$dataset_list[['full_path']], width = 1200)
+      }
+    })
+  
+  
+  
+  
+  output$original_data = renderDataTable({
+    df = data.frame(NULL)
+    if(input$upload_dataset == '_'){
+      if(!is.null(values$dataset_list[['full_path']])){
+        
+        df <- read.csv(values$dataset_list[['full_path']],
+                       header = input$header,
+                       sep = input$sep,
+                       quote = input$quote)
+      
+        values$dataset_list[['original_data']] = df
+        #values$dataset_list[['input']] = list()
+       df
+      }
+     }else{
+         df = values$dataset_list[['original_data']]
+       }
+    
+    if(input$show_table == F){
+       df = data.frame(NULL)
+    }
+    df
+    })
+  
+  output$original_data_detail_text = renderText({
+    if(!is.null(values$dataset_list[['original_data']])){
+      paste0('Rows : ',dim(values$dataset_list[['original_data']])[1],
+             ' Columns : ',dim(values$dataset_list[['original_data']])[2])
+    }
+  })
+    
+
+# 
+#     print('input_df')
+#     df = data.frame()
+#     #upload_file_path()
+#     if(input$reload_file == 'False'){
+#       if(input$upload_data_type == 'MaxQuant'){
+#         df = dataset_list()[['proteinGroups']]
+#       }else{
+#         df = dataset_list()[['original_data']]
+#       }
+# 
+#     }else{
+# 
+#       if(input$upload_data_type == 'MaxQuant'){
+#         df <- read.csv(paste0(upload_dir_path(),'/proteinGroups.txt'),
+#                        header = input$header,
+#                        sep = '\t',
+#                        quote = input$quote)
+#       }else{
+#         df <- read.csv(upload_file_path(),
+#                        header = input$header,
+#                        sep = input$sep,
+#                        quote = input$quote)
+#       }
+#     }
+#     df
+  #})
+  
+  
+  output$col1_len = renderText({
+    length(unique(input_df()[,input$id_column]))
+  })
+  output$col2_len = renderText({
+    length(unique(input_df()[,input$id_column_2]))
+  })
+  output$col3_len = renderText({
+    length(unique(input_df()[,input$id_column_3]))
+  })
+  #shinyFileChoose(input, 'files', root=c(root='.'), filetypes=c('', 'txt'))
+  shinyFileChoose(input, 'upload_file', roots=c(wd='.'))
+  upload_file <- reactive(input$upload_file)
+  
+  # upload_file_path = reactive({
+  #   if(input$reload_file == 'True'){
+  #     #textInput("my_file_path", label = "Full path to my file", value = file.choose(), width = 1200)
+  #     
+  #     path = file.choose()
+  #     path = gsub(paste0(getwd(),'/'),'',path)
+  #     #path = paste0('.',paste(unlist(upload_file()[c(1:(length(upload_file())-1))]),collapse = '/'))
+  #   }else{
+  #     path = dataset_list()['experiment_path']
+  #   }
+  #  #path = paste(unlist(upload_file()),collapse = '/')
+  #  path
+  #  
+  #  #observeEvent(input$load_file)
+  #   
+  # })
+  output$upload_file_text <- renderText(print(upload_file_path()))
+
+  shinyDirChoose(input, 'upload_dir', roots = c(wd='.'))
+  upload_dir <- reactive(input$upload_dir)
+  
+  upload_dir_path = reactive({
+    if(input$reload_file == 'True'){
+      print('upload_dir_path')
+      #print(upload_dir())
+      #path = paste0('.',paste(unlist(upload_dir()[c(1:(length(upload_dir())-1))]),collapse = '/'),'/')
+      path = dirname(input$my_file_path)
+      path = gsub(paste0(getwd(),'/'),'',path)
+      
+    }else{
+      path = dataset_list()['experiment_path']
+    }
+    path
+  })
+  output$upload_dir_text <- renderText(print(upload_dir_path()))
+  
+  
+  output$upload_file = renderText({
+    print('upload_file_text')
+    print(paste(unlist(upload_file()),collapse = ' '))
+    })
+
+  output$input_file_table = renderDataTable({
+    #if(input$show_table == T){
+      input_df()
+    #}
+  })
+  
+  output$id_column_1_ui = renderUI({
+    #selectInput('id_column','ID columns',colnames(input_df()))
+    
+    if(input$upload_dataset == '_'){
+      selectInput('id_column','Primary ID columns',colnames(input_df()))
+
+    }else{
+      selectInput('id_column','Primary ID columns',colnames(input_df()),dataset_list()[['id_column']])
+    }
+  })
+  
+  output$id_column_2_ui = renderUI({
+    #selectInput('id_column','ID columns',colnames(input_df()))
+    
+    if(input$upload_dataset == '_'){
+      selectInput('id_column_2','Secondary ID columns',c('_',colnames(input_df())),'_')
+      
+    }else{
+      selectInput('id_column_2','Secondary ID columns',c('_',colnames(input_df())),dataset_list()[['id_column_2']])
+    }
+  })
+  
+  output$id_column_3_ui = renderUI({
+    #selectInput('id_column','ID columns',colnames(input_df()))
+    
+    if(input$upload_dataset == '_'){
+      selectInput('id_column_3','Third ID column',c('_',colnames(input_df())),'_')
+      
+    }else{
+      selectInput('id_column_3','Third ID column',c('_',colnames(input_df())),dataset_list()[['id_column_3']])
+    }
+  })
+  
+  
+  # output$stat_id_column_ui = renderUI({
+  #   #selectInput('id_column','ID columns',colnames(input_df()))
+  #   
+  #   if(input$upload_dataset == '_'){
+  #     selectInput('stat_id_column','Stat ID column',c('row_id',colnames(input_df())),'_')
+  #     
+  #   }else{
+  #     selectInput('stat_id_column','Stat ID column',c('row_id',colnames(input_df())),dataset_list()[['stat_id_column']])
+  #   }
+  # })
+  
+  output$experiment_path_ui = renderUI({
+    
+    if(input$upload_data_type == "MaxQuant"){
+      textInput('experiment_path','Experiment Path',upload_dir_path(),width = 1200)
+    }else{
+      textInput('experiment_path','Experiment Path',upload_file_path(),width = 1200)
+      
+    }
+  })
+  
+  output$experiment_name_ui = renderUI({
+    if(!is.null(values$dataset_list[['original_data']])){
+      if(!is.null(values$dataset_list[['input']][['experiment_name']])){
+        selected = 'Other'
+      }else{
+        selected = values$dataset_list[['input']][['experiment_name']]
+      }
+      textInput('experiment_name','Experiment_Name',selected)
+      
+    }
+  })
+  
+  output$condition_1_name_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      textInput('condition_1_name','Condition 1 name')
+    }else{
+      textInput('condition_1_name','Condition 1 name',dataset_list()[['condition_1_name']])
+    }
+  })
+  output$condition_2_name_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      textInput('condition_2_name','Condition 2 name')
+    }else{
+      textInput('condition_2_name','Condition 2 name',dataset_list()[['condition_2_name']])
+    }
+  })
+  output$condition_3_name_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      textInput('condition_3_name','Condition 3 name')
+    }else{
+      textInput('condition_3_name','Condition 3 name',dataset_list()[['condition_3_name']])
+    }
+  })
+  output$condition_4_name_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      textInput('condition_4_name','Condition 4 name')
+    }else{
+      textInput('condition_4_name','Condition 4 name',dataset_list()[['condition_4_name']])
+    }
+  })
+  
+  
+  output$condition_1_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('condition_1','Condition 1',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('condition_1','Condition 1',colnames(input_df()),dataset_list()[['condition_1_columns']],multiple =T )
+    }
+  })
+  output$condition_2_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('condition_2','Condition 2',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('condition_2','Condition 2',colnames(input_df()),dataset_list()[['condition_2_columns']],multiple =T )
+    }
+  })  
+  output$condition_3_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('condition_3','Condition 3',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('condition_3','Condition 3',colnames(input_df()),dataset_list()[['condition_3_columns']],multiple =T )
+    }
+  })  
+  output$condition_4_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('condition_4','Condition 4',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('condition_4','Condition 4',colnames(input_df()),dataset_list()[['condition_4_columns']],multiple =T )
+    }
+  })
+  # output$condition_2_ui = renderUI({
+  #   selectInput('condition_2','Condition 2',colnames(input_df()),multiple =T )
+  # })
+  # output$condition_3_ui = renderUI({
+  #   selectInput('condition_3','Condition 3',colnames(input_df()),multiple =T )
+  # })
+  # output$condition_4_ui = renderUI({
+  #   selectInput('condition_3','Condition 4',colnames(input_df()),multiple =T )
+  # })
+  output$mq_type_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      radioButtons('mq_type','Experiment Type', c('LFQ','SILAC','Timecource'),inline = T) 
+    }else{
+      radioButtons('mq_type','Experiment Type', c('LFQ','SILAC','Timecource'),selected = dataset_list()[['experiment_type']],inline = T) 
+      
+    }
+  })
+  
+  
+  output$silac_comp_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('silac_comp','SILAC Comparison',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('silac_comp','SILAC Comparison',colnames(input_df()),dataset_list()[['silac_comp']],multiple =T )
+    }
+  })
+  output$silac_comp_rev_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('silac_comp_rev','SILAC Comparison (rev)',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('silac_comp_rev','SILAC Comparison (rev)',colnames(input_df()),dataset_list()[['silac_comp_rev']],multiple =T )
+    }
+  })
+  
+  output$silac_rep_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('silac_rep','SILAC Replicate',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('silac_rep','SILAC Replicate',colnames(input_df()),dataset_list()[['silac_rep']],multiple =T )
+    }
+  })
+  
+  output$silac_rep_rev_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('silac_rep_rev','SILAC Replicate (rev)',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('silac_rep_rev','SILAC Replicate (rev)',colnames(input_df()),dataset_list()[['silac_rep_rev']],multiple =T )
+    }
+  })
+  
+  output$silac_incorp_ui = renderUI({
+    if(input$upload_dataset == '_'){
+      selectInput('silac_incorp','SILAC Incorporated test',colnames(input_df()),multiple =T )
+    }else{
+      selectInput('silac_incorp','SILAC Incorporation test',colnames(input_df()),dataset_list()[['silac_incorp']],multiple =T )
+    }
+  })
+  
+  # output$silac_rep_ui = renderUI({
+  #   selectInput('silac_rep','SILAC Replicates',colnames(input_df()),multiple =T )
+  # })
+  # output$silac_rep_rev_ui = renderUI({
+  #   selectInput('silac_rep_rev','SILAC Replicates (rev)',colnames(input_df()),multiple =T )
+  # })
+  # output$silac_incorp_ui = renderUI({
+  #   selectInput('silac_inc','SILAC Incorporation Test',colnames(input_df()),multiple =T )
+  # })
+  #### _experiment_df ####
+  experiment_df = reactive({
+    print('experiment_df')
+    silac = 0
+    #print(input$save_experiment)
+    #d = dataset_list()
+    #dataset_list = readRDS(save_dataset_list_path())
+    dataset_list = values$dataset_list
+    length(dataset_list)
+    experiment_df = dataset_list[['expression_data']]
+    experiment_df
+    if(print(input$save_upload[1]) > process_values$save_upload){
+      
+    #if(input$save_experiment == T){
+      id_columns = c()
+      if(input$id_column != '_'){
+        id_columns = c(id_columns,input$id_column)
+      }
+      if(input$id_column_2 != '_'){
+        id_columns = c(id_columns,input$id_column_2)
+      }
+      if(input$id_column_3 != '_'){
+        id_columns = c(id_columns,input$id_column_3)
+      }
+      if(input$upload_data_type == 'MaxQuant'){
+        if(input$mq_type == 'SILAC'){
+          silac = 1
+        }
+      }
+      if(silac == 1){
+          expression_columns = c(input$silac_comp,input$silac_comp_rev,input$silac_rep,input$silac_rep_rev,input$silac_incorp)
+          expression_column_list = list()
+          expression_column_list[['silac_comp']] = input$silac_comp
+          expression_column_list[['silac_comp_rev']] = input$silac_comp_rev
+          expression_column_list[['silac_comp_rev']] = input$silac_rep
+          expression_column_list[['silac_rep']] = input$silac_rep_rev
+          expression_column_list[['silac_rep_rev']] = input$silac_incorp
+          
+          expression_column_list
+        }else{
+          expression_columns = c(input$condition_1,input$condition_2,input$condition_3,input$condition_4)
+          expression_column_list = list()
+          expression_column_list[[input$condition_1_name]] = input$condition_1
+          expression_column_list[[input$condition_2_name]] = input$condition_2
+          expression_column_list[[input$condition_3_name]] = input$condition_3
+          expression_column_list[[input$condition_4_name]] = input$condition_4
+          expression_column_list
+        
+        }
+      
+      id_columns
+      expression_columns
+      #dataset_list[['expression_columns']] = expression_columns
+      dataset_list[['expression_columns_list']] = expression_columns_list
+      
+      columns = c('row_id',id_columns,expression_columns)
+      print(columns)
+      df = input_df()
+      rownames(df) = df[,input$id_column]
+      
+      colnames(df)
+      #View(df)
+      df$row_id = rownames(df)
+      #df$id = rownames(df)
+      #df$row_id
+      # if(input$stat_id_column != 'row_id'){ 
+      #   df$id = df[,input$stat_id_column]
+      # }
+      #df$row_id = rownames(df)
+      columns = c(columns)
+      columns
+      df_l = gather(df[,columns],key = sample_name, values = expression_columns) %>% 
+        mutate(data_type = 'expression') %>% 
+        as_tibble() %>% 
+        #rename(sample_name = key) %>% 
+        #as_tibble() %>% 
+        mutate(sample = NA)
+      df_l
+      colnames(df_l)
+      for(name in names(expression_column_list)){
+        print(name)
+        df_l$sample[df_l$sample_name %in% expression_column_list[[name]]]  = name
+        }
+      
+      
+      #View(df_l)
+      #df_l$data = 'expression'
+      rownames(df) = df[,input$id_column]
+      experiment_df = df[,columns]
+      colnames(experiment_df)
+      
+      dim(experiment_df)
+      #dataset_list = dataset_list()
+      dataset_list[['data_type']] = input$upload_data_type
+      dataset_list[['experiment_type']] = input$mq_type
+      
+
+      dataset_list[['expression_data']] = experiment_df
+      dataset_list[['experiment_path']] = input$experiment_path
+      dataset_list[['experiment_name']] = input$experiment_name
+      dataset_list[['experiment_code']] = input$experiment_code
+      dataset_list[['experiment_description']] = input$experiment_description
+      dataset_list[['id_column']] = input$id_column
+      dataset_list[['id_column_2']] = input$id_column_2
+      dataset_list[['id_column_3']] = input$id_column_3
+      #dataset_list[['stat_id_column']] = input$stat_id_column
+      dataset_list[['expression_data_l']] = df_l
+      
+      
+      
+      if(input$upload_data_type == 'MaxQuant'){
+  
+        peptides <- read.csv(paste0(upload_dir_path(),'/peptides.txt'),
+                       header = input$header,
+                       sep = '\t',
+                       quote = input$quote)
+        evidence <- read.csv(paste0(upload_dir_path(),'/evidence.txt'),
+                             header = input$header,
+                             sep = '\t',
+                             quote = input$quote)
+        parameters <- read.csv(paste0(upload_dir_path(),'/parameters.txt'),
+                             header = input$header,
+                             sep = '\t',
+                             quote = input$quote)
+        summary <- read.csv(paste0(upload_dir_path(),'/summary.txt'),
+                             header = input$header,
+                             sep = '\t',
+                             quote = input$quote)
+        
+        dataset_list[['experiment_type']] = input$mq_type
+        dataset_list[['proteinGroups']] = input_df()
+        dataset_list[['peptides']] = peptides
+        dataset_list[['evidence']] = evidence
+        dataset_list[['summary']] = summary
+        dataset_list[['parameters']]  = parameters
+               
+      }else{
+        dataset_list[['original_data']] = input_df()
+      }
+      if(silac == 0){               
+        if(!is.null(input$condition_1)){
+          dataset_list[['condition_1_name']] = input$condition_1_name
+          dataset_list[['condition_1_columns']] = input$condition_1
+        }
+        if(!is.null(input$condition_2)){
+          dataset_list[['condition_2_name']] = input$condition_2_name
+          dataset_list[['condition_2_columns']] = input$condition_2
+        }
+        if(!is.null(input$condition_3)){
+          dataset_list[['condition_3_name']] = input$condition_3_name
+          dataset_list[['condition_3_columns']] = input$condition_3
+        }
+        if(!is.null(input$condition_4)){
+          dataset_list[['condition_4_name']] = input$condition_4_name
+          dataset_list[['condition_4_columns']] = input$condition_4
+        }
+      }else{
+        dataset_list[['silac_inc']] = input$silac_inc
+        dataset_list[['silac_comp']] = input$silac_comp
+        dataset_list[['silac_comp_rev']] = input$silac_comp_rev
+        dataset_list[['silac_rep']] = input$silac_rep
+        dataset_list[['silac_rep_rev']] = input$silac_rep_rev
+      }
+      
+      #dataset_list[['mart_id']] = 'row_id'
+      #dataset_list[['sep_id']] = 'row_id'
+      #mart_values = 'row_id'
+      #dataset_select = 'expression_data'
+      
+      print(names(dataset_list))
+      values$dataset_list = dataset_list
+      rds_path = paste0('data/data_list/',input$experiment_code,'_data_list.rds')
+      print(paste('saveRDS : ',rds_path))
+      saveRDS(dataset_list,rds_path)
+      #uploaded_datasets = readRDS('data/uploaded_datasets.rds')
+      #uploaded_datasets
+      uploaded_datasets = values$datasets
+      new_datasets = 'SH_Diff_RA'
+      new_datasets = input$experiment_code
+      uploaded_datasets = c(uploaded_datasets, new_datasets)
+      uploaded_datasets = unique(uploaded_datasets)
+      uploaded_datasets
+      values$datasets = uploaded_datasets
+      #saveRDS(uploaded_datasets,'data/uploaded_datasets.rds')
+      #print('saveRDS : uploaded_datasets')
+      values$upload_save = F
+      process_values$save_upload = process_values$save_upload + 1
+      print('done')
+    }
+    #}else{
+    #  experiment_df = dataset_list[['expression_data']]
+    #}
+    experiment_df
+  })
+  
+  output$select_mart_ui = renderUI({
+    if(is.null(values$dataset_list[['biomaRt']][['listMarts_select']])){
+      withProgress(message = 'Calculation biomaRt::listMarts', {
+        values$dataset_list[['biomaRt']][['listMarts']] = biomaRt::listMarts()$biomart
+      })
+      selected = values$dataset_list[['biomaRt']][['listMarts']][1]
+    }else{
+      selected = values$dataset_list[['biomaRt']][['listMarts_select']]
+    }
+    #selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1])
+    selectInput('selectMart',
+                'Select Mart',
+                values$dataset_list[['biomaRt']][['listMarts']],
+                selected)
+    
+  })
+  
+  output$list_mart_ui = renderUI({
+    if(!is.null(input$selectMart)){
+      run = 1
+      withProgress(message = 'Calculation biomaRt::listDataset', {
+        if(!is.null(values$dataset_list[['biomaRt']][['listMarts_select']]) &
+           !is.null(values$dataset_list[['biomaRt']][['listDatasets']])){
+          if(values$dataset_list[['biomaRt']][['listMarts_select']] == input$selectMart){
+            run = 0
+          }
+        }
+        if(run == 1){
+          values$dataset_list[['biomaRt']][['listMarts_select']] = input$selectMart
+          ensembl = biomaRt::useMart(input$selectMart)
+          datasets = biomaRt::listDatasets(ensembl)
+          datasets
+          mart_list = datasets$dataset
+          names(mart_list) = datasets$description
+          mart_list
+          values$dataset_list[['biomaRt']][['listDatasets']] = mart_list
+        }
+        if(is.null(values$dataset_list[['biomaRt']][['listDatasets_select']])){
+          selected  = "hsapiens_gene_ensembl"
+        }else{
+          selected = values$dataset_list[['biomaRt']][['listDatasets_select']]
+        }
+        selectInput('mart_list_datasets','Select Mart Dataset',values$dataset_list[['biomaRt']][['listDatasets']],selected)
+      })
+      }
+    
+  })
+  
+  ensembl = reactive({
+    ensembl = NULL
+    if(!is.null(input$mart_list_datasets)){
+      run = 1
+      if(!is.null(values$dataset_list[['biomaRt']][['listDatasets_select']])){
+        if(values$dataset_list[['biomaRt']][['listMarts_select']] == input$selectMart & 
+        values$dataset_list[['biomaRt']][['listDatasets_select']] == input$mart_list_datasets){
+          if(!is.null(values$dataset_list[['biomaRt']][['ensembl']])){
+            run = 0
+            ensembl = values$dataset_list[['biomaRt']][['ensembl']]
+          }
+        }
+      }
+      if(run == 1){
+        values$dataset_list[['biomaRt']][['listDatasets_select']] = input$mart_list_datasets
+        withProgress(message = 'Calculation biomaRt::useMart', {
+          
+          ensembl = biomaRt::useMart(input$selectMart,dataset=input$mart_list_datasets)
+        })
+      }
+    }
+    ensembl
+  })
+  
+  output$filter_ui = renderUI({
+    if(!is.null(ensembl())){
+      run = 1
+      ensembl = ensembl()
+      values$dataset_list[['biomaRt']][['ensembl']] = ensembl
+      
+      filters = biomaRt::listFilters(ensembl)
+      filters_list = filters$name
+      names(filters_list) = filters$description
+      filters_list
+      if(is.null(values$dataset_list[['biomaRt']][['listFilters_select']])){
+        selected = 'affy_hg_u133_plus_2'
+      }else{
+        selected = values$dataset_list[['biomaRt']][['listFilters_select']]
+      }
+      selectInput('mart_filters','Select Filters',filters_list,selected, width = 800)
+    }
+  })
+  
+  output$attributes_ui = renderUI({
+    if(!is.null(ensembl())){
+      attributes = biomaRt::listAttributes(ensembl())
+      attributes
+      attributes_list =  attributes$name
+      names(attributes_list) = attributes$description
+      if(is.null(values$dataset_list[['biomaRt']][['listAttributes_select']])){
+        selected = c('hgnc_symbol','wikigene_description')
+      }else{
+        selected = values$dataset_list[['biomaRt']][['listAttributes_select']]
+      }
+      selectInput('mart_attributes','Select Attributes',attributes_list,c('hgnc_symbol','wikigene_description'), multiple = T)
+    }
+  })
+  
+  output$mart_column_ui = renderUI({
+    if(!is.null(input$mart_attributes)){
+    
+      if(is.null(values$dataset_list[['mart_column']])){
+        selected = '_'
+      }else{
+        selected = values$dataset_list[['mart_column']]
+      }
+      selectInput('mart_column','Select id column',c('_', colnames(values$dataset_list[[input$dataset_select]])),selected)
+    }
+    })
+  
+
+  
+  #values$id = values$dataset_list[["expression_data"]][c(1:5),]
+  
+  output$mart_slider = renderUI({
+   df = values$dataset_list[["expression_data"]]
+   sliderInput('mart_slider','Select IDs to test',min = 1,max = dim(df)[1],value = c(1,5), step = 1, width = 1200)
+  })
+
+  mart_df = reactive({
+    #df = values$dataset_list[["expression_data"]][c(input$mart_slider[1],input$mart_slider[2]),]
+    values$dataset_list[['biomaRt']][['listFilters_select']] = input$mart_filters
+    values$dataset_list[['biomaRt']][['listAttributes_select']] = input$mart_attributes
+    if(input$run_biomart[1] > process_values$save_mart){
+      df = values$dataset_list[["expression_data"]]
+      process_values$save_mart = process_values$save_mart = 1
+      process_values$save_mart_full = 1
+      #process_values$save_mart_base = 0
+      if(dataset_test == T){
+        df = df[c(1:15),]
+      }
+    }else{
+      df = values$dataset_list[["expression_data"]][c(input$mart_slider[1]:input$mart_slider[2]),]
+      
+    }
+    df
+  })
+  
+  ###_biomart ####
+  output$bm_df = renderDataTable({
+    values$dataset_list[['biomaRt']][['listFilters_select']] = input$mart_filters
+    values$dataset_list[['biomaRt']][['listAttributes_select']] = input$mart_attributes
+    
+    if(!is.null(input$mart_column)){
+      if(input$mart_column != '_'){
+      
+      print('id_mapping')
+    #print(input$save_mart[1])
+    #print(process_values$save_mart)
+    #print(process_values$save_mart_base)
+    #values$mart_df = values$dataset_list[["expression_data"]][c(1:5),]
+    #values$id = values$dataset_list[["expression_data"]][c(1:5),][,input$mart_column]
+    #values$id
+    
+      print('   running ....')
+      #dataset_list = values$dataset_list
+      #names(values$dataset_list)
+      values$dataset_list[['mart_column']] = input$mart_column
+      
+   
+      
+      #values$mart_df = values$dataset_list[["expression_data"]][c(1:5),]
+      
+      # if(input$run_bm == T & process_values$save_mart_full == 0){
+      #   print('      full mapping')
+      #   #df = values$dataset_list[[input$dataset_select]]
+      #   df = values$dataset_list[["expression_data"]]
+      # 
+      #   df
+      #   process_values$save_mart_full == 1
+      # }else{
+      #   print('       partial mapping')
+      #   #df = values$dataset_list[[input$dataset_select]][c(1:5),]
+      #   df = values$dataset_list[["expression_data"]][c(1:5),]
+      #   
+      #   process_values$save_mart_full == 0
+      #   
+      # }
+
+        
+        #https://bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html
+  
+        #df = dataset_list[['expression_data']]
+        #id = df[,input$stat_id_column][c(1:5)]
+        #id = df[,input$mart_column]
+        #df = values$mart_df
+        df = mart_df()
+        df %>%  as.tbl
+        id = unlist(df[,input$mart_column])
+        id
+        print(length(id))
+        withProgress(message = 'BioMart Calculation in progress', {
+          print('running getBM ....')
+          bm_df = biomaRt::getBM(attributes=c(input$mart_attributes,input$mart_filters),
+                filters = input$mart_filters,
+                values = id, 
+                mart = ensembl())
+        })
+ 
+        
+        filter <- rlang::parse_quosures(paste(input$mart_filters))[[1]]
+        filter
+        id_column = rlang::parse_quosures(paste(input$mart_column))[[1]]
+        id_column
+        bm_cols = colnames(bm_df)
+        bm_cols
+        bm_df_collapse = bm_df %>% 
+          mutate(bm_id = !!filter) %>% 
+          na_if(., "") %>% 
+          group_by(bm_id) %>% 
+          mutate_at(.funs = funs(paste(unique(na.omit(.)),collapse = ', ')), .vars = bm_cols) %>% 
+          ungroup() %>% 
+          filter(!duplicated(bm_id))
+          
+        id_mapping_w = right_join(
+           #bm_df %>% mutate(bm_id = !!filter),
+           bm_df_collapse,
+           df %>% 
+             dplyr::select(-one_of(colnames(bm_df))) %>% 
+                      mutate(bm_id = !!id_column), 
+           by = 'bm_id') 
+         id_mapping_w
+         #df_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
+         if(process_values$save_mart_full == 1){
+           df_l = values$dataset_list[['expression_data_l']]
+           
+           df_l
+           id_mapping_l = right_join(
+             #bm_df %>% mutate(bm_id = !!filter),
+             bm_df_collapse,
+             df_l %>% 
+               dplyr::select(-one_of(colnames(bm_df))) %>% 
+               mutate(bm_id = !!id_column), 
+             by = 'bm_id') 
+           id_mapping_l
+        #bm_df
+         
+         
+          #values$dataset_list[['biomart_id_mapping']] = id_mapping_w
+          #values$dataset_list[['biomart_id_mapping_l']] = id_mapping_l
+          values$dataset_list[['expression_data']] = id_mapping_w
+          values$dataset_list[['expression_data_l']] = id_mapping_l
+          
+          
+          #print(names(dataset_list))
+          #values$dataset_list = dataset_list
+          if(autosave_datasets == T){
+            
+            rds_path = paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
+            print(paste('saveRDS : ',rds_path))
+            saveRDS(values$dataset_list,rds_path)
+          }
+          process_values$save_mart_full = 0
+         }
+        #process_values$save_mart_base = process_values$save_mart_base + 1
+        print('   done : id mapping')
+        id_mapping_w
+        
+    }}
+    
+    })
+  
+  # output$bm_df = renderDataTable({
+  #   if(!is.null(ensembl())){
+  #     id_mapping()
+  #   }
+  # })
+  
+  output$select_mart_id = renderUI({
+    print('select_mart_id')
+    if(is.null(values$dataset_list[['mart_id']])){
+      selected = 'row_id'
+    }else{
+      selected = values$dataset_list[['mart_id']]
+    }
+    selectInput('mart_id',
+                'Select new id column',
+                colnames(values$dataset_list[['expression_data']]),
+                selected)
+  })
+  
+  
+    
+ 
+  
+  output$mart_save_ui = renderUI({
+    #if(input$run_bm == T){
+      actionButton("save_mart", "Save")
+    })
+  output$sep_id_ui = renderUI({
+    print('select_sep_id')
+    print('select_mart_id')
+    if(is.null(values$dataset_list[['sep_id']])){
+      selected = 'row_id'
+    }else{
+      selected = values$dataset_list[['sep_id']]
+    }
+    selectInput('sep_id',
+                'Select id column to separate',
+                colnames(values$dataset_list[[input$dataset_select]]),
+                selected)
+  })
+  
+  #mart_expression_df = reactive({
+  output$separate_columns = renderDataTable({
+    print('separate_columns')
+    if(process_values$sep_run == 0){
+    #if(input$run_bm == T){
+      print('   running ...')
+      #dataset_list = values$dataset_list
+      #names(dataset_list)
+      input$dataset_select
+      values$dataset_list[['sep_id']] = input$sep_id
+      #id_mapping_w = values$dataset_list[[input$dataset_select]]
+      id_mapping_w = values$dataset_list[["expression_data"]]
+      
+      id_mapping_w %>% as.tbl
+      #id_mapping_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
+      id_mapping_l = values$dataset_list[['expression_data_l']]
+      
+      id_mapping_l %>% as.tbl
+      
+      if(!input$run_sep[1] > process_values$run_sep_w | dataset_test == T){
+        print('    running partial')
+        id_mapping_w = id_mapping_w[c(1:10),]
+        process_values$sep_run = 0
+      }else{
+        print('     running full')
+      }
+      var <- rlang::parse_quosures(paste(input$sep_id))[[1]]
+      var
+      df = id_mapping_w %>% 
+        mutate(id = !!var) %>% 
+        dplyr::select(id,everything())
+  
+          print('     id sep wide')
+          df$id_1 = sapply(df$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
+        df = df %>% dplyr::select(id_1,everything())
+        df %>% as.tbl
+          if(input$run_sep[1] > process_values$run_sep_w){
+          df_l = id_mapping_l %>% 
+            mutate(id = !!var) %>% 
+            dplyr::select(id,everything())
+          
+          df_l %>%  as_tibble()
+          text = 'click run to execute the separation, may take some time'
+          process_values$run_sep_w = process_values$run_sep_w + 1
+          print('     id sep long')
+          df_l$id_1 = sapply(df_l$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
+          df_l = df_l %>% dplyr::select(id_1,everything())
+          
+          process_values$run_sep_l = process_values$run_sep_l + 1
+          text = 'separation is complete'
+          #values$dataset_list[['col_sep_id_mapping']] = df
+          #values$dataset_list[['col_sep_id_mapping_l']] = df_l
+          values$dataset_list[['expression_data']] = df
+          values$dataset_list[['expression_data_l']] = df_l
+          process_values$sep_run = 1
+          if(autosave_datasets == T){
+            rds_path = paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
+            print(paste('saveRDS : ',rds_path))
+            saveRDS(dataset_list,rds_path)
+          }
+          }
+    }else{
+      df = values$dataset_list[['expression_data']]
+    }
+    df
+    
+  })
+  
+  
+  
+  output$mart_expression_df = renderDataTable({
+    print('mart_expression_df')
+    if(!is.null(input$mart_id)){
+      print('   running ...')
+      values$dataset_list[['mart_id']] = input$mart_id
+      #dataset_list = values$dataset_list
+      #names(dataset_list)
+      #id_mapping_w = dataset_list[[input$dataset_select]]
+      id_mapping_w = values$dataset_list[['expression_data']]
+      
+      
+      #if(!is.null(dataset_list[['id_mapping']])){
+      #  id_mapping_w = dataset_list[['id_mapping']]
+      #}else{
+      #  id_mapping_w = dataset_list[['expression_data']]
+      #}
+      #if(!is.null(dataset_list[['id_mapping_l']])){
+      #  id_mapping_l = dataset_list[['id_mapping_l']]
+      #}else{
+      #  id_mapping_l = dataset_list[['df_l']]
+      #}
+      #id_mapping_l
+      id_mapping_w %>%  as_tibble()
+        #if(input$column_adjust != 'seperate id'){
+        var <- rlang::parse_quosures(paste(input$mart_id))[[1]]
+        var
+        df = id_mapping_w %>% 
+          mutate(id = !!var) %>% 
+          dplyr::select(id,everything())
+        #}else{
+        # df = id_mapping_w
+        #}
+  
+    
+   
+    
+        df %>% as_tibble
+  
+        #if(print(input$save_mart[1]) > process_values$save_mart){
+          
+        
+          #values$dataset_list[['expression_data_id']] = df
+          values$dataset_list[['expression_data']] = df
+          
+          #if(!is.null(dataset_list[['id_mapping_l']])){
+          #if(input$column_adjust != 'seperate id'){
+          #id_mapping_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
+          id_mapping_l = values$dataset_list[['expression_data_l']]
+          
+          
+            df_l = id_mapping_l %>% 
+              mutate(id = !!var) %>% 
+              dplyr::select(id,everything())
+        #}
+          #}else{
+          #  df_l = id_mapping_l
+          #}
+            
+    
+            df_l %>%  as_tibble()
+            values$dataset_list[['expression_data_l']] = df_l
+          #}
+          
+          #print(names(dataset_list))
+          #values$dataset_list = dataset_list
+          if(autosave_datasets == T){
+            rds_path = paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
+            print(paste('saveRDS : ',rds_path))
+            saveRDS(values$dataset_list,rds_path)
+          }
+          #process_values$save_mart = process_values$save_mart = 1
+        #}
+        #}
+        print('   done : mart_experssion_df')
+
+        percentage_matched = length(df$id[!is.na(df$id) & df$id != ''])/length(df$id) * 100
+        percentage_matched
+      #}
+        output$mart_percentage_matched = renderText({
+          print(paste0('Percentage of ids matched :',signif(percentage_matched,3),'%'))
+        })
+       #}
+      df
+    }
+      
+  })
+  
+  observeEvent(input$save_dataset,{
+      rds_path = values$dataset_list[['rds_path']]
+      future({
+        withProgress(message = 'Saving', {
+        #print(paste0('Saving : ',rds_path)
+      print(names(values$dataset_list))
+        
+      print(paste('saveRDS : ',rds_path))
+      saveRDS(values$dataset_list,rds_path)
+        })
+      print('done save_dataset')
+    })
+  })
+ 
+
+  #output$mart_expression_df = renderDataTable({
+  #  mart_expression_df()$df
+  #})
+    
+  
+  
+
+  output$experiment_df = renderDataTable({
+   
+      experiment_df()
+    
+  })
+  
+  output$sample_numbers = renderPlot({
+    dataset_list = readRDS(paste0("data/data_list/",input$upload_dataset,"_data_list.rds"))
+    #dataset_list = values$dataset_list
+    df = dataset_list[['expression_data']]
+    head(df)
+    dim(df)
+    df_l = melt(df)
+    head(df_l)
+    df_l = df_l[df_l$value != 0,]
+    df_l = df_l[!is.na(df_l$value),]
+    ggplot(df_l) + 
+     # geom_count(aes(y = value, x= variable)) + 
+      geom_bar(aes(variable, fill = variable), stat = 'count') +
+      coord_flip() +
+      xlab('Sample Name') +
+      theme(legend.position = 'None')
+    
+  })
+
+  output$save_experiment_ui = renderUI({
+    radioButtons('save_experiment','Save Experiment',c(F,T), selected = values$upload_save, inline = T)
+  })
+
+  output$experiment_name_ui = renderUI({
+    
+      if(!is.null(values$dataset_list[['original_data']])){
+        if(!is.null(values$dataset_list[['input']][['experiment_name']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_name']]
+        }
+      
+    
+      textInput('experiment_name','Experiment_Name',selected)
+      
+    }
+  })
+  
+  output$experiment_code_ui = renderUI({
+    if(!is.null(values$dataset_list[['original_data']])){
+      if(!is.null(values$dataset_list[['input']][['experiment_code']])){
+        selected = ''
+      }else{
+        selected = values$dataset_list[['input']][['experiment_code']]
+      }
+  
+      textInput('experiment_code','Experiment Code',selected)
+      
+    }
+  })
+  
+  output$experiment_description_ui = renderUI({
+    if(!is.null(values$dataset_list[['original_data']])){
+      if(!is.null(values$dataset_list[['input']][['experiment_description']])){
+        selected = ''
+      }else{
+        selected = values$dataset_list[['input']][['experiment_description']]
+      }
+      textInput('experiment_description','Experiment Description',selected,width = 1200)
+      
+    }
+  })
+  
+  output$rds_path_text = renderText({
+    
+    if(!is.null(values$dataset_list[['original_data']])){
+      if(!is.null(input$experiment_code)){
+        values$dataset_list[['input']][['experiment_name']] = input$experiment_name
+        values$dataset_list[['input']][['experiment_code']] = input$experiment_code
+        values$dataset_list[['input']][['experiment_description']] = input$experiment_description
+        rds_path = paste0('data/data_list/',values$dataset_list[['input']][['experiment_code']],'_data_list.rds')
+        values$dataset_list[['rds_path']] = rds_path
+        
+      }
+      if(!is.null(values$dataset_list[['rds_path']])){
+        rds_path = values$dataset_list[['rds_path']] = rds_path
+        rds_path
+      }
+    }
+    
+  })
+  
+  
+  output$dataset_list_print = renderPrint(print(names(dataset_list())))
+  output$dataset_type_print = renderText(dataset_list()[['data_type']])
+  
+  expression_data = reactive({
+    print('expression_data')
+    withProgress(message = 'Calculating Ratios', {
+    #dataset_list = dataset_list()
+    dataset_list = values$dataset_list
+    names(dataset_list)
+    if(input$run_ratios[1] > process_values$run_ratios){
+      df = dataset_list[['expression_data_id']]
+      colnames(df)
+      df_l = dataset_list[['expression_data_id_l']] %>% as_tibble
+      
+      df_l
+      df_ratio_l = df_l
+      colnames(df_l)
+      unique(df_l$data_type)
+      #pg = dataset_list['proteinGroups']
+      #View(pg)
+      dim(df)
+      names = names(dataset_list)
+      names
+      condition_all = grep('condition',names,value = T)
+      condition_columns = grep('columns',condition_all,value = T)
+      condition_columns
+      condition = condition_columns[1]
+      condition
+      for(condition in condition_columns){
+        print(condition)
+        condition_list = dataset_list[[condition]]
+        print(condition_list)
+        col_names = condition_list
+        col_names
+        rownames(df) = df$row_id
+        rep_df = rep_ratio_function(as.data.frame(df),col_names)
+        #re
+        rep_colnames = colnames(rep_df)
+        rep_df[apply(rep_df, 2 , function(x) !is.finite(x))] = NA
+        colnames(rep_df)
+        rep_df_l <- rep_df %>% as_tibble() %>% 
+          mutate(row_id = rownames(rep_df)) %>% 
+          gather(., key = sample_name, values = rep_colnames) %>% 
+          #rename(sample_name = key) %>% 
+          right_join(., dplyr::select(df_l, -c('value','sample','sample_name','data_type')), by = 'row_id') %>% 
+          mutate(sample = dataset_list[[gsub('_columns','_name',condition)]]) %>% 
+          mutate(data_type = 'replicate_ratio') %>% 
+          #as_tibble() %>% 
+          dplyr::select(colnames(df_l))
+        
+        #df_l
+        rep_df_l
+        df_ratio_l = rbind(df_ratio_l,rep_df_l)
+        colnames(df_l)
+        colnames(rep_df_l)
+        
+        dataset_list[[gsub('columns','rep_ratio',condition)]] = rep_df
+        df = cbind(df,rep_df)
+      }
+      df_ratio_l %>% filter(data_type == 'replicate_ratio')
+      unique(df_ratio_l$data_type)
+      
+      paired_ratio_df =  paired_ratio_function(df,dataset_list[[condition_columns[2]]],dataset_list[[condition_columns[1]]])
+      paired_ratio_df[apply(paired_ratio_df, 2 , function(x) !is.finite(x))] = NA
+      head(paired_ratio_df)
+      ratio_df_l <- paired_ratio_df %>% 
+        as_tibble() %>% 
+        mutate(row_id = rownames(paired_ratio_df)) %>% 
+        gather(., key = sample_name, values = colnames(paired_ratio_df)) %>% 
+        #rename(sample_name = key) %>% 
+        right_join(., dplyr::select(df_l, -c('value','sample','sample_name','data_type')), by = 'row_id') %>% 
+        mutate(sample = paste0(dataset_list[['condition_2_name']],'_',dataset_list[['condition_1_name']])) %>% 
+        mutate(data_type = 'comparison_ratio') %>% 
+        dplyr::select(colnames(df_l)) %>% 
+        as_tibble()
+      ratio_df_l
+      unique(ratio_df_l$data_type)
+      ratio_df_l
+      colnames(df_ratio_l)
+      df_ratio_l = rbind(df_ratio_l,ratio_df_l)
+      unique(df_ratio_l$data_type)
+      dataset_list[['df_ratio_l']] = df_ratio_l
+      
+      colnames(df_ratio_l)
+      unique(df_ratio_l$sample)
+      unique(df_ratio_l$sample)
+
+      df_id_summary <- df_ratio_l %>% 
+        filter(id != '' & !is.na(id)) %>% 
+        group_by(id, data_type, sample) %>% 
+        summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
+      df_id_summary
+      dataset_list[['df_id_summary']] = df_id_summary
+      
+      
+      df_sample_name_summary = df_ratio_l %>%
+        filter(id != '' & !is.na(id)) %>% 
+        group_by(data_type, sample_name,sample) %>% 
+        summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
+      df_sample_name_summary
+      dataset_list[['df_sample_name_summary']] = df_sample_name_summary
+      
+      df_sd_sample = df_sample_name_summary %>% 
+        filter(data_type != 'expression') %>% 
+        group_by(data_type, sample) %>% 
+        summarise(max_sd = max(sd,na.rm = T), mean_sd = max(mean,na.rm = T)) %>% 
+        ungroup()
+      
+      df_sd_sample
+      df_sd_data_type = df_sample_name_summary %>% 
+        filter(data_type != 'expression') %>% 
+        group_by(data_type) %>% 
+        summarise(max_sd = max(sd,na.rm = T), mean_sd = max(mean,na.rm = T)) %>% 
+        ungroup() %>% 
+        mutate(sample = 'All') %>% 
+        dplyr::select(colnames(df_sd_sample))
+      df_sd_data_type  
+      df_sd = rbind(df_sd_sample,df_sd_data_type)
+      df_sd
+      dataset_list[['df_sd']] = df_sd
+      dataset_list[['rep_sd']] = dataset_list[['df_sd']] %>% filter(data_type == 'replicate_ratio', sample == 'All') %>%  pull(max_sd)
+      #rep_sd
+      dataset_list[['comp_sd']] = dataset_list[['df_sd']] %>% filter(data_type == 'comparison_ratio', sample == 'All') %>%  pull(max_sd)
+      #comp_sd
+      
+      # ggplot(df_mean %>% filter(data_type != 'expression')) +
+      #   geom_density(aes(x = mean, col = sample))
+      # 
+      # ggplot(df_sd %>% filter(data_type != 'expression')) +
+      #    geom_boxplot(aes(y = sd,fill = data_type, x = sample)) + 
+        
+      
+      df = cbind(df,paired_ratio_df)
+      dataset_list[['ratio']] = df
+      
+      #dataset_list[['paired_ratio']] = paired_ratio_df
+      #names(dataset_list)
+      #if(input$save_ratios == T){
+      values$dataset_list = dataset_list
+      
+      print(paste('saveRDS :',save_dataset_list_path()))
+      saveRDS(dataset_list,save_dataset_list_path())
+      #}
+      process_values$run_ratios = process_values$run_ratios + 1
+      print('done')
+    }else{
+      df = dataset_list[['ratio']]
+    }
+    
+    })
+ 
+    df
+    
+    
+  })
+  
+  
+
+  output$expression_data = renderDataTable(expression_data())
+  
+  density_plot_data = reactive({
+    print('density_plot')
+    dataset_list = values$dataset_list
+    names(dataset_list)
+    #df = dataset_list[['expression_data']]
+    #dim(df)
+    #df_n = df[,NULL]
+    #dim(df_n)
+    rep_ratios = grep('rep_ratio',names(dataset_list),value = T)
+    rep_ratios
+    rep_ratio = rep_ratios[1]
+    paired_ratio = dataset_list[['paired_ratio']]
+    
+    dim(paired_ratio)
+    #paired_ratio_finite = apply(paired_ratio, 2 , function(x) !is.finite(x))
+    #head(paired_ratio_finite)
+    #paired_ratio[paired_ratio_finite] = NA
+    head(paired_ratio)
+    paired_ratio_sd = apply(paired_ratio,2, function(x) sd(x,na.rm = T))
+    dataset_list[['paired_ratio_sd']] = paired_ratio_sd
+    paired_ratio_sd
+    
+    ratio_sd_l = melt(paired_ratio_sd)
+    ratio_sd_l$ratio = 'paired_ratio'
+    head(ratio_sd_l)
+    df_l = melt(paired_ratio)
+    comp_mean = mean(df_l$value,na.rm = T)
+    df_l$ratio = 'paried_ratio'
+    rep_ratios = grep('rep_ratio',names(dataset_list),value = T)
+    rep_ratios
+    rep_ratios = rep_ratios[!(grepl('_sd',rep_ratios))]
+    rep_ratios
+    rep_ratio = rep_ratios[1]
+    paired_ratio = dataset_list[['paired_ratio']]
+    for(rep_ratio in rep_ratios){
+      rep_ratio
+      df_n = dataset_list[[rep_ratio]]
+      head(df_n)
+      df_n_l = melt(df_n)
+      df_n_l$ratio = rep_ratio
+      head(df_n_l)
+      df_l = rbind(df_l,df_n_l)
+      ratio_sd_n = apply(df_n,2, function(x) sd(x,na.rm = T))
+      dataset_list[[paste0(rep_ratio,'_sd')]] = ratio_sd_n
+      ratio_df_n_l = melt(ratio_sd_n)
+      ratio_df_n_l$ratio = rep_ratio
+      ratio_sd_l = rbind(ratio_sd_l,ratio_df_n_l)
+    }
+    rep_sd = max(ratio_sd_l$value[grepl('rep',ratio_sd_l$ratio)],na.rm=T)
+    rep_sd
+    dataset_list[['rep_df']] = rep_sd
+    
+    comp_sd = max(ratio_sd_l$value[!grepl('rep',ratio_sd_l$ratio)],na.rm=T)
+    comp_sd
+    dataset_list[['comp_df']] = comp_sd
+    
+    dataset_list[['ratio_df']] = ratio_sd_l
+    dim(df_l)
+    if(input$run_ratios == T){
+      values$dataset_list = dataset_list
+      
+      print(paste('saveRDS : ',save_dataset_list_path()))
+      saveRDS(dataset_list,save_dataset_list_path())
+      print('done')
+    }
+    #saveRDS(df_l,'temp/df_l.rds')
+    #df_l = readRDS('temp/df_l.rds')
+    head(df_l)
+    print('done')
+    list('df_l' = df_l, 'ratio_sd_l' = ratio_sd_l, 'rep_sd' = rep_sd, 'comp_sd' = comp_sd, 'comp_mean' = comp_mean)
+  })
+  
+  output$density_plot = renderPlot({
+    print('density_plot')
+    #density_plot_data_list = density_plot_data()
+    dataset_list = values$dataset_list
+    names(dataset_list)
+    df_id_summary = dataset_list[['df_id_summary']]
+    df_id_summary
+    df_sd = dataset_list[['df_sd']]
+    df_sd
+    rep_sd = df_sd %>% 
+      filter(data_type == 'replicate_ratio', sample == 'All') %>% 
+      pull(max_sd)
+    rep_sd
+    comp_sd = df_sd %>% 
+      filter(data_type == 'comparison_ratio', sample == 'All') %>% 
+      pull(max_sd)
+    comp_sd
+    
+    comp_mean = df_id_summary %>% 
+      filter(data_type == 'comparison_ratio') %>% 
+      pull(mean) %>% 
+      mean(.,na.rm = T)
+    comp_mean
+    ggplot(df_id_summary %>% filter(data_type != 'expression')) + 
+      geom_density(aes(mean,col = sample),size = 1) + 
+      geom_vline(xintercept = 2*rep_sd, col = 'green', alpha = 0.5) +
+      geom_vline(xintercept = -2*rep_sd, col = 'green', alpha = 0.5) +
+      geom_vline(xintercept = 2*comp_sd, col = 'blue', alpha = 0.5) +
+      geom_vline(xintercept = -2*comp_sd, col = 'blue', alpha = 0.5) +
+      geom_vline(xintercept = comp_mean, col = 'red', alpha = 0.5) + 
+      xlim(-4*comp_sd,4*comp_sd)
+    #saveRDS(density_plot_data_list,'temp/data_list.rds')
+    #density_plot_data_list = readRDS('temp/data_list.rds')
+    # df_l = density_plot_data_list$df_l
+    # rep_sd = density_plot_data_list$rep_sd
+    # comp_sd = density_plot_data_list$comp_sd
+    # comp_mean = density_plot_data_list$comp_mean
+    # 
+    # ggplot(df_l) + 
+    #   geom_density(aes(value, col = ratio)) + 
+    #   geom_vline(xintercept = 2*rep_sd, col = 'green') +
+    #   geom_vline(xintercept = -2*rep_sd, col = 'green') +
+    #   geom_vline(xintercept = 2*comp_sd, col = 'blue') +
+    #   geom_vline(xintercept = -2*comp_sd, col = 'blue') + 
+    #   geom_vline(xintercept = comp_mean, col = 'red')
+    
+    
+  })
+  
+  output$sd_boxplot = renderPlot({
+    print('df_boxplot')
+    dataset_list = values$dataset_list
+    
+    df_sd = dataset_list[['df_sample_name_summary']]
+    df_sd
+    ggplot(df_sd %>% filter(data_type != 'expression')) +
+      geom_boxplot(aes(y = sd, x = sample, fill = data_type)) +
+      geom_point(aes(y = sd, x = sample))
+    #df_l = density_plot_data()$ratio_sd_l
+    #saveRDS(df_l,'temp/df_l.rds')
+    #df_l = readRDS('temp/df_l.rds')
+    #dim(df_l)
+    #ggplot(df_l) +
+    #  geom_boxplot(aes(x = ratio,y = value), fill = c('blue','blue','red'))
+  })
+  #### _stat_data ####
+  
+  stat_df = reactiveVal()
+  observeEvent(input$run_stat,{
+    values$dataset_list[['stat']] = NULL
+    withProgress(message = 'Calculation in progress', {
+      dataset_list = values$dataset_list
+      names(dataset_list)
+      df_ratio_l = dataset_list[['df_ratio_l']]
+      df_ratio_l %>% as.tbl
+      #View(df_ratio_l)
+      unique(df_ratio_l$data_type)
+      unique(df_ratio_l$sample)
+      
+      sample_names = unique(df_ratio_l %>% filter(data_type == 'expression') %>%  pull(sample))
+      var1 = rlang::parse_quosures(paste(sample_names[1]))[[1]]
+      var2 = rlang::parse_quosures(paste(sample_names[2]))[[1]]
+      df_mean = df_ratio_l %>% as.tbl %>% 
+        filter(data_type == 'comparison_ratio') %>% 
+        group_by(id) %>% 
+        summarise(mean = mean(value,na.rm = T)) %>% 
+        ungroup() 
+      
+      df_t_test <-
+        df_ratio_l %>% as.tbl() %>%
+        filter(data_type == 'expression') %>% 
+        spread(sample,value) %>% 
+        group_by(id) %>% 
+        summarise(p_value = tryCatch(t.test(as.numeric(unlist(!!var1)),as.numeric(unlist(!!var2)))$p.value, error = function(e) NA)) %>% 
+        ungroup() %>% 
+        mutate('BH' = p.adjust(p_value,method = 'BH'))
+      df_t_test
+      df_stat = left_join(df_mean,df_t_test)
+      df_stat
+      dataset_list[['stat']] = df_stat
+      
+      print(paste('saveRDS : ', save_dataset_list_path()))
+      saveRDS(dataset_list,save_dataset_list_path())
+      values$dataset_list = dataset_list
+      print('done')
+   
+    })
+  })
+  
+  
+  output$stat_data_table = renderDataTable({
+    print('stat_data')
+    withProgress(message = 'Stat upload in progress', {
+      print('running be patient ...')
+      dataset_list = values$dataset_list
+      names(dataset_list)
+ 
+      df_stat = dataset_list[['stat']]
+
+      output$fdr_plot = renderPlot({
+        print('fdr_plot')
+        
+        
+        
+
+        df_stat
+        hist_data = hist(as.numeric(df_stat$p_value),breaks=100,plot=FALSE)
+        hist_data
+        top_5 = (mean(hist_data$counts[(length(hist_data$counts)*0.8):length(hist_data$counts)]))
+        top_5
+        #print(str(hist_data$counts))
+        #print(top_5)
+        count = 0.05*length(hist_data$counts)
+        count
+        p_values = df_stat$p_value
+        p_values = p_values[!is.na(p_values)]
+        sig_p_values = p_values[p_values < 0.05]
+        t_number = length(sig_p_values)
+        t_number
+        #print(count)
+        #print(top_5)
+        fdr = round((top_5*count)/t_number*100,digits=2)
+        fdr
+       
+        
+        ggplot(df_stat) + 
+          geom_histogram(aes(p_value),binwidth = 0.01) +
+          geom_hline(yintercept = top_5, col = 'green') +
+          geom_segment(aes(x = 0.8, xend = 1.2, y = top_5, yend = top_5), col = 'blue') +
+          geom_vline(xintercept = 0.05, col = 'red') + 
+          geom_text(aes(x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, label = paste0('FDR = ',fdr)), size = 5) +
+          coord_cartesian(xlim = c(0,1)) +
+          xlab('p value')
+
+      })
+      
+      output$volcano_plot = renderPlot({
+        print('volcano_plot')
+        rep_sd = dataset_list[['rep_sd']] 
+        rep_sd
+        comp_sd = dataset_list[['comp_df']]
+        comp_sd
+        ggplot(df_stat) + 
+          geom_point(aes(x = mean,y = -log10(BH)), size = 0.5) + 
+          geom_hline(yintercept = -log10(0.05), col = 'red') +
+          geom_vline(xintercept = 2* rep_sd, col = 'green') +
+          geom_vline(xintercept = -2* rep_sd, col = 'green') +
+          geom_vline(xintercept = 2* comp_sd, col = 'blue') +
+          geom_vline(xintercept = -2* comp_sd, col = 'blue')
+      })
+      
+      output$stat_info_text = renderText({
+        rep_sd = dataset_list[['rep_sd']] 
+        
+        df_sig_up = df_stat %>% 
+          filter(BH < 0.05 & mean > rep_sd*2)
+        dim(df_sig_up)
+        df_sig_down = df_stat %>% 
+          filter(BH < 0.05 & mean < -rep_sd*2)
+        dim(df_sig_down)
+        df_sig = rbind(df_sig_up,df_sig_down)
+        
+        cat(paste0('Total \t\t: ',dim(df_stat)[1],'\n',
+                   'Significant \t: ',dim(df_sig)[1],'\n',
+                   'Up \t\t: ',dim(df_sig_up)[1],'\n',
+                   'Down \t\t: ',dim(df_sig_down)[1],'\n'
+                   ))
+      })
+    })
+      #output$stat_data_table = renderDataTable(df_stat)
+      df_stat
+  })
+  
+  
+  # observerEvent(input$save_dataset,{
+  #   
+  #   print(paste('saveRDS :',save_dataset_list_path()))
+  #   saveRDS(values$dataset_list,save_dataset_list_path())
+  # })
+  #output$stat_data_table = renderDataTable(stat_data())
+  
+  
+  
+  # output$fdr_plot = renderPlot({
+  #   print('fdr_plot')
+  #   
+  #   
+  #   
+  #   dataset_list = values$dataset_list
+  #   df = dataset_list[['stat']]
+  #   hist_data = hist(as.numeric(df$p.value),breaks=100,plot=FALSE)
+  #   print(hist_data)
+  #   top_5 = (mean(hist_data$counts[(length(hist_data$counts)*0.8):length(hist_data$counts)]))
+  #   top_5
+  #   #print(str(hist_data$counts))
+  #   #print(top_5)
+  #   count = 0.05*length(hist_data$counts)
+  #   count
+  #   p_values = df$p.value
+  #   p_values = p_values[!is.na(p_values)]
+  #   sig_p_values = p_values[p_values < 0.05]
+  #   t_number = length(sig_p_values)
+  #   t_number
+  #   #print(count)
+  #   #print(top_5)
+  #   fdr = round((top_5*count)/t_number*100,digits=2)
+  #   fdr
+  #   #print(paste('FDR = ',top_5,'*',count,'/',t_number,'*100 = ',fdr,"%"))
+  #   df = dataset_list[['stat']]
+  #   dim(df)
+  #   ggplot(df) + 
+  #     geom_histogram(aes(p.value),binwidth = 0.01) +
+  #     geom_hline(yintercept = top_5, col = 'green') +
+  #     geom_vline(xintercept = 0.05, col = 'red') + 
+  #     geom_text(aes(x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, label = paste0('FDR = ',fdr)), size = 5)
+  #   
+  #   
+  # })
+  # 
+  # output$volcano_plot = renderPlot({
+  #   print('volcano_plot')
+  #   dataset_list = values$dataset_list
+  #   #saveRDS(dataset_list,'temp/dataset_list.rds')
+  #   #dataset_list = readRDS('temp/dataset_list.rds')
+  #   names(dataset_list)
+  #   df = dataset_list[['stat']]
+  #   dim(df)
+  #  
+  #   dim(df)
+  #   ggplot(df) + 
+  #     geom_point(aes(x = mean,y = -log10(BH)), size = 0.5) + 
+  #     geom_hline(yintercept = -log10(0.05), col = 'red') +
+  #     geom_vline(xintercept = 2* dataset_list[['rep_df']], col = 'green') +
+  #     geom_vline(xintercept = -2* dataset_list[['rep_df']], col = 'green') +
+  #     geom_vline(xintercept = 2* dataset_list[['comp_df']], col = 'blue') +
+  #     geom_vline(xintercept = -2* dataset_list[['comp_df']], col = 'blue')
+  #   
+  # })
+  # filedata <- reactive({
+  #   inpath <- input$my_file_path
+  #   read.csv(inpath)
+  # })
+  
+  output$filetable <- renderTable({
+    filedata()
+  })
+  
+  
   #proteinGroups
 
+})

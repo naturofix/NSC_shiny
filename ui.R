@@ -8,7 +8,7 @@ shinyUI(fluidPage(
   titlePanel("topGO String Viewer"),
     
   fluidRow(
-    
+    actionButton('debug_button','debug'),
     
     
     column(4,uiOutput('select_sample_ui')),
@@ -16,6 +16,7 @@ shinyUI(fluidPage(
     
     column(2,
            radioButtons('save_plot','Save Plots',c(T,F),selected = T, inline = F)),
+    column(4,textInput('taxonomy','Taxonomy','9606')),
     #column(4, verbatimTextOutput('data_info_print')
            #verbatimTextOutput('path_list_print')
            #),
@@ -23,10 +24,240 @@ shinyUI(fluidPage(
     column(12,tabsetPanel(selected = 'Source',
                 tabPanel('Test',textOutput('result')),
                 
-                #### SOURCE ####
-                tabPanel('Upload',tabsetPanel(
-                    tabPanel('MaxQuant')
-                         )),
+                #### UPLOAD ####
+                tabPanel('Upload',
+                         column(4,uiOutput('upload_dataset_ui')),
+                         column(4,uiOutput('dataset_select_ui')),
+                         column(2,radioButtons('show_dataset','Show Table',c(F,T))),
+                         column(2,actionButton('save_dataset', "Save")),
+                         column(12,
+                                #tags$h3("Selected Dataset"),
+                                dataTableOutput('dataset_table')
+                         ),
+                    tabsetPanel(selected = '',
+                                
+                    #### _Upload ####
+                    tabPanel('Upload',
+                             
+                             
+                             #headerPanel("CSV Viewer"),
+                             #sidebarPanel(
+                               #textInput("my_file_path", label = "Full path to my file", value = file.choose()),
+                             #),
+                             #mainPanel(
+                               #tableOutput("filetable"),
+                             #),
+                             
+                             column(6,uiOutput('reload_file_ui')),
+                             #actionButton("file_upload", "Upload File"),
+                             column(6,radioButtons("show_table", "show table",c(F,T),inline = T)),
+                         
+                            
+                             #radioButtons('reload_file','Reload File',c("False","True"),inline = T),
+                             #radioButtons('upload_data_type','Data Type',c('MaxQuant','Other'),inline = T),
+                             
+                             #conditionalPanel(condition = "input.reload_file == 'True'",
+                                              column(12,uiOutput('file_path_ui')),
+                                #textInput("my_file_path", label = "Full path to my file", value = file.choose()),
+                                              
+                               #radioButtons('upload_data_type','Data Type',c('MaxQuant','Other'),inline = T),
+                               #shinyFilesButton('files', label='File select', title='Please select a file', multiple=FALSE),
+                               
+                               #### __MaxQuant ####
+                               #conditionalPanel(condition = "input.upload_data_type == 'MaxQuant'",
+                                                #choose.dir(getwd(), "Choose a suitable folder")
+                                                #shinyDirButton("upload_dir", "Choose MaxQuant txt directory", "Upload",T),
+                                                #verbatimTextOutput("upload_dir_text"), br()
+                                                
+                                                #shinyDirButton('/', "Chose directory", "Upload")
+                                                # column(12,fileInput("mq_file", "Choose MaxQuant txt folder",
+                                                #                     multiple = FALSE,
+                                                #                     accept = c("text/csv",
+                                                #                                "text/comma-separated-values,text/plain",
+                                                #                                ".csv")))
+                                                
+                               #                 ),
+                               
+                               #### __Other ####
+                               #conditionalPanel(condition = "input.upload_data_type == 'Other'",
+                              #                  shinyFilesButton('upload_file', label='File select', title='Please select a file', multiple=FALSE),
+                               #                 verbatimTextOutput("upload_file_text"), br()
+                                          
+                                                
+                                
+                               #),
+                             # ___Input: Checkbox if file has header ----
+                             column(3,checkboxInput("header", "Header", TRUE)),
+                             
+                             # ___Input: Select separator ----
+                             column(3,radioButtons("sep", "Separator",
+                                          choices = c(Comma = ",",
+                                                      Semicolon = ";",
+                                                      Tab = "\t"),
+                                          selected = "\t")),
+                             
+                             # ___Input: Select quotes ----
+                             column(3,radioButtons("quote", "Quote",
+                                          choices = c(None = "",
+                                                      "Double Quote" = '"',
+                                                      "Single Quote" = "'"),
+                                          selected = '"')),
+                             
+                             # ___Horizontal line ----
+                             #tags$hr(),
+                             
+                             # ___Input: Select number of rows to display ----
+                           
+                             #),
+                             
+                            # textOutput('upload_file'),
+                            column(12,
+                            textOutput('original_data_detail_text'),
+                             dataTableOutput('original_data')),
+                    
+                            #conditionalPanel(condition = "input.show_table == 'True'",dataTableOutput('original_data')),
+                            
+                            column(6,uiOutput('upload_data_type_ui')),
+                            column(6,conditionalPanel(condition = "input.upload_data_type == 'MaxQuant'",
+                                                      uiOutput('mq_type_ui')
+                                                      
+                            )), 
+                           
+
+                           #column(6,textInput('experiment_name','Experiment_Name')),
+                           #column(12,uiOutput('experiment_path_ui')),
+                           #column(6,textInput('experiment_code','Experiment Code')),
+                           column(12),
+                           column(6,uiOutput('experiment_name_ui')),
+                           
+                           column(6,uiOutput('experiment_code_ui')),
+                           
+                           #column(12,textInput('experiment_description','Experiment Description')),
+                           column(12,uiOutput('experiment_description_ui'),
+                                  textOutput('rds_path_text')),
+                           
+                           
+                           column(4,uiOutput('id_column_1_ui'),
+                                  textOutput('col1_len')),
+                           column(4,uiOutput('id_column_2_ui'),
+                                  textOutput('col2_len')),
+                           column(4,uiOutput('id_column_3_ui'),
+                                  textOutput('col3_len')),
+                           #column(3,uiOutput('stat_id_column_ui')),
+                           column(12),
+                           
+                           # conditionalPanel(condition = "input.upload_data_type == 'Other'",
+                           #                  column(3,uiOutput('condition_1_name_ui'),
+                           #                         uiOutput('condition_1_ui')),
+                           #                  column(3,uiOutput('condition_2_name_ui'),
+                           #                         uiOutput('condition_2_ui')),
+                           #                  column(3,uiOutput('condition_3_name_ui'),
+                           #                         uiOutput('condition_3_ui')),
+                           #                  column(3,uiOutput('condition_4_name_ui'),
+                           #                         uiOutput('condition_4_ui'))
+                           # ),
+                           
+                           conditionalPanel(condition = "input.mq_type == 'LFQ'",
+                             column(3,uiOutput('condition_1_name_ui'),
+                                    uiOutput('condition_1_ui')),
+                             column(3,uiOutput('condition_2_name_ui'),
+                                    uiOutput('condition_2_ui')),
+                             column(3,uiOutput('condition_3_name_ui'),
+                                    uiOutput('condition_3_ui')),
+                             column(3,uiOutput('condition_4_name_ui'),
+                                    uiOutput('condition_4_ui'))
+                           ),
+                          conditionalPanel(condition = "input.mq_type == 'SILAC'",
+                                   column(4,uiOutput('silac_comp_ui'),
+                                          uiOutput('silac_comp_rev_ui')),
+                                
+                                   column(4,uiOutput('silac_rep_ui'),
+                                          uiOutput('silac_rep_rev_ui')),
+                                   column(4,uiOutput('silac_incorp_ui'))
+                          ),
+                           #column(12,uiOutput('save_experiment_ui')),
+                           column(12,actionButton("save_upload", "Save")),
+                           column(12,dataTableOutput('experiment_df'))
+                         ),
+                    ###_ID_mapping ####
+                    tabPanel('ID mapping',
+                             tabsetPanel(
+                               
+                               
+                               tabPanel('Select id column',
+                                         uiOutput('select_mart_id'),
+                                         textOutput('mart_percentage_matched'),
+                                         dataTableOutput('mart_expression_df')
+                               ),
+                               
+                               tabPanel('Add BioMart Columns',
+                                              
+                               #column(5,selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1]),
+                               column(6,
+                               uiOutput('select_mart_ui'),
+                               uiOutput('list_mart_ui'),
+                               uiOutput('mart_column_ui')),
+                               column(6,uiOutput('filter_ui'),
+                               uiOutput('attributes_ui')),
+                               column(12,
+                               uiOutput('mart_slider'),
+                               tags$h5('Mapping is first done of a subset of ids test biomart, click Run to do full mapping, it may take up to an hour'),
+                               
+                               actionButton('run_biomart','Run'),
+                               dataTableOutput('bm_df'))
+                              #)
+                              ),
+                            tabPanel("Separate ID's",
+                                             column(5,uiOutput('sep_id_ui')),
+                                             column(5,textInput('col_sep','id separator','_')),
+                                             column(2,actionButton('run_sep','Run')),
+                                             column(12,dataTableOutput('separate_columns'))
+                                            
+                            )
+                                      
+                                      
+                             #)
+                             )
+                    ),
+                    ###_Numbers####     
+                    tabPanel('Numbers',
+                             plotOutput('sample_numbers')
+                             ),
+                    ###_Ratio####
+                    tabPanel('Ratio',
+                             #radioButtons('run_ratios','Run Ratios',c(F,T),inline = T),
+                             actionButton("run_ratios", "Run Ratios"),
+                             
+                             #dataTableOutput('expression_data'),
+                             
+                             #textOutput('dataset_list_print'),
+                             #textOutput('dataset_type_print'),
+                             column(6,plotOutput('density_plot')),
+                             column(6,plotOutput('sd_boxplot')),
+                             dataTableOutput('expression_data')
+                             
+                             #radioButtons('save_ratios','Save Ratios',c(F,T),inline = T)
+                             
+                                
+                                ),
+                    ###_Stat####
+                    tabPanel('Stat',
+                             radioButtons('run_t_test','Run Stats',c(F,T)),
+                             actionButton('run_stat','Run'),
+                             plotOutput('fdr_plot'),
+                             plotOutput('volcano_plot'),
+                             textOutput('stat_info_text'),
+                             dataTableOutput('stat_data_table')
+                            
+                             
+                             )
+                    
+                    
+                    
+                    
+                    )
+                  
+                    ),
                 
                 tabPanel('Source', 
                          shinyDirButton('folder', 'Folder select', 'Please select a folder'),
@@ -35,6 +266,7 @@ shinyUI(fluidPage(
                          verbatimTextOutput('wd_path_print'),
                          #verbatimTextOutput('data_file_list'),
                          tableOutput('data_df_table')
+                         
                          #actionButton('add_data','Add Data')
                          ),
                 
@@ -85,7 +317,7 @@ shinyUI(fluidPage(
                          column(12,
                     ### _list ####
                          conditionalPanel(condition = "input.data_type_radio == 'list'",
-                                          radioButtons('list_type','List',choices =  c('None','Saved','Prefix','File'),selected = 'Saved',inline = T),
+                                          radioButtons('list_type','List',choices =  c('None','Saved','Prefix','File'),selected = 'None',inline = T),
                                           uiOutput('select_gene_file_prefix_ui'),
                                           uiOutput('select_gene_file_prefix_ui_run'),
                                           uiOutput('select_gene_file_ui_2'),
@@ -192,7 +424,7 @@ shinyUI(fluidPage(
                                                           #verbatimTextOutput('enrichment_data_path_print')
                                                           ), 
                                          uiOutput('term_list'),
-                                         radioButtons('fix_term','Fixed Term',choices = c('y','n'),selected='n',inline = T),
+                                         radioButtons('fix_term','Fixed Term',choices = c(T,F),selected=F,inline = T),
                                          
                                          verbatimTextOutput('enrichment_data_path_print')
                                          
@@ -280,15 +512,26 @@ shinyUI(fluidPage(
                          #dataTableOutput('gene_list_df_table'),
                          #textOutput('gene_list_print')
                          
-                         )),
+                         ),
+                    column(12,plotOutput('selected_heatmap_base'))
+                    
+                    ),
              
                     ##### HEATMAPS #####
                             tabPanel('Heatmaps',tabsetPanel(
                               tabPanel('mean',
+                                    radioButtons('heatmap_sig',"Show only significant data",c(T,F)),
+                                    numericInput('heatmap_ratio_factor','Ratio Factor',10),
+                                    textInput('heatmap_ylab','y label', 'Gene Symbols'),
+                                    textInput('heatmap_xlab','x label', 'Experiments'),
+                                    
                                      plotOutput('selected_heatmap')
+                                    #plotOutput('selected_heatmap_ggplot')
+                                    
                                      ),
                               tabPanel('Full',
                                     #uiOutput('select_sample_single_ui_2'),
+                                      uiOutput('heatmap_sample_select'),
                                      plotOutput('full_selected_heatmap')
                               )
                                      
@@ -299,19 +542,19 @@ shinyUI(fluidPage(
                             tabPanel('BoxPlots', id = 'boxplot',
                                      tabsetPanel(
                                        tabPanel('ggplot', 
-                                                tabsetPanel(selected = 'Gene',
-                                                  tabPanel('All', plotOutput('boxplot_gplot')),
+                                                  
                                                 
-                                                  tabPanel('Gene',
+                                                  
                                                            #column(6,sliderInput('boxplot_range','Boxplot Range',min = 0,max = 10,sep = 1, value = c(0:3))),
                                                            column(7,#uiOutput('boxplot_range_ui'),
                                                                   uiOutput('boxplot_gene_select')),
                                                            column(2,radioButtons('boxplot_subset','Sub',c('select','all'))),
                                                            column(3,selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin'),c('boxplot','dotplot'), multiple = T)),
                                                            column(12,
-                                                           column(4,radioButtons('re_run_boxplots','Re Run Boxplots',c(T,F),selected = F)),
-                                                           column(4,radioButtons('boxplot_sd_lim','sd cutoff',c(T,F))),
-                                                           column(4,radioButtons('boxplot_p_values','include p value',c(T,F)))
+                                                           column(3,radioButtons('re_run_boxplots','Re Run Boxplots',c(T,F),selected = F)),
+                                                           column(3,radioButtons('boxplot_sd_lim','sd cutoff',c(T,F))),
+                                                           column(3,radioButtons('boxplot_p_values','include p value',c(T,F))),
+                                                           column(3,radioButtons('boxplot_facets','Add Facets',c(T,F)))
                                                            ),
                                                            #selectInput('boxplot_type_select','Select Plot Type',c('boxplot','dotplot','violin')),
                                                            column(12,
@@ -323,13 +566,16 @@ shinyUI(fluidPage(
                                                            column(2,numericInput('boxplot_p_value_size','p value size',value = 6))
                                                            
                                                            ),
-                                                           
+                                                tabsetPanel(selected = 'Gene',
+                                                            
                                                            #actionButton('gene_boxplot','Generate Plots'),
+                                                  tabPanel('Gene',
                                                            column(6,uiOutput('g_boxplots_plots')),
                                                            column(6,uiOutput('g_boxplots_plots_ts'))),
                                                   tabPanel('Sample',
                                                            actionButton('sample_boxplot','Generate Plots'),
-                                                           uiOutput('g_boxplots_plots_sample'))
+                                                           uiOutput('g_boxplots_plots_sample')),
+                                                  tabPanel('All', plotOutput('boxplot_gplot'))
                                                   #tabPanel('time series',
                                                   #         plotOutput('timeseries_boxplot'),
                                                   #         actionButton('gene_boxplot_ts','Generate Plots')
@@ -391,45 +637,204 @@ shinyUI(fluidPage(
                       )))),
              
     ##### ENRICHMENT #####         
-     tabPanel('Enrichment',
-       column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
-       column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
-       column(12,
-       tabsetPanel(
-       tabPanel('Heatmap',
-                actionButton('generate_enrichment_heatmap','Generate Heatmap'),
-                selectInput('eh_fdr','fdr',c(0.05,0.01,0.001,0.0001,0.00001,0.000001),selected = 0.0001),
-                uiOutput('enrichement_data_select_ui'), #input$enrichment_data_select
-                #verbatimTextOutput('enrichment_list_print')
-                plotOutput('enrichment_heatmap')
-                ),
-       tabPanel("Full",
-                #c('Component', 'Function','Process', 'KEGG','Pfam','InterPro', 'Tissue','Disease')
-                tags$h3('Component'),
-                dataTableOutput('sn_en_table_Component'),
-                tags$h3('Function'),
-                dataTableOutput('sn_en_table_Function'),
-                tags$h3('Process'),
-                dataTableOutput('sn_en_table_Process'),
-                tags$h3('KEGG'),
-                dataTableOutput('sn_en_table_KEGG'),
-                tags$h3('InterPro'),
-                dataTableOutput('sn_en_table_InterPro'),
-                tags$h3('Tissue'),
-                dataTableOutput('sn_en_table_Tissue'),
-                tags$h3('Disease'),
-                dataTableOutput('sn_en_table_Disease')
-                ),
-       tabPanel('Select',
-              column(4,selectInput('select_enrichment',"select_enrichment",string_db_enrichment_list)),
-              #column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
-              #column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
-              column(12,
-              #textOutput('sn_en_print'),
-              #dataTableOutput('df_gene_list'),
-              dataTableOutput('sn_en_table')
-              ))))),
+     # tabPanel('Enrichment',
+     #   column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
+     #   column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
+     #   column(12,
+     #   tabsetPanel(
+     #   tabPanel('Heatmap',
+     #            actionButton('generate_enrichment_heatmap','Generate Heatmap'),
+     #            selectInput('eh_fdr','fdr',c(0.05,0.01,0.001,0.0001,0.00001,0.000001),selected = 0.0001),
+     #            uiOutput('enrichement_data_select_ui'), #input$enrichment_data_select
+     #            #verbatimTextOutput('enrichment_list_print')
+     #            plotOutput('enrichment_heatmap')
+     #            ),
+     #   tabPanel("Full",
+     #            #c('Component', 'Function','Process', 'KEGG','Pfam','InterPro', 'Tissue','Disease')
+     #            tags$h3('Component'),
+     #            dataTableOutput('sn_en_table_Component'),
+     #            tags$h3('Function'),
+     #            dataTableOutput('sn_en_table_Function'),
+     #            tags$h3('Process'),
+     #            dataTableOutput('sn_en_table_Process'),
+     #            tags$h3('KEGG'),
+     #            dataTableOutput('sn_en_table_KEGG'),
+     #            tags$h3('InterPro'),
+     #            dataTableOutput('sn_en_table_InterPro'),
+     #            tags$h3('Tissue'),
+     #            dataTableOutput('sn_en_table_Tissue'),
+     #            tags$h3('Disease'),
+     #            dataTableOutput('sn_en_table_Disease')
+     #            ),
+     #   tabPanel('Select',
+     #          column(4,selectInput('select_enrichment',"select_enrichment",string_db_enrichment_list)),
+     #          #column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
+     #          #column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
+     #          column(12,
+     #          #textOutput('sn_en_print'),
+     #          #dataTableOutput('df_gene_list'),
+     #          dataTableOutput('sn_en_table')
+     #          ))))),
+    tabPanel('Enrichment',
+             column(9,radioButtons('enrichment_select','Enrichment',choices = c('topGO','STRINGdb','AnimalTFDB'),selected = 'topGO',inline = 'T'),
+                    #run_enrich_test
+                    #plot_values
+                    
+                    column(3,uiOutput('select_enrichment_stat_ui')),
+                    column(3,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
+                    column(3,selectInput('background','Select backgroundV', c('all_mapped','sig_mapped', 'NULL')))
+             ),
+             column(3,
+                    radioButtons('enrich_re_run', 'Enrichment re-run', c(F,T),inline = T),
+                    radioButtons('background_re_run', 'Background re-run', c(F,T),inline = T)
+             ),
+ 
              
+             column(12,            
+                    textOutput('backgroundV_length'),
+                    
+                    #box(verbatimTextOutput('en_console'),width = 12,height = 10),
+                    #### _SELECT ####
+                    tabsetPanel(selected = 'Select',
+                                #tabPanel('Heatmap',
+                                #          actionButton('generate_enrichment_heatmap','Generate Heatmap'),
+                                #          selectInput('eh_fdr','fdr',c(0.05,0.01,0.001,0.0001,0.00001,0.000001),selected = 0.0001),
+                                #          uiOutput('enrichement_data_select_ui'), #input$enrichment_data_select
+                                #          #verbatimTextOutput('enrichment_list_print')
+                                #          plotOutput('enrichment_heatmap')
+                                #          ),
+                                #### __RUN ####
+                                tabPanel("Run",
+                                         
+                                         #c('Component', 'Function','Process', 'KEGG','Pfam','InterPro', 'Tissue','Disease')
+                                         tags$h5('Be patient this takes some time ... '),
+                                         #tags$h5('background length'),
+                                         tags$h3('Component'),
+                                         dataTableOutput('sn_en_table_Component'),
+                                         tags$h3('Function'),
+                                         dataTableOutput('sn_en_table_Function'),
+                                         tags$h3('Process'),
+                                         dataTableOutput('sn_en_table_Process'),
+                                         tags$h3('KEGG'),
+                                         dataTableOutput('sn_en_table_KEGG'),
+                                         tags$h3('Pfam'),
+                                         dataTableOutput('sn_en_table_Pfam'),
+                                         tags$h3('InterPro'),
+                                         dataTableOutput('sn_en_table_InterPro'),
+                                         tags$h3('Tissue'),
+                                         dataTableOutput('sn_en_table_Tissue'),
+                                         tags$h3('Disease'),
+                                         dataTableOutput('sn_en_table_Disease')
+                                ),
+                                #### __Select ####
+                                tabPanel('Select',
+                                         column(4,selectInput('select_enrichment',"select_enrichment",string_db_enrichment_list,selected = string_db_enrichment_list[1],multiple = T)),
+                                         column(4,uiOutput('sn_term_select_ui') 
+                                         ),
+                                         column(4, actionButton('store_button_3', 'Store Gene List')),
+                                         #selectInput('eh_fdr','fdr',c(1,0.1,0.05,0.01,0.001,0.0001,0.00001,0.000001),selected = 0.01),
+                                         numericInput('eh_fdr','fdr', value = 0.01),
+                                         
+                                         
+                                         #column(4,selectInput('select_sn_MT','select methodMT',string_db_methodMT_list)),
+                                         #column(4,selectInput('iea','Electronic Inferred Annotations',c(FALSE,TRUE))),
+                                         column(12,
+                                                tabsetPanel(selected = "Combined",
+                                                  #### ___Singe ####
+                                                  tabPanel('Single', value = 'single',
+                                                           textOutput('venn_int_text_print'),
+                                                           tabsetPanel(
+                                                             tabPanel('Table',
+                                                                      #textOutput('sn_en_print'),
+                                                                      #dataTableOutput('df_gene_list'),
+                                                                      dataTableOutput('sn_en_table')
+                                                             ),
+                                                             tabPanel('Plot',
+                                                                      column(4,
+                                                                             selectInput('p_range','p value cutoff', c(0.001,0.01,0.05,1), 0.05),
+                                                                             uiOutput('sn_term_select_plot_ui')
+                                                                             
+                                                                      ),
+                                                                      column(8,tabsetPanel(
+                                                                        tabPanel('Single Barplot',
+                                                                                 
+                                                                                 plotOutput('sub_enrichment_plot')
+                                                                        ),
+                                                                        tabPanel('Heirarchy',
+                                                                                 plotOutput('topGO_heirarchyPlot')
+                                                                                 
+                                                                        )
+                                                                      )))
+                                                             
+                                                           )
+                                                  ), ## Single
+                                                  #### ___Combined ####
+                                                  tabPanel('Combined', value = 'Combined',
+                                                           column(12,uiOutput('enrich_combined_slider')),
+                                                           column(4,                    
+                                                                  radioButtons('run_enrich_test', 'Run Enrichment', c(T,F),inline = T),
+
+                                                                  radioButtons('sub_venn','',c('basic','all','combined'), inline = T),
+                                                                  uiOutput('enrichement_data_select_ui'), #input$enrichment_data_select
+                                                                  textInput('enrichment_grep','Search (separated by ;)',value = ''),
+                                                                  radioButtons('combined_order','Order',c('Alphabetical','p value'), selected = 'p value'),
+                                                                  uiOutput('sn_term_select_combined_ui'),
+                                                                  radioButtons('fixed_term_combined','Fixed Term',choices = c(F,T),selected=F,inline = T),
+                                                                  column(6,numericInput('combined_height', 'height', 0.9)),
+                                                                  column(6,numericInput('combined_width', 'width', 0.9)),
+                                                                  column(6,numericInput('text_wrap', 'wrap', 30)),
+                                                                  column(6,numericInput('border','border',2)),
+                                                                  column(6,numericInput('t_size','text size',15))
+                                                           ),
+                                                           
+                                                           column(8, 
+                                                                  tabsetPanel(
+                                                                    tabPanel('Table',
+
+                                                                             dataTableOutput('combined_enrichment_table')
+                                                                    ),
+                                                                    tabPanel('Plot',
+                                                                             
+                                                                             #uiOutput('enrich_combined_slider'),
+                                                                             tabsetPanel(
+                                                                               tabPanel('Barplot',
+                                                                                        selectInput('plot_values','Select plot_values', c('p_log','num')),
+                                                                                        
+                                                                                        plotOutput('combined_enrichment_plot'), height = 1200, width = 600),
+                                                                               tabPanel('Heatmap', 
+                                                                                        plotOutput('combined_heatmap_plot')
+                                                                               ),
+                                                                               tabPanel('Hierarchy',
+                                                                                        column(3,numericInput('firstSigNodes','firstSigNodes', min = 0,value = 0)),
+                                                                                        column(3,numericInput('putCL','putCL',min = 0,value = 0)),
+                                                                                        column(3,radioButtons('putWN','putWN',c(T,F),inline = T)),
+                                                                                        column(3,radioButtons('sigForAll','sigForAll',c(T,F),inline = T)),
+                                                                                        
+                                                                                        column(3,selectInput('useInfo','useInfo',c("none", "pval", "counts", "def", "np", "all"), selected = 'all',multiple = F)),
+                                                                                        column(3,radioButtons('heir_sig','Only Significant scores',c(F,T),inline = F)),
+                                                                                        column(3,radioButtons('heir_re_run','run',c(T,F), selected = F, inline = F)),
+                                                                                        numericInput('heir_w','width',400,step = 100),
+                                                                                        numericInput('heir_cex','cex',0.1,step = 0.05),
+                                                                                        uiOutput('heir_select_enrichment'),
+                                                                                        imageOutput('sig_topGO_heirarchyPlot')
+                                                                                        
+                                                                                        
+                                                                               ),
+                                                                               ####___ VENN ####
+                                                                               tabPanel('Venn',
+                                                                                        radioButtons('sub_venn_select','set', c('all','subset')),
+                                                                                        plotOutput('sub_venn_plot'))
+                                                                               
+                                                                             ))
+                                                                  )
+                                                           )
+                                                  ) ## combined
+                                                )))
+                                
+                                
+                                
+                    ))),
+    
              
     tabPanel('Tools',tabsetPanel(
       tabPanel('logratio2foldchange',
