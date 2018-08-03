@@ -30,98 +30,55 @@ shinyUI(fluidPage(
                          column(4,uiOutput('dataset_select_ui')),
                          column(2,radioButtons('show_dataset','Show Table',c(F,T))),
                          column(2,actionButton('save_dataset', "Save")),
-                         column(12,
-                                #tags$h3("Selected Dataset"),
-                                dataTableOutput('dataset_table')
-                         ),
+                         column(12,dataTableOutput('dataset_table')),
+                    
                     tabsetPanel(selected = '',
                                 
                     #### _Upload ####
                     tabPanel('Upload',
-                             
-                             
-                             #headerPanel("CSV Viewer"),
-                             #sidebarPanel(
-                               #textInput("my_file_path", label = "Full path to my file", value = file.choose()),
-                             #),
-                             #mainPanel(
-                               #tableOutput("filetable"),
-                             #),
-                             
-                             column(6,uiOutput('reload_file_ui')),
-                             #actionButton("file_upload", "Upload File"),
-                             column(6,radioButtons("show_table", "show table",c(F,T),inline = T)),
-                         
-                            
-                             #radioButtons('reload_file','Reload File',c("False","True"),inline = T),
-                             #radioButtons('upload_data_type','Data Type',c('MaxQuant','Other'),inline = T),
-                             
-                             #conditionalPanel(condition = "input.reload_file == 'True'",
-                                              column(12,uiOutput('file_path_ui')),
-                                #textInput("my_file_path", label = "Full path to my file", value = file.choose()),
-                                              
-                               #radioButtons('upload_data_type','Data Type',c('MaxQuant','Other'),inline = T),
-                               #shinyFilesButton('files', label='File select', title='Please select a file', multiple=FALSE),
-                               
-                               #### __MaxQuant ####
-                               #conditionalPanel(condition = "input.upload_data_type == 'MaxQuant'",
-                                                #choose.dir(getwd(), "Choose a suitable folder")
-                                                #shinyDirButton("upload_dir", "Choose MaxQuant txt directory", "Upload",T),
-                                                #verbatimTextOutput("upload_dir_text"), br()
-                                                
-                                                #shinyDirButton('/', "Chose directory", "Upload")
-                                                # column(12,fileInput("mq_file", "Choose MaxQuant txt folder",
-                                                #                     multiple = FALSE,
-                                                #                     accept = c("text/csv",
-                                                #                                "text/comma-separated-values,text/plain",
-                                                #                                ".csv")))
-                                                
-                               #                 ),
-                               
-                               #### __Other ####
-                               #conditionalPanel(condition = "input.upload_data_type == 'Other'",
-                              #                  shinyFilesButton('upload_file', label='File select', title='Please select a file', multiple=FALSE),
-                               #                 verbatimTextOutput("upload_file_text"), br()
-                                          
-                                                
-                                
-                               #),
+
+                            column(12,uiOutput('file_path_ui')),
+                            column(12,tags$hr()),
+                            tags$h5('File upload properties'),
+            
                              # ___Input: Checkbox if file has header ----
-                             column(3,checkboxInput("header", "Header", TRUE)),
-                             
+                             column(2,uiOutput('file_header_ui')),
+                            column(5,uiOutput('file_sep_ui')),
+                            column(5,uiOutput('file_quote_ui')),
+                            column(12,tags$hr()),
                              # ___Input: Select separator ----
-                             column(3,radioButtons("sep", "Separator",
-                                          choices = c(Comma = ",",
-                                                      Semicolon = ";",
-                                                      Tab = "\t"),
-                                          selected = "\t")),
+                             # column(5,radioButtons("sep", "Separator",
+                             #              choices = c(Comma = ",",
+                             #                          Semicolon = ";",
+                             #                          Tab = "\t"),
+                             #              selected = "\t",inline = T)),
+                             # 
+                             # # ___Input: Select quotes ----
+                             # column(5,radioButtons("quote", "Quote",
+                             #              choices = c(None = "",
+                             #                          "Double Quote" = '"',
+                             #                          "Single Quote" = "'"),
+                             #              selected = '"',inline = T)),
                              
-                             # ___Input: Select quotes ----
-                             column(3,radioButtons("quote", "Quote",
-                                          choices = c(None = "",
-                                                      "Double Quote" = '"',
-                                                      "Single Quote" = "'"),
-                                          selected = '"')),
-                             
-                             # ___Horizontal line ----
-                             #tags$hr(),
-                             
-                             # ___Input: Select number of rows to display ----
-                           
-                             #),
-                             
-                            # textOutput('upload_file'),
-                            column(12,
-                            textOutput('original_data_detail_text'),
-                             dataTableOutput('original_data')),
-                    
+                            
+                            column(12),
+                            column(12,uiOutput('reload_file_ui')),
+                            column(4,uiOutput('show_upload_table_ui')),
+                  
+                            column(4,textOutput('original_data_detail_text')),
+                            
+                            column(12,dataTableOutput('original_data')),
+                            column(12,tags$hr()),
                             #conditionalPanel(condition = "input.show_table == 'True'",dataTableOutput('original_data')),
                             
+                            column(6,uiOutput('upload_data_origin_ui')),
                             column(6,uiOutput('upload_data_type_ui')),
-                            column(6,conditionalPanel(condition = "input.upload_data_type == 'MaxQuant'",
-                                                      uiOutput('mq_type_ui')
-                                                      
-                            )), 
+                            column(12,tags$hr()),
+                            column(4,uiOutput('proteome_type_ui')),
+                            column(4,uiOutput('maxquant_ui')),
+                            column(4,uiOutput('maxquant_type_ui')),
+                            column(12,tags$hr()),
+                         
                            
 
                            #column(6,textInput('experiment_name','Experiment_Name')),
@@ -133,9 +90,8 @@ shinyUI(fluidPage(
                            column(6,uiOutput('experiment_code_ui')),
                            
                            #column(12,textInput('experiment_description','Experiment Description')),
-                           column(12,uiOutput('experiment_description_ui'),
-                                  textOutput('rds_path_text')),
-                           
+                           column(12,uiOutput('experiment_description_ui')),
+                           column(12,tags$hr()),
                            
                            column(4,uiOutput('id_column_1_ui'),
                                   textOutput('col1_len')),
@@ -143,7 +99,21 @@ shinyUI(fluidPage(
                                   textOutput('col2_len')),
                            column(4,uiOutput('id_column_3_ui'),
                                   textOutput('col3_len')),
+                           column(12,tags$hr()),
                            #column(3,uiOutput('stat_id_column_ui')),
+                           column(12),
+                           
+                           column(3,uiOutput('condition_1_name_ui')),
+                           column(3,uiOutput('condition_2_name_ui')),
+                           column(3,uiOutput('condition_3_name_ui')),
+                           column(3,uiOutput('condition_4_name_ui')),
+                           column(12),
+                           
+                           column(3,uiOutput('condition_1_columns_ui')),
+                           column(3,uiOutput('condition_2_columns_ui')),
+                           column(3,uiOutput('condition_3_columns_ui')),
+                           column(3,uiOutput('condition_4_columns_ui')),
+                           
                            column(12),
                            
                            # conditionalPanel(condition = "input.upload_data_type == 'Other'",
@@ -157,27 +127,28 @@ shinyUI(fluidPage(
                            #                         uiOutput('condition_4_ui'))
                            # ),
                            
-                           conditionalPanel(condition = "input.mq_type == 'LFQ'",
-                             column(3,uiOutput('condition_1_name_ui'),
-                                    uiOutput('condition_1_ui')),
-                             column(3,uiOutput('condition_2_name_ui'),
-                                    uiOutput('condition_2_ui')),
-                             column(3,uiOutput('condition_3_name_ui'),
-                                    uiOutput('condition_3_ui')),
-                             column(3,uiOutput('condition_4_name_ui'),
-                                    uiOutput('condition_4_ui'))
-                           ),
-                          conditionalPanel(condition = "input.mq_type == 'SILAC'",
-                                   column(4,uiOutput('silac_comp_ui'),
-                                          uiOutput('silac_comp_rev_ui')),
-                                
-                                   column(4,uiOutput('silac_rep_ui'),
-                                          uiOutput('silac_rep_rev_ui')),
-                                   column(4,uiOutput('silac_incorp_ui'))
-                          ),
+                          #  conditionalPanel(condition = "input.mq_type == 'LFQ'",
+                          #    column(3,uiOutput('condition_1_name_ui'),
+                          #           uiOutput('condition_1_ui')),
+                          #    column(3,uiOutput('condition_2_name_ui'),
+                          #           uiOutput('condition_2_ui')),
+                          #    column(3,uiOutput('condition_3_name_ui'),
+                          #           uiOutput('condition_3_ui')),
+                          #    column(3,uiOutput('condition_4_name_ui'),
+                          #           uiOutput('condition_4_ui'))
+                          #  ),
+                          # conditionalPanel(condition = "input.mq_type == 'SILAC'",
+                          #          column(4,uiOutput('silac_comp_ui'),
+                          #                 uiOutput('silac_comp_rev_ui')),
+                          #       
+                          #          column(4,uiOutput('silac_rep_ui'),
+                          #                 uiOutput('silac_rep_rev_ui')),
+                          #          column(4,uiOutput('silac_incorp_ui'))
+                          # ),
                            #column(12,uiOutput('save_experiment_ui')),
-                           column(12,actionButton("save_upload", "Save")),
-                           column(12,dataTableOutput('experiment_df'))
+                          column(12,tags$hr()),
+                           column(12,uiOutput('save_output_ui'))
+                           #column(12,dataTableOutput('experiment_df'))
                          ),
                     ###_ID_mapping ####
                     tabPanel('ID mapping',
@@ -209,7 +180,7 @@ shinyUI(fluidPage(
                               ),
                             tabPanel("Separate ID's",
                                              column(5,uiOutput('sep_id_ui')),
-                                             column(5,textInput('col_sep','id separator','_')),
+                                             column(5,textInput('col_sep','id separator','')),
                                              column(2,actionButton('run_sep','Run')),
                                              column(12,dataTableOutput('separate_columns'))
                                             

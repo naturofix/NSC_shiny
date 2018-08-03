@@ -1,6 +1,6 @@
 library(shiny)
 shinyServer(function(input, output) {
-  
+  #########
   observeEvent(input$debug_button,{
     print('debug')
     browser()
@@ -2671,7 +2671,7 @@ shinyServer(function(input, output) {
                            plot_name = '', 
                            enrich_gene_list = FALSE, 
                            plot_path = '',
-                           datasets = uploaded_datasets,
+                           upload_datasets = uploaded_datasets,
                            upload_save = F)
   
   ##### STRING plots ####
@@ -4479,7 +4479,7 @@ shinyServer(function(input, output) {
 
 
 
-
+####################################################################################################################
 ##### UPLOAD #####
     process_values = reactiveValues(file_upload = 0,
                                     save_upload = 0, 
@@ -4495,21 +4495,60 @@ shinyServer(function(input, output) {
                                     sep_id = 'row_id',
                                     mart_values = 'row_id',
                                     dataset_select = 'expression_data')
+    
     output$upload_dataset_ui = renderUI({
-      datasets = values$datasets
-      selectInput('upload_dataset','Upload Dataset',datasets,selected = '_')
+      datasets = values$upload_datasets
+      selected = values$upload_dataset_selected
+      #observeEvent(input$save_upload,{
+      #  selected = values$dataset_list$experiment_code
+      #  datasets = unique(c(values$dataset_list$experiment_code,datasets))
+      #})
+      selectInput('upload_dataset','Upload Dataset',datasets,selected)
     })
     
     output$dataset_select_ui = renderUI({
-      dataset_list = values$dataset_list
-      if(is.null(names(dataset_list))){
-        withProgress(message = 'Uploading Dataset', {
-          dataset_list = dataset_list()
-        })
+      #dataset_list = values$dataset_list
+      if(input$upload_dataset == '_'){
+        values$dataset_list = list()
+      }else{
+        if(is.null(names(values$dataset_list))){
+          withProgress(message = 'Uploading Dataset', {
+            values$dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
+          })
+        }else{
+          print(names(values$dataset_list))
+          
+          if(values$dataset_list$input$experiment_code != input$upload_dataset){
+            withProgress(message = 'Uploading Dataset', {
+              values$dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
+            })
+          }
+        }
+        values$upload_list$full_path = values$dataset_list$full_path
+        values$upload_list$original_data = values$dataset_list$original_data
+        
+        dataset_list = values$dataset_list
       }
-      names(dataset_list)
-      selectInput('dataset_select','Select Dataset',names(dataset_list),process_values$dataset_select)
+      
+      #names(dataset_list)
+      selectInput('dataset_select','Select Dataset',names(values$dataset_list),process_values$dataset_select)
     })
+    
+    # dataset_list = reactive({
+    #   print('dataset_list')
+    #   if(input$upload_dataset == '_'){
+    #     dataset_list = list()
+    #   }else{
+    #     print(paste("readRDS : ",dataset_list_path()))
+    #     dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
+    #   }
+    #   print(names(dataset_list))
+    #   print('   data_set_list : done')
+    #   #saveRDS(dataset_list,'temp/dataset_list.rds')
+    #   #dataset_list = readRDS('temp/dataset_list.rds')
+    #   values$dataset_list = dataset_list
+    #   dataset_list
+    # })
     
     output$dataset_table = renderDataTable({
       if(input$show_dataset == T){
@@ -4528,109 +4567,637 @@ shinyServer(function(input, output) {
       
     })
     
+
+    
     dataset_list_path = reactive({
       paste0("data/data_list/",input$upload_dataset,"_data_list.rds")
       })
-    save_dataset_list_path = reactive({
-      #dataset_list = values$dataset_list
-      paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
-    })
-    
-    dataset_list = reactive({
-      print('dataset_list')
-      if(input$upload_dataset == '_'){
-        dataset_list = list()
-      }else{
-        print(paste("readRDS : ",dataset_list_path()))
-        dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
-      }
-      print(names(dataset_list))
-      print('   data_set_list : done')
-      #saveRDS(dataset_list,'temp/dataset_list.rds')
-      #dataset_list = readRDS('temp/dataset_list.rds')
-      values$dataset_list = dataset_list
-      dataset_list
-    })
-    
-  ### _upload ####
-    # output$file_path_ui = renderUI({
-    #   test = 'test'
-    #   test
-    #   #if(input$reload_file == 'True'){
-    #     textInput("my_file_path", label = "Full path to my file", value = file.choose(), width = 1200)
-    #   #}else{
-    #   #  textInput("my_file_path", label = "Full path to my file", value = dataset_list()['experiment_path'],width = 1200)
-    #   #}
+    # save_dataset_list_path = reactive({
+    #   #dataset_list = values$dataset_list
+    #   paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
     # })
     
-  output$reload_file_ui = renderUI({
 
-    if(input$upload_dataset == '_'){
-      actionButton('load_file','Load New File')
-    }
-      
-  })
-  output$upload_data_type_ui = renderUI({
-    if(!is.null(values$dataset_list[['original_data']])){
-      if(is.null(values$dataset_list[['input']])){
-        selected = 'Other'
-        
-      }else{
-        if(is.null(values$dataset_list[['input']][['data_type']])){
-          selected = 'Other'
-        }else{
-          selected = values$dataset_list[['input']][['data_type']]
-        }
+    
+  ### _upload ####
+    
+    output$reload_file_ui = renderUI({
+      if(input$upload_dataset == '_'){
+        actionButton('load_file','Load New File')
       }
-      radioButtons('upload_data_type','Data Type',c('Transcriptome','MaxQuant','Other'),selected,inline = T)
-    }
-      
-  })
-  
+    }) # load file action button
+    
+    output$show_upload_table_ui = renderUI({
+      if(!is.null(values$upload_list$original_data)){
+        radioButtons("show_table", "Show Uploaded Data Table",c(F,T),inline = T)
+      }
+    })
+
     observeEvent(input$load_file,{
       path = paste(file.choose())
+      path
       path = gsub(paste0(getwd(),'/'),'',path)
-      values$dataset_list[['full_path']] = path
-    })
-    output$file_path_ui = renderUI({
-      if(!is.null(values$dataset_list[['full_path']])){
-        textInput("my_file_path", label = "Full path to my file", values$dataset_list[['full_path']], width = 1200)
-      }
-    })
-  
-  
-  
-  
-  output$original_data = renderDataTable({
-    df = data.frame(NULL)
-    if(input$upload_dataset == '_'){
-      if(!is.null(values$dataset_list[['full_path']])){
-        
-        df <- read.csv(values$dataset_list[['full_path']],
+      print(path)
+      values$upload_list = list()
+      values$dataset_list = list()
+      values$upload_list[['full_path']] = path
+      withProgress(message = 'read.csv', {
+        df <- read.csv(values$upload_list[['full_path']],
                        header = input$header,
                        sep = input$sep,
                        quote = input$quote)
-      
-        values$dataset_list[['original_data']] = df
-        #values$dataset_list[['input']] = list()
-       df
-      }
-     }else{
-         df = values$dataset_list[['original_data']]
-       }
+      })
+      print(dim(df))
+      values$upload_list[['original_data']] = df
+    }) # get full path from the load fill action button
     
-    if(input$show_table == F){
-       df = data.frame(NULL)
-    }
-    df
+    output$file_path_ui = renderUI({
+      if(!is.null(values$upload_list[['full_path']])){
+        textInput("my_file_path", label = "Full path to my file", values$upload_list[['full_path']], width = 1200)
+      }
     })
+    
+    output$file_header_ui = renderUI({
+        if(is.null(values$dataset_list[['input']])){
+          selected = T
+        }else{
+          if(is.null(values$dataset_list[['input']][['header']])){
+            selected = 'Other'
+          }else{
+            selected = values$dataset_list[['input']][['header']]
+          }
+        }
+      checkboxInput("header", "Header", TRUE)
+      #}
+    })
+    output$file_sep_ui = renderUI({
+
+      if(is.null(values$dataset_list[['input']])){
+        selected = "\t"
+      }else{
+        if(is.null(values$dataset_list[['input']][['sep']])){
+          selected = "\t"
+        }else{
+          selected = values$dataset_list[['input']][['sep']]
+        }
+      }
+      radioButtons("sep", "Separator",
+                   choices = c(Comma = ",",
+                               Semicolon = ";",
+                               Tab = "\t"),
+                   selected,inline = T)
+      #}
+    })
+    output$file_quote_ui = renderUI({
+
+      if(is.null(values$dataset_list[['input']])){
+        selected = ""
+      }else{
+        if(is.null(values$dataset_list[['input']][['quote']])){
+          selected = ""
+        }else{
+          selected = values$dataset_list[['input']][['quote']]
+        }
+      }
+      radioButtons("quote", "Quote",
+                   choices = c(None = "",
+                               "Double Quote" = '"',
+                               "Single Quote" = "'"),
+                   selected,inline = T)
+      #}
+    })
+    
+    #shinyFileChoose(input, 'upload_file', roots=c(wd='.'))
+    #upload_file <- reactive(input$upload_file)
+    
+    original_data = reactive({
+      if(is.null(values$upload_list$original_data)){
+        df = data.frame(NULL)
+      # if(input$upload_dataset == '_'){
+      #   if(!is.null(values$dataset_list[['full_path']])){
+      #     withProgress(message = 'read.csv', {
+      #       df <- read.csv(values$dataset_list[['full_path']],
+      #                      header = input$header,
+      #                      sep = input$sep,
+      #                      quote = input$quote)
+      #     })
+      #     print(dim(df))
+      #     values$dataset_list[['original_data']] = df
+      #     #values$dataset_list[['input']] = list()
+      #     df
+      #   }
+      }else{
+        df = values$upload_list[['original_data']]
+      }
+      df
+    })
+    
+    output$original_data = renderDataTable({
+      if(!is.null(input$show_table)){
+        df = original_data()
+        if(input$show_table == F){
+          df = data.frame(NULL)
+        }
+        df
+      }
+    })
+      
+    
+    output$original_data_detail_text = renderText({
+      if(!is.null(values$upload_list[['original_data']])){
+        paste0('Rows : ',dim(values$upload_list[['original_data']])[1],
+               ' Columns : ',dim(values$upload_list[['original_data']])[2])
+      }
+    })
+    
+    
+    
+    
+
+    output$upload_data_origin_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])){
+        if(is.null(values$dataset_list[['input']])){
+          selected = ''
+        }else{
+          if(is.null(values$dataset_list[['input']][['data_origin']])){
+            selected = 'Other'
+          }else{
+            selected = values$dataset_list[['input']][['data_origin']]
+          }
+        }
+        radioButtons('data_origin','Data Origin',c('Transcriptome','Proteome','Other'),selected,inline = T)
+      }
+      
+  }) # data type
+    
+    output$upload_data_type_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])& !is.null(input$data_origin)){
+        if(is.null(values$dataset_list[['input']])){
+          selected = ''
+        }else{
+          if(is.null(values$dataset_list[['input']][['data_type']])){
+            selected = ''
+          }else{
+            selected = values$dataset_list[['input']][['data_type']]
+          }
+        }
+        radioButtons('data_type','Data Type',c('Expression','Ratio','Timecourse'),selected,inline = T)
+      }
+      
+    })
+    
+    output$proteome_type_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+        if(!is.null(input$data_origin)){
+          if(input$data_origin == 'Proteome'){
   
-  output$original_data_detail_text = renderText({
-    if(!is.null(values$dataset_list[['original_data']])){
-      paste0('Rows : ',dim(values$dataset_list[['original_data']])[1],
-             ' Columns : ',dim(values$dataset_list[['original_data']])[2])
-    }
-  })
+            if(is.null(values$dataset_list[['input']][['proteome']][['type']])){
+              selected = ''
+            }else{
+              selected = values$dataset_list[['input']][['proteome']][['type']]
+            }
+    
+          radioButtons('proteome_type','Proteome Data Type',c('Targetted','Discovery' ),selected,inline = T)
+          }
+        }
+      }
+      
+    })
+    
+    output$maxquant_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])){
+        if(!is.null(input$proteome_type)){
+          if(input$proteome_type == 'Discovery'){
+            if(is.null(values$dataset_list[['input']][['proteome']][['maxquant']])){
+              selected = ''
+            }else{
+              selected = values$dataset_list[['input']][['proteome']][['maxquant']]
+            }
+            radioButtons('maxquant','MaxQuant',c(F,T),selected,inline = T)
+          }
+        }
+      }
+      
+    })
+    
+    output$maxquant_type_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])){
+        if(!is.null(input$proteome_type)){
+          if(input$proteome_type == T){
+            if(is.null(values$dataset_list[['input']][['proteome']][['maxquant_type']])){
+              selected = ''
+            }else{
+              selected = values$dataset_list[['input']][['proteome']][['maxquant_type']]
+            }
+            radioButtons('maxquant_type','MaxQuant Data Type',c("LFQ",'SILAC'),selected,inline = T)
+          }
+        }
+      }
+      
+    })
+    
+    
+    
+    
+
+    output$experiment_name_ui = renderUI({
+      
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_name']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_name']]
+        }
+        
+        
+        textInput('experiment_name','Experiment_Name',selected)
+        
+      }
+    })
+    
+    output$experiment_code_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_code']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_code']]
+        }
+        
+        textInput('experiment_code','Experiment Code',selected)
+        
+      }
+    })
+    
+    output$experiment_description_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])  & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_description']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_description']]
+        }
+        textInput('experiment_description','Experiment Description',selected,width = 1200)
+        
+      }
+    })
+    
+    
+    
+    #### __ columns ####
+    output$id_column_1_ui = renderUI({
+      #selectInput('id_column','ID columns',colnames(input_df()))
+      if(!is.null(values$upload_list[['original_data']])  & !is.null(input$experiment_code)){
+         if(input$experiment_code != ''){
+          if(is.null(values$dataset_list[['input']][['id_column']][['1']])){
+            selected = colnames(values$upload_list[['original_data']])[1]
+          }else{
+            selected = values$dataset_list[['input']][['id_column']][['1']]
+          }
+          selectInput('id_column_1','Column ID 1',c(colnames(values$upload_list[['original_data']])),selected)
+         }
+      }
+    })
+    
+    output$id_column_2_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$id_column_1)){
+        if(input$id_column_1 != ''){
+          if(is.null(values$dataset_list[['input']][['id_column']][['2']])){
+            selected = ''
+          }else{
+            selected = values$dataset_list[['input']][['id_column']][['2']]
+          }
+          selectInput('id_column_2','Column ID 2',c('',colnames(values$upload_list[['original_data']])),selected)
+        }
+      }
+    })
+    
+    output$id_column_3_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])  & !is.null(input$id_column_2)){
+         if(input$id_column_2 != ''){
+          if(is.null(values$dataset_list[['input']][['id_column']][['3']])){
+            selected = ''
+          }else{
+            selected = values$dataset_list[['input']][['id_column']][['3']]
+          }
+          selectInput('id_column_3','Column ID 3',c('',colnames(values$upload_list[['original_data']])),selected)
+         }
+      }
+    })
+    
+    output$id_column_4_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])  & !is.null(input$id_column_3)){
+        if(input$id_column_3 != ''){
+          if(is.null(values$dataset_list[['input']][['id_column']][['4']])){
+            selected = ''
+          }else{
+            selected = values$dataset_list[['input']][['id_column']][['4']]
+          }
+          selectInput('id_column_4','Column ID 4',c('',colnames(values$upload_list[['original_data']])),selected)
+        }
+      }
+    })
+    
+    output$col1_len = renderText({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$id_column_1)){
+        if(input$id_column_1 != ''){
+        length(unique(values$upload_list[['original_data']][,input$id_column_1]))
+        }
+      }
+    })
+    output$col2_len = renderText({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$id_column_2)){
+        if(input$id_column_2 != ''){
+          length(unique(values$upload_list[['original_data']][,input$id_column_2]))
+        }
+      }
+    })
+    output$col3_len = renderText({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$id_column_3)){
+        if(input$id_column_3 != ''){
+          length(unique(values$upload_list[['original_data']][,input$id_column_3]))
+        }
+      }
+    })
+    output$col4_len = renderText({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$id_column_4)){
+        if(input$id_column_4 != ''){
+          length(unique(values$upload_list[['original_data']][,input$id_column_4]))
+        }
+      }
+    })
+
+  
+    
+    
+    output$condition_1_name_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']])  & !is.null(input$id_column_1)){
+        if(is.null(values$dataset_list[['input']][['condition']][['1']][['name']])){
+          selected = ""
+        }else{
+          selected = values$dataset_list[['input']][['condition']][['1']][['name']]
+        }
+        textInput('condition_1_name','Condition 1 name',selected)
+      }
+    })
+    output$condition_2_name_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
+        if(input$condition_1_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['2']][['name']])){
+            selected = ""
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['2']][['name']]
+          }
+          textInput('condition_2_name','Condition 2 name',selected)
+        }
+      }
+    })
+    output$condition_3_name_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_2_name)){
+        if(input$condition_2_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['3']][['name']])){
+            selected = ""
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['3']][['name']]
+          }
+          textInput('condition_3_name','Condition 3 name',selected)
+        }
+      }
+    })
+    output$condition_4_name_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_3_name)){
+        if(input$condition_3_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['3']][['name']])){
+            selected = ""
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['4']][['name']]
+          }
+          textInput('condition_4_name','Condition 4 name',selected)
+        }
+      }
+    })
+    
+    
+    output$condition_1_columns_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
+        if(input$condition_1_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['1']][['columns']])){
+            selected = c()
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['1']][['columns']]
+          }
+          selectInput('condition_1','Condition 1 Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
+          
+        }
+      }
+    })
+    
+    output$condition_2_columns_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_2_name)){
+        if(input$condition_2_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['2']][['columns']])){
+            selected = c()
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['2']][['columns']]
+          }
+          selectInput('condition_2','Condition 2 Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
+          
+        }
+      }
+    })
+    
+    output$condition_3_columns_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_3_name)){
+        if(input$condition_3_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['3']][['columns']])){
+            selected = c()
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['3']][['columns']]
+          }
+          selectInput('condition_3','Condition 3 Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
+          
+        }
+      }
+    })
+    
+    output$condition_4_columns_ui = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_4_name)){
+        if(input$condition_4_name != ''){
+          if(is.null(values$dataset_list[['input']][['condition']][['4']][['columns']])){
+            selected = c()
+          }else{
+            selected = values$dataset_list[['input']][['condition']][['4']][['columns']]
+          }
+          selectInput('condition_4','Condition 4 Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
+          
+        }
+      }
+    })
+    ### ___save upload ####
+    
+    output$save_output_ui = renderUI({
+      if(!is.null(input$condition_1)){
+        actionButton("save_upload", "Save")
+      }
+    })
+    
+    observeEvent(input$save_upload,{
+      #values$dataset_list = list()
+      values$dataset_list[['full_path']] = values$upload_list$full_path
+      values$dataset_list[['original_data']] = values$upload_list$original_data
+      values$dataset_list[['input']] = list()
+      values$dataset_list[['input']][['header']] = input$header
+      values$dataset_list[['input']][['sep']] = input$sep
+      values$dataset_list[['input']][['quote']] = input$quote
+      
+      values$dataset_list[['input']][['data_origin']] = input$data_origin
+      values$dataset_list[['input']][['data_type']] = input$data_type
+      
+      if(input$data_origin == 'Proteome'){
+        values$dataset_list[['input']][['proteome']][['type']] = input$proteome_type
+        if(input$proteome_type == 'Discover'){
+          values$dataset_list[['input']][['proteome']][['maxquant']] = input$maxquant
+          if(input$maxquant == T){
+            values$dataset_list[['input']][['proteome']][['maxquant_type']] = input$maxquant_type
+          }
+        }
+      }
+      
+      values$dataset_list[['input']][['experiment_name']] = input$experiment_name
+      values$dataset_list[['input']][['experiment_code']] = input$experiment_code
+      values$dataset_list[['input']][['experiment_description']] = input$experiment_description
+      #str(values$dataset_list[['input']])
+      
+      values$dataset_list[['input']][['id_column']] = list()
+      
+      values$dataset_list[['input']][['id_column']][['1']] = input$id_column_1
+      if(!is.null(input$id_column_2)){
+        if(input$id_column_2 != ''){
+          values$dataset_list[['input']][['id_column']][['2']] = input$id_column_2
+        }
+      }
+      if(!is.null(input$id_column_3)){
+        if(input$id_column_3 != ''){
+          values$dataset_list[['input']][['id_column']][['3']] = input$id_column_3
+        }
+      }
+      if(!is.null(input$id_column_4)){
+        if(input$id_column_4 != ''){
+          values$dataset_list[['input']][['id_column']][['4']] = input$id_column_4
+        }
+      }
+      
+      
+      values$dataset_list[['input']][['condition']] = list()
+      values$dataset_list[['input']][['condition']][['1']] = list()
+      values$dataset_list[['input']][['condition']][['1']][['name']] = input$condition_1_name
+      values$dataset_list[['input']][['condition']][['1']][['columns']] = input$condition_1
+      values$dataset_list[['input']][['condition_columns']][[input$condition_1_name]] = input$condition_1
+      
+      
+      if(!is.null(input$condition_2_name)){
+        if(input$condition_2_name != ''){
+          values$dataset_list[['input']][['condition']][['2']] = list()
+          
+          values$dataset_list[['input']][['condition']][['2']][['name']] = input$condition_2_name
+          values$dataset_list[['input']][['condition']][['2']][['columns']] = input$condition_2
+          values$dataset_list[['input']][['condition_columns']][[input$condition_2_name]] = input$condition_2
+          
+        }
+      }
+      if(!is.null(input$condition_3_name)){
+        if(input$condition_3_name != ''){
+          values$dataset_list[['input']][['condition']][['3']] = list()
+          
+          values$dataset_list[['input']][['condition']][['3']][['name']] = input$condition_3_name
+          values$dataset_list[['input']][['condition']][['3']][['columns']] = input$condition_3
+          values$dataset_list[['input']][['condition_columns']][[input$condition_3_name]] = input$condition_3
+          
+        }
+      }
+      if(!is.null(input$condition_4_name)){
+        if(input$condition_4_name != ''){
+          values$dataset_list[['input']][['condition']][['4']] = list()
+          
+          values$dataset_list[['input']][['condition']][['4']][['name']] = input$condition_4_name
+          values$dataset_list[['input']][['condition']][['4']][['columns']] = input$condition_4
+          values$dataset_list[['input']][['condition_columns']][[input$condition_4_name]] = input$condition_4
+          
+        }
+      }
+      
+
+      
+      id_columns = paste(values$dataset_list$input$id_column)
+      id_columns
+      expression_columns = c()
+      expression_columns = paste(sapply(names(values$dataset_list$input$condition), function(x) c(expression_columns,values$dataset_list$input$condition[[x]][['columns']])))
+      expression_columns
+      #paste(expression_columns)
+      values$dataset_list$id_columns = id_columns
+      values$dataset_list$expression_columns = expression_columns
+      values$dataset_list$expression_data = values$dataset_list$original_data[,c(id_columns,expression_columns)]
+      dim(values$dataset_list$expression_data)
+      rds_path = paste0('data/data_list/',input$experiment_code,'_data_list.rds')
+      values$dataset_list[['input']][['rds_path']] = rds_path
+      print(paste('saveRDS :',rds_path))
+      
+      withProgress(message = 'saveRDS', {
+        saveRDS(values$dataset_list,rds_path)
+      })
+      
+      values$upload_datasets = unique(c(values$upload_datasets,input$experiment_code))
+      values$upload_dataset_selected = input$experiment_code
+      
+    
+      })
+
+    
+    
+    
+    
+    
+    
+    # output$rds_path_text = renderText({
+    #   
+    #   if(!is.null(values$dataset_list[['original_data']])){
+    #     if(is.null(values$dataset_list[['input']])){
+    #       values$dataset_list[['input']] = list()
+    #     }
+    #     if(input$experiment_code != ''){
+    #       values$dataset_list[['input']][['upload_data_type']] = input$upload_data_type
+    #       
+    #       values$dataset_list[['input']][['experiment_name']] = input$experiment_name
+    #       values$dataset_list[['input']][['experiment_code']] = input$experiment_code
+    #       values$dataset_list[['input']][['experiment_description']] = input$experiment_description
+    #       rds_path = paste0('data/data_list/',values$dataset_list[['input']][['experiment_code']],'_data_list.rds')
+    #       values$dataset_list[['rds_path']] = rds_path
+    #       
+    #     }
+    #     if(!is.null(values$dataset_list[['rds_path']])){
+    #       rds_path = values$dataset_list[['rds_path']] = rds_path
+    #       rds_path
+    #     }
+    #   }
+    #   
+    # })
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+  
+  
+  
+  
+
+  
+
     
 
 # 
@@ -4662,18 +5229,9 @@ shinyServer(function(input, output) {
   #})
   
   
-  output$col1_len = renderText({
-    length(unique(input_df()[,input$id_column]))
-  })
-  output$col2_len = renderText({
-    length(unique(input_df()[,input$id_column_2]))
-  })
-  output$col3_len = renderText({
-    length(unique(input_df()[,input$id_column_3]))
-  })
+
   #shinyFileChoose(input, 'files', root=c(root='.'), filetypes=c('', 'txt'))
-  shinyFileChoose(input, 'upload_file', roots=c(wd='.'))
-  upload_file <- reactive(input$upload_file)
+  
   
   # upload_file_path = reactive({
   #   if(input$reload_file == 'True'){
@@ -4723,38 +5281,7 @@ shinyServer(function(input, output) {
     #}
   })
   
-  output$id_column_1_ui = renderUI({
-    #selectInput('id_column','ID columns',colnames(input_df()))
-    
-    if(input$upload_dataset == '_'){
-      selectInput('id_column','Primary ID columns',colnames(input_df()))
 
-    }else{
-      selectInput('id_column','Primary ID columns',colnames(input_df()),dataset_list()[['id_column']])
-    }
-  })
-  
-  output$id_column_2_ui = renderUI({
-    #selectInput('id_column','ID columns',colnames(input_df()))
-    
-    if(input$upload_dataset == '_'){
-      selectInput('id_column_2','Secondary ID columns',c('_',colnames(input_df())),'_')
-      
-    }else{
-      selectInput('id_column_2','Secondary ID columns',c('_',colnames(input_df())),dataset_list()[['id_column_2']])
-    }
-  })
-  
-  output$id_column_3_ui = renderUI({
-    #selectInput('id_column','ID columns',colnames(input_df()))
-    
-    if(input$upload_dataset == '_'){
-      selectInput('id_column_3','Third ID column',c('_',colnames(input_df())),'_')
-      
-    }else{
-      selectInput('id_column_3','Third ID column',c('_',colnames(input_df())),dataset_list()[['id_column_3']])
-    }
-  })
   
   
   # output$stat_id_column_ui = renderUI({
@@ -4768,86 +5295,76 @@ shinyServer(function(input, output) {
   #   }
   # })
   
-  output$experiment_path_ui = renderUI({
-    
-    if(input$upload_data_type == "MaxQuant"){
-      textInput('experiment_path','Experiment Path',upload_dir_path(),width = 1200)
-    }else{
-      textInput('experiment_path','Experiment Path',upload_file_path(),width = 1200)
-      
-    }
-  })
-  
-  output$experiment_name_ui = renderUI({
-    if(!is.null(values$dataset_list[['original_data']])){
-      if(!is.null(values$dataset_list[['input']][['experiment_name']])){
-        selected = 'Other'
-      }else{
-        selected = values$dataset_list[['input']][['experiment_name']]
-      }
-      textInput('experiment_name','Experiment_Name',selected)
-      
-    }
-  })
-  
-  output$condition_1_name_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      textInput('condition_1_name','Condition 1 name')
-    }else{
-      textInput('condition_1_name','Condition 1 name',dataset_list()[['condition_1_name']])
-    }
-  })
-  output$condition_2_name_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      textInput('condition_2_name','Condition 2 name')
-    }else{
-      textInput('condition_2_name','Condition 2 name',dataset_list()[['condition_2_name']])
-    }
-  })
-  output$condition_3_name_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      textInput('condition_3_name','Condition 3 name')
-    }else{
-      textInput('condition_3_name','Condition 3 name',dataset_list()[['condition_3_name']])
-    }
-  })
-  output$condition_4_name_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      textInput('condition_4_name','Condition 4 name')
-    }else{
-      textInput('condition_4_name','Condition 4 name',dataset_list()[['condition_4_name']])
-    }
-  })
-  
-  
-  output$condition_1_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      selectInput('condition_1','Condition 1',colnames(input_df()),multiple =T )
-    }else{
-      selectInput('condition_1','Condition 1',colnames(input_df()),dataset_list()[['condition_1_columns']],multiple =T )
-    }
-  })
-  output$condition_2_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      selectInput('condition_2','Condition 2',colnames(input_df()),multiple =T )
-    }else{
-      selectInput('condition_2','Condition 2',colnames(input_df()),dataset_list()[['condition_2_columns']],multiple =T )
-    }
-  })  
-  output$condition_3_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      selectInput('condition_3','Condition 3',colnames(input_df()),multiple =T )
-    }else{
-      selectInput('condition_3','Condition 3',colnames(input_df()),dataset_list()[['condition_3_columns']],multiple =T )
-    }
-  })  
-  output$condition_4_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      selectInput('condition_4','Condition 4',colnames(input_df()),multiple =T )
-    }else{
-      selectInput('condition_4','Condition 4',colnames(input_df()),dataset_list()[['condition_4_columns']],multiple =T )
-    }
-  })
+  # output$experiment_path_ui = renderUI({
+  #   
+  #   if(input$upload_data_type == "MaxQuant"){
+  #     textInput('experiment_path','Experiment Path',upload_dir_path(),width = 1200)
+  #   }else{
+  #     textInput('experiment_path','Experiment Path',upload_file_path(),width = 1200)
+  #     
+  #   }
+  # })
+  # 
+  # 
+  # 
+  # output$condition_1_name_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     textInput('condition_1_name','Condition 1 name')
+  #   }else{
+  #     textInput('condition_1_name','Condition 1 name',dataset_list()[['condition_1_name']])
+  #   }
+  # })
+  # output$condition_2_name_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     textInput('condition_2_name','Condition 2 name')
+  #   }else{
+  #     textInput('condition_2_name','Condition 2 name',dataset_list()[['condition_2_name']])
+  #   }
+  # })
+  # output$condition_3_name_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     textInput('condition_3_name','Condition 3 name')
+  #   }else{
+  #     textInput('condition_3_name','Condition 3 name',dataset_list()[['condition_3_name']])
+  #   }
+  # })
+  # output$condition_4_name_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     textInput('condition_4_name','Condition 4 name')
+  #   }else{
+  #     textInput('condition_4_name','Condition 4 name',dataset_list()[['condition_4_name']])
+  #   }
+  # })
+  # 
+  # 
+  # output$condition_1_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     selectInput('condition_1','Condition 1',colnames(input_df()),multiple =T )
+  #   }else{
+  #     selectInput('condition_1','Condition 1',colnames(input_df()),dataset_list()[['condition_1_columns']],multiple =T )
+  #   }
+  # })
+  # output$condition_2_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     selectInput('condition_2','Condition 2',colnames(input_df()),multiple =T )
+  #   }else{
+  #     selectInput('condition_2','Condition 2',colnames(input_df()),dataset_list()[['condition_2_columns']],multiple =T )
+  #   }
+  # })  
+  # output$condition_3_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     selectInput('condition_3','Condition 3',colnames(input_df()),multiple =T )
+  #   }else{
+  #     selectInput('condition_3','Condition 3',colnames(input_df()),dataset_list()[['condition_3_columns']],multiple =T )
+  #   }
+  # })  
+  # output$condition_4_ui = renderUI({
+  #   if(input$upload_dataset == '_'){
+  #     selectInput('condition_4','Condition 4',colnames(input_df()),multiple =T )
+  #   }else{
+  #     selectInput('condition_4','Condition 4',colnames(input_df()),dataset_list()[['condition_4_columns']],multiple =T )
+  #   }
+  # })
   # output$condition_2_ui = renderUI({
   #   selectInput('condition_2','Condition 2',colnames(input_df()),multiple =T )
   # })
@@ -4857,14 +5374,7 @@ shinyServer(function(input, output) {
   # output$condition_4_ui = renderUI({
   #   selectInput('condition_3','Condition 4',colnames(input_df()),multiple =T )
   # })
-  output$mq_type_ui = renderUI({
-    if(input$upload_dataset == '_'){
-      radioButtons('mq_type','Experiment Type', c('LFQ','SILAC','Timecource'),inline = T) 
-    }else{
-      radioButtons('mq_type','Experiment Type', c('LFQ','SILAC','Timecource'),selected = dataset_list()[['experiment_type']],inline = T) 
-      
-    }
-  })
+  
   
   
   output$silac_comp_ui = renderUI({
@@ -5342,24 +5852,24 @@ shinyServer(function(input, output) {
          id_mapping_w
          #df_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
          if(process_values$save_mart_full == 1){
-           df_l = values$dataset_list[['expression_data_l']]
+           #df_l = values$dataset_list[['expression_data_l']]
            
-           df_l
-           id_mapping_l = right_join(
+           #df_l
+           #id_mapping_l = right_join(
              #bm_df %>% mutate(bm_id = !!filter),
-             bm_df_collapse,
-             df_l %>% 
-               dplyr::select(-one_of(colnames(bm_df))) %>% 
-               mutate(bm_id = !!id_column), 
-             by = 'bm_id') 
-           id_mapping_l
+          #   bm_df_collapse,
+          #   df_l %>% 
+          #     dplyr::select(-one_of(colnames(bm_df))) %>% 
+          #     mutate(bm_id = !!id_column), 
+          #   by = 'bm_id') 
+          # id_mapping_l
         #bm_df
          
          
           #values$dataset_list[['biomart_id_mapping']] = id_mapping_w
           #values$dataset_list[['biomart_id_mapping_l']] = id_mapping_l
           values$dataset_list[['expression_data']] = id_mapping_w
-          values$dataset_list[['expression_data_l']] = id_mapping_l
+          #values$dataset_list[['expression_data_l']] = id_mapping_l
           
           
           #print(names(dataset_list))
@@ -5424,7 +5934,9 @@ shinyServer(function(input, output) {
   #mart_expression_df = reactive({
   output$separate_columns = renderDataTable({
     print('separate_columns')
-    if(process_values$sep_run == 0){
+    #if(process_values$sep_run == 0){
+    if(!is.null(input$run_sep)){
+      if(input$sep_id != ''){
     #if(input$run_bm == T){
       print('   running ...')
       #dataset_list = values$dataset_list
@@ -5436,9 +5948,9 @@ shinyServer(function(input, output) {
       
       id_mapping_w %>% as.tbl
       #id_mapping_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
-      id_mapping_l = values$dataset_list[['expression_data_l']]
+      #id_mapping_l = values$dataset_list[['expression_data_l']]
       
-      id_mapping_l %>% as.tbl
+      #id_mapping_l %>% as.tbl
       
       if(!input$run_sep[1] > process_values$run_sep_w | dataset_test == T){
         print('    running partial')
@@ -5457,36 +5969,56 @@ shinyServer(function(input, output) {
           df$id_1 = sapply(df$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
         df = df %>% dplyr::select(id_1,everything())
         df %>% as.tbl
-          if(input$run_sep[1] > process_values$run_sep_w){
-          df_l = id_mapping_l %>% 
-            mutate(id = !!var) %>% 
-            dplyr::select(id,everything())
+        #if(input$run_sep[1] > process_values$run_sep_w){
+          rename_var <- rlang::parse_quosures(paste0(input$sep_id,'_1'))[[1]]
+          rename_var
+        
+        
+          #var
+          #df_l = id_mapping_l %>% 
+          #  mutate(id = !!var) %>% 
+          #  dplyr::select(id,everything())
           
-          df_l %>%  as_tibble()
-          text = 'click run to execute the separation, may take some time'
-          process_values$run_sep_w = process_values$run_sep_w + 1
-          print('     id sep long')
-          df_l$id_1 = sapply(df_l$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
-          df_l = df_l %>% dplyr::select(id_1,everything())
+          #df_l %>%  as_tibble()
+          #text = 'click run to execute the separation, may take some time'
+          #process_values$run_sep_w = process_values$run_sep_w + 1
+          #print('     id sep long')
+          #df_l$id_1 = sapply(df_l$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
+          #df_l = df_l %>% dplyr::select(id_1,everything())
           
-          process_values$run_sep_l = process_values$run_sep_l + 1
-          text = 'separation is complete'
+          #process_values$run_sep_l = process_values$run_sep_l + 1
+          #text = 'separation is complete'
           #values$dataset_list[['col_sep_id_mapping']] = df
-          #values$dataset_list[['col_sep_id_mapping_l']] = df_l
-          values$dataset_list[['expression_data']] = df
-          values$dataset_list[['expression_data_l']] = df_l
-          process_values$sep_run = 1
+          #values$dataset_list[['col_sep_id_mapping_l']] = df
+        #if(!paste0(input$sep_id,'_first') %in% colnames(df)){
+        #df = df %>% 
+        #    dplyr::mutate(paste0(input$sep_id,'_first') = id_1) 
+          #%>% 
+          #  dplyr::select(-id_1)
+          
+          #df_t = df %>% select()
+        #}
+        #df_t %>% as.tbl
+        
+        values$dataset_list[['expression_data']] = df
+        
+          #values$dataset_list[['expression_data_l']] = df_l
+          #process_values$sep_run = 1
           if(autosave_datasets == T){
             rds_path = paste0('data/data_list/',values$dataset_list[['experiment_code']],'_data_list.rds')
             print(paste('saveRDS : ',rds_path))
             saveRDS(dataset_list,rds_path)
           }
-          }
+          #}
     }else{
       df = values$dataset_list[['expression_data']]
     }
     df
+    }
     
+  })
+  observeEvent(input$run_sep,{
+    values$dataset_list[['expression_data']] = values$dataset_list[['expression_data']] %>% rename(id_1 = paste0(input$sep_id,'.1'))
   })
   
   
@@ -5538,20 +6070,20 @@ shinyServer(function(input, output) {
           #if(!is.null(dataset_list[['id_mapping_l']])){
           #if(input$column_adjust != 'seperate id'){
           #id_mapping_l = values$dataset_list[[paste0(input$dataset_select,'_l')]]
-          id_mapping_l = values$dataset_list[['expression_data_l']]
+          #id_mapping_l = values$dataset_list[['expression_data_l']]
           
           
-            df_l = id_mapping_l %>% 
-              mutate(id = !!var) %>% 
-              dplyr::select(id,everything())
+         #   df_l = id_mapping_l %>% 
+          #    mutate(id = !!var) %>% 
+          #    dplyr::select(id,everything())
         #}
           #}else{
           #  df_l = id_mapping_l
           #}
             
     
-            df_l %>%  as_tibble()
-            values$dataset_list[['expression_data_l']] = df_l
+           # df_l %>%  as_tibble()
+           # values$dataset_list[['expression_data_l']] = df_l
           #}
           
           #print(names(dataset_list))
@@ -5629,65 +6161,7 @@ shinyServer(function(input, output) {
     radioButtons('save_experiment','Save Experiment',c(F,T), selected = values$upload_save, inline = T)
   })
 
-  output$experiment_name_ui = renderUI({
-    
-      if(!is.null(values$dataset_list[['original_data']])){
-        if(!is.null(values$dataset_list[['input']][['experiment_name']])){
-          selected = ''
-        }else{
-          selected = values$dataset_list[['input']][['experiment_name']]
-        }
-      
-    
-      textInput('experiment_name','Experiment_Name',selected)
-      
-    }
-  })
-  
-  output$experiment_code_ui = renderUI({
-    if(!is.null(values$dataset_list[['original_data']])){
-      if(!is.null(values$dataset_list[['input']][['experiment_code']])){
-        selected = ''
-      }else{
-        selected = values$dataset_list[['input']][['experiment_code']]
-      }
-  
-      textInput('experiment_code','Experiment Code',selected)
-      
-    }
-  })
-  
-  output$experiment_description_ui = renderUI({
-    if(!is.null(values$dataset_list[['original_data']])){
-      if(!is.null(values$dataset_list[['input']][['experiment_description']])){
-        selected = ''
-      }else{
-        selected = values$dataset_list[['input']][['experiment_description']]
-      }
-      textInput('experiment_description','Experiment Description',selected,width = 1200)
-      
-    }
-  })
-  
-  output$rds_path_text = renderText({
-    
-    if(!is.null(values$dataset_list[['original_data']])){
-      if(!is.null(input$experiment_code)){
-        values$dataset_list[['input']][['experiment_name']] = input$experiment_name
-        values$dataset_list[['input']][['experiment_code']] = input$experiment_code
-        values$dataset_list[['input']][['experiment_description']] = input$experiment_description
-        rds_path = paste0('data/data_list/',values$dataset_list[['input']][['experiment_code']],'_data_list.rds')
-        values$dataset_list[['rds_path']] = rds_path
-        
-      }
-      if(!is.null(values$dataset_list[['rds_path']])){
-        rds_path = values$dataset_list[['rds_path']] = rds_path
-        rds_path
-      }
-    }
-    
-  })
-  
+
   
   output$dataset_list_print = renderPrint(print(names(dataset_list())))
   output$dataset_type_print = renderText(dataset_list()[['data_type']])
