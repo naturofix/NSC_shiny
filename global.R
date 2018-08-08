@@ -103,7 +103,7 @@ venn_image_path = create_dir_function(paste(shiny_image_path,'Venn',sep='/'))
 string_image_path = create_dir_function(paste(shiny_image_path,'STRING',sep='/'))
 
 cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
-
+silac_ratio_column_list = c('','comparison_ratio','replicate_ratio','rev_comparison_ratio','rev_replicate_ratio','test_incorporation')
 
 if(string_access == T){
   string_db = STRINGdb$new(version="10", score_threshold=400, species = 9606, input_directory = getwd())

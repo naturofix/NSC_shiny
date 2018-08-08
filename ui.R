@@ -46,19 +46,7 @@ shinyUI(fluidPage(
                             column(5,uiOutput('file_sep_ui')),
                             column(5,uiOutput('file_quote_ui')),
                             column(12,tags$hr()),
-                             # ___Input: Select separator ----
-                             # column(5,radioButtons("sep", "Separator",
-                             #              choices = c(Comma = ",",
-                             #                          Semicolon = ";",
-                             #                          Tab = "\t"),
-                             #              selected = "\t",inline = T)),
-                             # 
-                             # # ___Input: Select quotes ----
-                             # column(5,radioButtons("quote", "Quote",
-                             #              choices = c(None = "",
-                             #                          "Double Quote" = '"',
-                             #                          "Single Quote" = "'"),
-                             #              selected = '"',inline = T)),
+                          
                              
                             
                             column(12),
@@ -69,8 +57,7 @@ shinyUI(fluidPage(
                             
                             column(12,dataTableOutput('original_data')),
                             column(12,tags$hr()),
-                            #conditionalPanel(condition = "input.show_table == 'True'",dataTableOutput('original_data')),
-                            
+                          
                             column(6,uiOutput('upload_data_origin_ui')),
                             column(6,uiOutput('upload_data_type_ui')),
                             column(12,tags$hr()),
@@ -81,15 +68,11 @@ shinyUI(fluidPage(
                          
                            
 
-                           #column(6,textInput('experiment_name','Experiment_Name')),
-                           #column(12,uiOutput('experiment_path_ui')),
-                           #column(6,textInput('experiment_code','Experiment Code')),
                            column(12),
                            column(6,uiOutput('experiment_name_ui')),
                            
                            column(6,uiOutput('experiment_code_ui')),
                            
-                           #column(12,textInput('experiment_description','Experiment Description')),
                            column(12,uiOutput('experiment_description_ui')),
                            column(12,tags$hr()),
                            
@@ -100,7 +83,7 @@ shinyUI(fluidPage(
                            column(4,uiOutput('id_column_3_ui'),
                                   textOutput('col3_len')),
                            column(12,tags$hr()),
-                           #column(3,uiOutput('stat_id_column_ui')),
+           
                            column(12),
                            
                            column(3,uiOutput('condition_1_name_ui')),

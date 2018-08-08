@@ -4511,6 +4511,7 @@ shinyServer(function(input, output) {
       if(!is.null(input$upload_dataset)){
         if(input$upload_dataset == '_'){
           values$dataset_list = list()
+          values$upload_list = list()
         }else{
           if(is.null(names(values$dataset_list))){
             withProgress(message = 'Uploading Dataset', {
@@ -4532,7 +4533,11 @@ shinyServer(function(input, output) {
         }
         
         #names(dataset_list)
-        selectInput('dataset_select','Select Dataset',names(values$dataset_list$data),process_values$dataset_select)
+        data_list = names(values$dataset_list$data)
+        if(!is.null(values$dataset_list$maxquant)){
+          data_list = c(names(values$dataset_list$data),names(values$dataset_list$maxquant))
+        }
+        selectInput('dataset_select','Select Dataset',data_list,process_values$dataset_select)
         }
     })
     
@@ -4555,7 +4560,12 @@ shinyServer(function(input, output) {
     output$dataset_table = renderDataTable({
       if(input$show_dataset == T){
         if(!is.null(input$dataset_select)){
-          df = values$dataset_list$data[[input$dataset_select]]
+          maxquant_file_list = c('proteinGroups','peptides','evidence','summary','parameters')
+          source = 'data'
+          if(input$dataset_select %in% maxquant_file_list){
+            source = 'maxquant'
+          }
+          df = values$dataset_list[[source]][[input$dataset_select]]
           process_values$dataset_select = input$dataset_select
           if(!is.null(dim(df))){
             df
@@ -4932,12 +4942,19 @@ shinyServer(function(input, output) {
     
     output$condition_1_name_ui = renderUI({
       if(!is.null(values$upload_list[['original_data']])  & !is.null(input$id_column_1)){
+        
         if(is.null(values$dataset_list[['input']][['condition']][['1']][['name']])){
-          selected = ""
+          selected = ''
         }else{
           selected = values$dataset_list[['input']][['condition']][['1']][['name']]
         }
+ 
         textInput('condition_1_name','Condition 1 name',selected)
+        if(!is.null(input$proteome_type)){
+          if(!is.null(input$proteome_type)){
+            selectInput('condition_1_name','Condition 1 name',silac_ratio_column_list,selected)
+          }
+        }
       }
     })
     output$condition_2_name_ui = renderUI({
@@ -4949,6 +4966,11 @@ shinyServer(function(input, output) {
             selected = values$dataset_list[['input']][['condition']][['2']][['name']]
           }
           textInput('condition_2_name','Condition 2 name',selected)
+          if(!is.null(input$proteome_type)){
+            if(!is.null(input$proteome_type)){
+              selectInput('condition_2_name','Condition 2 name',silac_ratio_column_list,selected)
+            }
+          }
         }
       }
     })
@@ -4961,6 +4983,11 @@ shinyServer(function(input, output) {
             selected = values$dataset_list[['input']][['condition']][['3']][['name']]
           }
           textInput('condition_3_name','Condition 3 name',selected)
+          if(!is.null(input$proteome_type)){
+            if(!is.null(input$proteome_type)){
+              selectInput('condition_3_name','Condition 3 name',silac_ratio_column_list,selected)
+            }
+          }
         }
       }
     })
@@ -4973,6 +5000,11 @@ shinyServer(function(input, output) {
             selected = values$dataset_list[['input']][['condition']][['4']][['name']]
           }
           textInput('condition_4_name','Condition 4 name',selected)
+          if(!is.null(input$proteome_type)){
+            if(!is.null(input$proteome_type)){
+              selectInput('condition_4_name','Condition 4 name',silac_ratio_column_list,selected)
+            }
+          }
         }
       }
     })
@@ -5090,10 +5122,34 @@ shinyServer(function(input, output) {
       if(input$data_origin == 'Proteome'){
         values$dataset_list$input$proteome = list()
         values$dataset_list[['input']][['proteome']][['type']] = input$proteome_type
-        if(input$proteome_type == 'Discover'){
+        if(input$proteome_type == 'Discovery'){
           values$dataset_list[['input']][['proteome']][['maxquant']] = input$maxquant
           if(input$maxquant == T){
-            values$dataset_list[['input']][['proteome']][['maxquant_type']] = input$maxquant_type
+            values$dataset_list[['input']][['proteome']][['proteome_label']] = input$proteome_label
+            values$dataset_list[['maxquant']] = list()
+            base_path = dirname(values$upload_list[['full_path']])
+            base_path
+            values$dataset_list[['base_path']] = base_path
+            values$dataset_list$maxquant$proteinGroups = read.csv(paste(base_path,'proteinGroups.txt',sep='/'),
+                                                                  header = input$header,
+                                                                  sep = input$sep,
+                                                                  quote = input$quote)
+            values$dataset_list$maxquant$peptides = read.csv(paste(base_path,'peptides.txt',sep='/'),
+                                                                  header = input$header,
+                                                                  sep = input$sep,
+                                                                  quote = input$quote)
+            values$dataset_list$maxquant$evidence = read.csv(paste(base_path,'evidence.txt',sep='/'),
+                                                                  header = input$header,
+                                                                  sep = input$sep,
+                                                                  quote = input$quote)
+            values$dataset_list$maxquant$summary = read.csv(paste(base_path,'summary.txt',sep='/'),
+                                                                  header = input$header,
+                                                                  sep = input$sep,
+                                                                  quote = input$quote)
+            values$dataset_list$maxquant$parameters = read.csv(paste(base_path,'parameters.txt',sep='/'),
+                                                                  header = input$header,
+                                                                  sep = input$sep,
+                                                                  quote = input$quote)
           }
         }
       }
@@ -5178,7 +5234,7 @@ shinyServer(function(input, output) {
       
       colnames(values$dataset_list$data$original_data)
       expression_data = values$dataset_list$data$original_data[,c(id_columns,expression_columns)] %>% 
-        mutate(row_id = as.factor(values$dataset_list$data$original_data[,1])) %>% 
+        mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
         dplyr::select(row_id, everything())
       expression_data %>%  as.tbl
       
