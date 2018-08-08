@@ -76,7 +76,7 @@ shinyUI(fluidPage(
                             column(12,tags$hr()),
                             column(4,uiOutput('proteome_type_ui')),
                             column(4,uiOutput('maxquant_ui')),
-                            column(4,uiOutput('maxquant_type_ui')),
+                            column(4,uiOutput('proteome_label_ui')),
                             column(12,tags$hr()),
                          
                            
@@ -156,25 +156,31 @@ shinyUI(fluidPage(
                                
                                
                                tabPanel('Select id column',
-                                         uiOutput('select_mart_id'),
+                                         uiOutput('select_id_ui'),
                                          textOutput('mart_percentage_matched'),
-                                         dataTableOutput('mart_expression_df')
+                                         dataTableOutput('select_id_df')
                                ),
                                
                                tabPanel('Add BioMart Columns',
                                               
                                #column(5,selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1]),
                                column(6,
+                                uiOutput('select_mart_host_ui'),
+                                      
                                uiOutput('select_mart_ui'),
                                uiOutput('list_mart_ui'),
                                uiOutput('mart_column_ui')),
                                column(6,uiOutput('filter_ui'),
-                               uiOutput('attributes_ui')),
+                               uiOutput('attributes_ui'),
+                               textInput('mart_id_prefix','Mart ID prefix',''),
+                               numericInput('mart_id_length','Mart ID length',0),
+                               textInput('mart_id_split','Mart ID split','')),
                                column(12,
                                uiOutput('mart_slider'),
-                               tags$h5('Mapping is first done of a subset of ids test biomart, click Run to do full mapping, it may take up to an hour'),
+                               tags$h5('Mapping is first done of a subset of ids to test the biomart assignments, click Run to do full mapping, it may take up to an hour'),
                                
                                actionButton('run_biomart','Run'),
+                              
                                dataTableOutput('bm_df'))
                               #)
                               ),
@@ -213,11 +219,11 @@ shinyUI(fluidPage(
                                 ),
                     ###_Stat####
                     tabPanel('Stat',
-                             radioButtons('run_t_test','Run Stats',c(F,T)),
+                       
                              actionButton('run_stat','Run'),
                              plotOutput('fdr_plot'),
                              plotOutput('volcano_plot'),
-                             textOutput('stat_info_text'),
+                             htmlOutput('stat_info_text'),
                              dataTableOutput('stat_data_table')
                             
                              
