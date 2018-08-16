@@ -83,9 +83,9 @@ shinyUI(fluidPage(
                            column(4,uiOutput('id_column_3_ui'),
                                   textOutput('col3_len')),
                            column(12,tags$hr()),
-           
+                           column(3,uiOutput('intensity_ui')),
                            column(12),
-                           
+                           #column(3),
                            column(3,uiOutput('condition_1_name_ui')),
                            column(3,uiOutput('condition_2_name_ui')),
                            column(3,uiOutput('condition_3_name_ui')),
@@ -97,7 +97,8 @@ shinyUI(fluidPage(
                            column(3,uiOutput('condition_3_columns_ui')),
                            column(3,uiOutput('condition_4_columns_ui')),
                            
-                           column(12),
+                           column(12,
+                           uiOutput('sample_name_prefix')),
                            
                            # conditionalPanel(condition = "input.upload_data_type == 'Other'",
                            #                  column(3,uiOutput('condition_1_name_ui'),
@@ -129,6 +130,7 @@ shinyUI(fluidPage(
                           #          column(4,uiOutput('silac_incorp_ui'))
                           # ),
                            #column(12,uiOutput('save_experiment_ui')),
+                          
                           column(12,tags$hr()),
                            column(12,uiOutput('save_output_ui'))
                            #column(12,dataTableOutput('experiment_df'))
@@ -152,6 +154,7 @@ shinyUI(fluidPage(
                                       
                                uiOutput('select_mart_ui'),
                                uiOutput('list_mart_ui'),
+                               textOutput('ensembl_text'),
                                uiOutput('mart_column_ui')),
                                column(6,uiOutput('filter_ui'),
                                uiOutput('attributes_ui'),
@@ -169,7 +172,8 @@ shinyUI(fluidPage(
                               ),
                             tabPanel("Separate ID's",
                                              column(5,uiOutput('sep_id_ui')),
-                                             column(5,textInput('col_sep','id separator','')),
+                                             #column(5,textInput('col_sep','id separator','')),
+                                            column(5,uiOutput('col_sep_ui')),
                                              column(2,actionButton('run_sep','Run')),
                                              column(12,dataTableOutput('separate_columns'))
                                             
@@ -181,7 +185,13 @@ shinyUI(fluidPage(
                     ),
                     ###_Numbers####     
                     tabPanel('Numbers',
-                             plotOutput('sample_numbers')
+                             uiOutput('upload_select_samples_ui'),
+                             
+                             plotOutput('sample_numbers'),
+                             plotOutput('expression_density'),
+                             plotOutput('expression_boxplot'),
+                             dataTableOutput('expression_df_l')
+                             
                              ),
                     ###_Ratio####
                     tabPanel('Ratio',
@@ -192,14 +202,24 @@ shinyUI(fluidPage(
                              
                              #textOutput('dataset_list_print'),
                              #textOutput('dataset_type_print'),
+                             column(12),
+                             column(6,plotOutput('ratio_boxplot_comp')),
+                             column(6,plotOutput('ratio_boxplot_rep')),
+                             column(12),
                              column(6,plotOutput('density_plot')),
                              column(6,plotOutput('sd_boxplot')),
+                             column(12),
                              dataTableOutput('expression_data')
                              
                              #radioButtons('save_ratios','Save Ratios',c(F,T),inline = T)
                              
                                 
                                 ),
+                    tabPanel('MA',
+                             #textInput('sample_name_prefix',"Sample Name Prefix", )
+                             plotOutput('MA_plot_sample_comp'),
+                             plotOutput('MA_plot_sample_name_comp')
+                             ),
                     ###_Stat####
                     tabPanel('Stat',
                        
