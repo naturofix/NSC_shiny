@@ -4499,11 +4499,13 @@ shinyServer(function(input, output) {
     output$upload_dataset_ui = renderUI({
       datasets = values$upload_datasets
       selected = values$upload_dataset_selected
-      #observeEvent(input$save_upload,{
-      #  selected = values$dataset_list$experiment_code
-      #  datasets = unique(c(values$dataset_list$experiment_code,datasets))
-      #})
       selectInput('upload_dataset','Upload Dataset',datasets,selected)
+    })
+    
+    output$join_dataset_ui = renderUI({
+      datasets = values$upload_datasets
+      #selected = values$join_dataset_selected
+      selectInput('join_dataset','Dataset to Join',datasets,multiple = T)
     })
     
     output$dataset_select_ui = renderUI({
@@ -4541,21 +4543,7 @@ shinyServer(function(input, output) {
         }
     })
     
-    # dataset_list = reactive({
-    #   print('dataset_list')
-    #   if(input$upload_dataset == '_'){
-    #     dataset_list = list()
-    #   }else{
-    #     print(paste("readRDS : ",dataset_list_path()))
-    #     dataset_list = tryCatch(readRDS(dataset_list_path()), error=function(e) list())
-    #   }
-    #   print(names(dataset_list))
-    #   print('   data_set_list : done')
-    #   #saveRDS(dataset_list,'temp/dataset_list.rds')
-    #   #dataset_list = readRDS('temp/dataset_list.rds')
-    #   values$dataset_list = dataset_list
-    #   dataset_list
-    # })
+
     
     output$dataset_table = renderDataTable({
       if(input$show_dataset == T){
@@ -4758,6 +4746,22 @@ shinyServer(function(input, output) {
       
     })
     
+    output$upload_data_join_type_ui = renderUI({
+      #if(!is.null(values$upload_list[['original_data']])& !is.null(input$data_origin)){
+        if(is.null(values$dataset_list[['input']])){
+          selected = ''
+        }else{
+          if(is.null(values$dataset_list[['input']][['data_type']])){
+            selected = ''
+          }else{
+            selected = values$dataset_list[['input']][['data_type']]
+          }
+        }
+        radioButtons('data_join_type','Data Type',c('Expression','Ratio','Timecourse'),selected,inline = T)
+      #}
+      
+    })
+    
     output$proteome_type_ui = renderUI({
       if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
         if(!is.null(input$data_origin)){
@@ -4852,9 +4856,48 @@ shinyServer(function(input, output) {
       }
     })
     
+    output$experiment_join_name_ui = renderUI({
+      
+      #if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_name']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_name']]
+        }
+        
+        
+        textInput('experiment_join_name','Experiment_Name',selected)
+        
+      #}
+    })
     
+    output$experiment_join_code_ui = renderUI({
+      #if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_code']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_code']]
+        }
+        
+        textInput('experiment_join_code','Experiment Code',selected)
+        
+     # }
+    })
+    
+    output$experiment_join_description_ui = renderUI({
+      #if(!is.null(values$upload_list[['original_data']])  & !is.null(input$data_type)){
+        if(is.null(values$dataset_list[['input']][['experiment_description']])){
+          selected = ''
+        }else{
+          selected = values$dataset_list[['input']][['experiment_description']]
+        }
+        textInput('experiment_join_description','Experiment Description',selected,width = 1200)
+        
+      #}
+    })
     
     #### __ columns ####
+    #### ___id #####
     output$id_column_1_ui = renderUI({
       #selectInput('id_column','ID columns',colnames(input_df()))
       if(!is.null(values$upload_list[['original_data']])  & !is.null(input$experiment_code)){
@@ -4937,23 +4980,9 @@ shinyServer(function(input, output) {
       }
     })
 
-    output$intensity_ui = renderUI({
-      #if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
-      #  if(input$condition_1_name != ''){
-      if(!is.null(input$proteome_label)){
-        if(input$proteome_label == 'SILAC'){
-          if(is.null(values$dataset_list[['input']][['intensity_columns']])){
-            selected = c()
-          }else{
-            selected = values$dataset_list[['input']][['intensity_columns']]
-          }
-          selectInput('intensity_columns','Intensity Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
-          
-       }
-      }
-    })
+  
     
-    
+    #### ___condition ####
     output$condition_1_name_ui = renderUI({
       if(!is.null(values$upload_list[['original_data']])  & !is.null(input$id_column_1)){
         
@@ -4963,12 +4992,14 @@ shinyServer(function(input, output) {
           selected = values$dataset_list[['input']][['condition']][['1']][['name']]
         }
  
-        textInput('condition_1_name','Condition 1 name',selected)
-        if(!is.null(input$proteome_type)){
-          if(!is.null(input$proteome_type)){
-            selectInput('condition_1_name','Condition 1 name',silac_ratio_column_list,selected)
+        cmd = paste("textInput('condition_1_name','Condition 1 name',selected)")
+        #eval(parse(text = cmd))
+        if(!is.null(input$proteome_label)){
+          if(input$proteome_label == 'SILAC'){
+            cmd = paste("selectInput('condition_1_name','Condition 1 name',silac_ratio_column_list,selected)")
           }
         }
+        eval(parse(text = cmd))
       }
     })
     output$condition_2_name_ui = renderUI({
@@ -4979,12 +5010,13 @@ shinyServer(function(input, output) {
           }else{
             selected = values$dataset_list[['input']][['condition']][['2']][['name']]
           }
-          textInput('condition_2_name','Condition 2 name',selected)
-          if(!is.null(input$proteome_type)){
-            if(!is.null(input$proteome_type)){
-              selectInput('condition_2_name','Condition 2 name',silac_ratio_column_list,selected)
+          cmd = paste("textInput('condition_2_name','Condition 2 name',selected)")
+          if(!is.null(input$proteome_label)){
+            if(input$proteome_label == 'SILAC'){
+              cmd = paste("selectInput('condition_2_name','Condition 2 name',silac_ratio_column_list,selected)")
             }
           }
+          eval(parse(text = cmd))
         }
       }
     })
@@ -4996,12 +5028,13 @@ shinyServer(function(input, output) {
           }else{
             selected = values$dataset_list[['input']][['condition']][['3']][['name']]
           }
-          textInput('condition_3_name','Condition 3 name',selected)
-          if(!is.null(input$proteome_type)){
-            if(!is.null(input$proteome_type)){
-              selectInput('condition_3_name','Condition 3 name',silac_ratio_column_list,selected)
+          cmd = paste("textInput('condition_3_name','Condition 3 name',selected)")
+          if(!is.null(input$proteome_label)){
+            if(input$proteome_label == 'SILAC'){
+              cmd = paste("selectInput('condition_3_name','Condition 3 name',silac_ratio_column_list,selected)")
             }
           }
+          eval(parse(text = cmd))
         }
       }
     })
@@ -5014,9 +5047,11 @@ shinyServer(function(input, output) {
             selected = values$dataset_list[['input']][['condition']][['4']][['name']]
           }
           textInput('condition_4_name','Condition 4 name',selected)
-          if(!is.null(input$proteome_type)){
-            if(!is.null(input$proteome_type)){
+          if(!is.null(input$proteome_label)){
+            if(input$proteome_label == 'SILAC'){
               selectInput('condition_4_name','Condition 4 name',silac_ratio_column_list,selected)
+            }else{
+              textInput('condition_4_name','Condition 4 name',selected)
             }
           }
         }
@@ -5080,6 +5115,24 @@ shinyServer(function(input, output) {
       }
     })
     
+    #### ___intensity ####
+    output$intensity_ui = renderUI({
+      #if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
+      #  if(input$condition_1_name != ''){
+      if(!is.null(input$proteome_label)){
+        if(input$proteome_label == 'SILAC'){
+          if(is.null(values$dataset_list[['input']][['intensity_columns']])){
+            selected = c()
+          }else{
+            selected = values$dataset_list[['input']][['intensity_columns']]
+          }
+          selectInput('intensity_columns','Intensity Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
+          
+        }
+      }
+    })
+    
+    ### ____prefix ####
     output$sample_name_prefix = renderUI({
       if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
         if(input$condition_1_name != ''){
@@ -5089,12 +5142,21 @@ shinyServer(function(input, output) {
             selected = values$dataset_list[['input']][['sample_name_prefix']]
           }
           textInput('sample_name_prefix',"Sample Name Prefix",selected)
-          
-          #selectInput('condition_4','Condition 4 Columns',colnames(values$upload_list[['original_data']]),selected,multiple =T )
-          
         }
       }
-      
+    })
+    
+    output$sample_name_prefix_replace = renderUI({
+      if(!is.null(values$upload_list[['original_data']]) & !is.null(input$condition_1_name)){
+        if(input$condition_1_name != ''){
+          if(is.null(values$dataset_list[['input']][['sample_name_prefix_replace']])){
+            selected = ""
+          }else{
+            selected = values$dataset_list[['input']][['sample_name_prefix_replace']]
+          }
+          textInput('sample_name_prefix_replace',"Prefix Replace Text",selected)
+        }
+      }
     })
     
     ##### _SAVE DATASET ####
@@ -5140,9 +5202,9 @@ shinyServer(function(input, output) {
     observeEvent(input$save_upload,{
       #values$dataset_list = list()
       values$dataset_list[['full_path']] = values$upload_list$full_path
-      values$dataset_list$data = list()
-      values$dataset_list$data[['original_data']] = values$upload_list$original_data
-      values$dataset_list[['input']] = list()
+      if(input$data_replace == T){
+        values$dataset_list[['input']] = list()
+      }
       values$dataset_list[['input']][['header']] = input$header
       values$dataset_list[['input']][['sep']] = input$sep
       values$dataset_list[['input']][['quote']] = input$quote
@@ -5151,13 +5213,17 @@ shinyServer(function(input, output) {
       values$dataset_list[['input']][['data_type']] = input$data_type
       
       if(input$data_origin == 'Proteome'){
-        values$dataset_list$input$proteome = list()
+        if(input$data_replace == T){
+          values$dataset_list$input$proteome = list()
+        }
         values$dataset_list[['input']][['proteome']][['type']] = input$proteome_type
         if(input$proteome_type == 'Discovery'){
           values$dataset_list[['input']][['proteome']][['maxquant']] = input$maxquant
           if(input$maxquant == T){
             values$dataset_list[['input']][['proteome']][['proteome_label']] = input$proteome_label
-            values$dataset_list[['maxquant']] = list()
+            if(input$data_replace == T){
+              values$dataset_list[['maxquant']] = list()
+            }
             base_path = dirname(values$upload_list[['full_path']])
             base_path
             values$dataset_list[['base_path']] = base_path
@@ -5189,8 +5255,9 @@ shinyServer(function(input, output) {
       values$dataset_list[['input']][['experiment_code']] = input$experiment_code
       values$dataset_list[['input']][['experiment_description']] = input$experiment_description
       #str(values$dataset_list[['input']])
-      
-      values$dataset_list[['input']][['id_column']] = list()
+      if(input$data_replace == T){
+        values$dataset_list[['input']][['id_column']] = list()
+      }
       
       values$dataset_list[['input']][['id_column']][['1']] = input$id_column_1
       if(!is.null(input$id_column_2)){
@@ -5209,8 +5276,9 @@ shinyServer(function(input, output) {
         }
       }
       
-      
-      values$dataset_list[['input']][['condition']] = list()
+      if(input$data_replace == T){
+        values$dataset_list[['input']][['condition']] = list()
+      }
       values$dataset_list[['input']][['condition']][['1']] = list()
       values$dataset_list[['input']][['condition']][['1']][['name']] = input$condition_1_name
       values$dataset_list[['input']][['condition']][['1']][['columns']] = input$condition_1
@@ -5252,6 +5320,9 @@ shinyServer(function(input, output) {
       if(!is.null(input$sample_name_prefix)){
         values$dataset_list[['input']][['sample_name_prefix']] = input$sample_name_prefix
       }
+      if(!is.null(input$sample_name_prefix)){
+        values$dataset_list[['input']][['sample_name_prefix_replace']] = input$sample_name_prefix_replace
+      }
 
       
       id_columns = paste(values$dataset_list$input$id_column)
@@ -5267,7 +5338,7 @@ shinyServer(function(input, output) {
       values$dataset_list$input$id_columns = id_columns
       values$dataset_list$input$expression_columns = expression_columns
       
-      colnames(values$dataset_list$data$original_data)
+      #colnames(values$dataset_list$data$original_data)
       
       
       
@@ -5276,16 +5347,20 @@ shinyServer(function(input, output) {
         
       }
       #columns2include = c(id_columns,expression_columns,input$intensity_columns)
-     
-      expression_data = values$dataset_list$data$original_data[,c(id_columns,expression_columns,input$intensity_columns)] %>% 
-        mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
-        dplyr::select(row_id, everything())
-      expression_data %>%  as.tbl
+      if(input$data_replace == T){
+        values$dataset_list$data = list()
+        values$dataset_list$data[['original_data']] = values$upload_list$original_data
       
-      values$dataset_list$data$expression_data = expression_data
+        expression_data = values$dataset_list$data$original_data[,c(id_columns,expression_columns,input$intensity_columns)] %>% 
+          mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
+          dplyr::select(row_id, everything())
+        expression_data %>%  as.tbl
+      
+        values$dataset_list$data$expression_data = expression_data
       
       
-      dim(values$dataset_list$data$expression_data)
+        dim(values$dataset_list$data$expression_data)
+      }
       rds_path = paste0('data/data_list/',input$experiment_code,'_data_list.rds')
       values$dataset_list[['rds_path']] = rds_path
       print(paste('saveRDS :',rds_path))
@@ -5299,7 +5374,64 @@ shinyServer(function(input, output) {
       
     
       })
+    ### ___join datasets ####
+    
+    
+    
+    observeEvent(input$join_datasets,{
+      dataset = input$join_dataset[1]
+      dataset
+      values$dataset_list = list()
+      values$dataset_list$input = list()
+      values$dataset_list[['input']][['experiment_name']] = input$experiment_join_name
+      values$dataset_list[['input']][['experiment_code']] = input$experiment_join_code
+      values$dataset_list[['input']][['experiment_description']] = input$experiment_join_description
+      values$dataset_list[['input']][['data_type']] = input$data_join_type
+      
+      values$dataset_list$join = list()
+      values$dataset_list$data = list()
+      init = 0
+      withProgress(message = 'Joining Datasets', {
+      for(dataset in input$join_dataset){
+        print(dataset)
+        withProgress(message = paste('Upload : readRDS :',dataset), {
+          dataset_list = tryCatch(readRDS(paste0("data/data_list/",dataset,"_data_list.rds")), error=function(e) list())
+          length(dataset_list)
+          if(length(dataset_list) > 0){
+            values$dataset_list$join[[dataset]] = dataset_list
+            data_add_list = c('expression_data_l','expression_data_l_select','df_ratio_l')
+            for(data_entry in data_add_list){
+              print(data_entry)
+              print(colnames(dataset_list$data[[data_entry]]))
+              print(unique(dataset_list$data[[data_entry]]$sample_name))
+              if(!is.null(dataset_list$data[[data_entry]])){
+                if(is.null(values$dataset_list$data[[data_entry]])){
+                  values$dataset_list$data[[data_entry]] = dataset_list$data[[data_entry]]
+                }else{
+                  values$dataset_list$data[[data_entry]] = rbind(values$dataset_list$data[[data_entry]],dataset_list$data[[data_entry]])
+                }
+              }
+            }
+          }
+        })
+        
+      }
+      })
+      print(unique(values$dataset_list$data[[data_entry]]$sample_name))
+      
+      rds_path = paste0('data/data_list/',input$experiment_join_code,'_data_list.rds')
+      values$dataset_list[['rds_path']] = rds_path
+      print(paste('saveRDS :',rds_path))
+      
+      withProgress(message = 'saveRDS', {
+        saveRDS(values$dataset_list,rds_path)
+      })
+      
+      values$upload_datasets = unique(c(values$upload_datasets,input$experiment_join_code))
+      values$upload_dataset_selected = input$experiment_join_code
 
+    })
+    
     ####_ID MAPPING ####
     
     ###_ select id ####
@@ -5817,323 +5949,482 @@ shinyServer(function(input, output) {
     
 
     
-  #####_Sample Numbers #####
-    output$upload_select_samples_ui = renderUI({
-      if(is.null(values$dataset_list$input$select_samples)){
-        selected = values$dataset_list$input$expression_columns
-      }else{
-        selected = values$dataset_list$input$select_samples
-      }
-      selectInput('upload_select_samples','Select Samples',values$dataset_list$input$expression_columns,selected,multiple = T)
-    })
+
     
     
-    expression_data_l = reactive({
-      df = values$dataset_list$data[['expression_data']]
-      colnames(df)  
-      df_l = gather(values$dataset_list$data[['expression_data']] %>% 
-                      dplyr::select(-one_of(values$dataset_list$input$intensity_columns)),key = full_sample_name, values = values$dataset_list$input$expression_columns) %>% 
-          mutate(data_type = values$dataset_list$input$data_type) %>% 
-          mutate(sample_name = sapply(full_sample_name, function(x) str_remove(x,values$dataset_list$input$sample_name_prefix))) %>% 
-          mutate(sample = NA) 
-        df_l %>% as.tbl
-        if(!is.null(values$dataset_list$input$intensity_columns)){
-          df_i = gather(values$dataset_list$data[['expression_data']],
-                        key = full_intensity_name,
-                        intensity = values$dataset_list$input$intensity_columns) %>% 
-            mutate(sample_name = sapply(full_intensity_name, function(x) str_remove(x,'Intensity.'))) %>% 
-            dplyr::select(one_of(c('id','sample_name','value'))) %>% 
-            rename(value = 'intensity')
-            df_i %>% as.tbl
+    #### Expression Data Long ####
+    output$expression_data_l = renderDataTable({
+      print('expression_data_l')
+          #print('running')
+          withProgress(message = 'gathering expression data', {
+            
+          df = values$dataset_list$data[['expression_data']]
+          #colnames(df)
+          if(!is.null(values$dataset_list$input$intensity_columns)){
+            df = df %>%  dplyr::select(-one_of(values$dataset_list$input$intensity_columns))
+          }  
+            
+            
+          df_l = gather(df,
+                        key = full_sample_name, 
+                        values = values$dataset_list$input$expression_columns) %>% 
+              mutate(data_type = values$dataset_list$input$data_type)
           
-          df_j = full_join(df_l, df_i)
-          df_j %>%  as.tbl
-          df_l = df_j
-        }
-        #df_l[is.na(df_l$full_sample_name),]
-        #View(df_j)
-        unique(df_l$full_sample_name)
-        unique(df_l$sample_name)
-        for(condition in names(values$dataset_list$input$condition)){
-          df_l$sample[df_l$full_sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
-            values$dataset_list$input$condition[[condition]][['name']]
-        }
-        colnames(df_l)
-        df_l = df_l %>% 
-          filter(full_sample_name %in% input$upload_select_samples)
+            if(values$dataset_list$input$sample_name_prefix != ''){
+                df_l = df_l %>% mutate(sample_name = sapply(full_sample_name, 
+                              function(x) 
+                                str_replace(
+                                  x,
+                                  values$dataset_list$input$sample_name_prefix,
+                                  values$dataset_list$input$sample_name_prefix_replace)
+                        ))
+                }else{
+                  df_l = df_l %>% mutate(sample_name = full_sample_name)
+                }
+             
+                                                            
+            df_l = df_l %>% mutate(sample = NA) 
+            df_l %>% as.tbl
+            if(!is.null(values$dataset_list$input$intensity_columns)){
+              df_i = gather(values$dataset_list$data[['expression_data']],
+                            key = full_intensity_name,
+                            intensity = values$dataset_list$input$intensity_columns) %>% 
+                mutate(sample_name = sapply(full_intensity_name, function(x) 
+                  str_replace(x,'Intensity.',values$dataset_list$input$sample_name_prefix_replace))) %>% 
+                dplyr::select(one_of(c('id','sample_name','value'))) %>% 
+                rename(value = 'intensity')
+                df_i %>% as.tbl
+              
+              df_j = full_join(df_l, df_i)
+              df_j %>%  as.tbl
+              df_l = df_j
+            }
+          
+            unique(df_l$full_sample_name)
+            unique(df_l$sample_name)
+            for(condition in names(values$dataset_list$input$condition)){
+              df_l$sample[df_l$full_sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
+                values$dataset_list$input$condition[[condition]][['name']]
+            }
+       
+            values$dataset_list$data$expression_data_l = df_l
+            withProgress(message = 'saveRDS',{
+              rds_path = values$dataset_list[['rds_path']]
+              print(paste('saveRDS : ',rds_path))
+              saveRDS(values$dataset_list,rds_path)
+            })
+
+          })
+            
+
+     
+          
+
         
-        df_l = df_l[df_l$value != 0,]
-        df_l = df_l[!is.na(df_l$value),]
         df_l
         
-        output$sample_numbers = renderPlot({
-          values$dataset_list$input$select_samples = input$upload_select_samples
-          #df_l = expression_data_l()
+        
+      #}
+    })
+    
+    # output$sample_name_text = renderText({
+    #   df_l = values$dataset_list$data$expression_data_l
+    #   df_l %>% as.tbl
+    #   sample_names = unique(df_l$sample_name)
+    #   sample_names
+    #   for(i in c(1:length(sample_names))){
+    #     print(i)
+    #     output[[paste('sample_name',i,'ui',sep ="_")]] = renderUI({
+    #       textInput(paste('sample_name',i,sep='_'),sample_names[i],sample_names[i])
+    #     })
+    #   }
+    #     #output[[paste(sample_namesample]]
+    #     
+    #     #sample
+    #   #}
+    #   sample_names
+    #   
+    #   
+    #   })
+    
+    output$sample_text_ui = renderUI({
+      df_l = values$dataset_list$data$expression_data_l
+      #df_l %>% as.tbl
+      sample_names = unique(df_l$sample_name)
+      sample_names = sample_names[order(sample_names)]
+      output$sample_names_text = renderText(print(paste(sample_names,collapse = ', ')))
+      
+      for(i in c(1:length(sample_names))){
+        print(i)
+        
+        local({
+          print(paste('sample_name',i,"text",sep ='_'))
+          print(sample_names[i])
+          output_name = paste('sample_name',i,"text",sep ='_')
+          text_id = paste('sample_name',i,sep='_')
+          text_title = sample_names[i]
+          text_text = sample_names[i]
+          print(output_name)
+          print(text_id)
+          print(text_title)
+          print(text_text)
+          
+          output[[output_name]] = renderUI({
+            print(output_name)
+            #print(i)
+            textInput(text_id,text_title,text_text, width = 1200)
+          })
+          #output$sample_name_1_text = renderText
+        })
+      }
+      print('text')
+      name_list = paste0(paste0('sample_name_',c(1:length(sample_names))),'_text')
+      #name_list  
+      lst = lapply(name_list, function(x) column(6,uiOutput(paste(x))))
+      #lst
+      do.call(tagList,lst)
+      #print('test')
+    })
+    
+    observeEvent(input$run_rename,{
+      df_l = values$dataset_list$data$expression_data_l
+      sample_names = unique(df_l$sample_name)
+      sample_names = sample_names[order(sample_names)]
+      
+      sample_name_list = df_l$sample_name
+      sample_name_list
+      i = 1
+      for(i in c(1:length(sample_names))){
+        print(i)
+        if(sample_names[i] != input[[paste0('sample_name_',i)]]){
+          sample_name_list[sample_name_list == sample_names[i]] = input[[paste0('sample_name_',i)]]
+        }
+      }
+      unique(sample_name_list)
+      df_l$sample_name = sample_name_list
+      values$dataset_list$data$expression_data_l = df_l
+    })
+    
+    output$rename_expression_data = renderDataTable(values$dataset_list$data$expression_data_l)
+    
+
+        
+    
+    #####_Sample Numbers #####
+    output$upload_select_samples_ui = renderUI({
+      if(is.null(values$dataset_list$input$upload_select_samples)){
+        selected = unique(values$dataset_list$data$expression_data_l$sample_name)
+      }else{
+        selected = values$dataset_list$input$upload_select_samples
+      }
+      selectInput('upload_select_samples','Select Samples',unique(values$dataset_list$data$expression_data_l$sample_name),selected,multiple = T,width = 1200)
+    })
+    
+      output$sample_numbers = renderPlot({
+        print('sample_numbers')
+        if(!is.null(input$upload_select_samples)){
+          run = 0
+          if(is.null(values$dataset_list$input$upload_select_samples)){
+            run = 1
+          }else{
+            if(!setequal(input$upload_select_samples,values$dataset_list$input$upload_select_samples)){
+              
+              run = 1
+            }
+          }
+          if(is.null(values$dataset_list$data$expression_data_l_select)){
+            run = 1
+          }
+          if(input$upload_run_select == F){
+            run = 0
+          }
+          run
+          if(run == 1){
+            values$dataset_list$input$upload_select_samples = input$upload_select_samples
+          
+            df_l = values$dataset_list$data$expression_data_l
+            df_l 
+            dim(df_l)
+            colnames(df_l)
+            df_l = df_l %>% 
+              filter(sample_name %in% input$upload_select_samples)
+            
+            df_l = df_l[df_l$value != 0,]
+            df_l = df_l[!is.na(df_l$value),]
+            values$dataset_list$data$expression_data_l_select = df_l
+          }else{
+            df_l = values$dataset_list$data$expression_data_l_select
+
+          }
+          df_l %>% as.tbl
           df_count = df_l %>% 
             group_by(sample_name) %>% 
             count()
+          df_count %>% as.tbl
           values$dataset_list$data$df_count = df_count
-          values$dataset_list$data$expression_data_l = df_l
           ggplot(df_count) + 
             geom_col(aes(y = n, x = sample_name, fill = sample_name)) +
             coord_flip() +
             xlab('Sample Name') +
             ylab('Total Number') + 
             theme(legend.position = 'None')
-        })
-        colnames(df_l)
-        output$expression_density = renderPlot({
-          ggplot(df_l) + 
-            geom_density(aes(value,col = sample_name))
-          
-        })
-        output$expression_boxplot = renderPlot({
-          ggplot(df_l) + 
-            geom_boxplot(aes(y = value, x = sample_name, col = sample_name)) + 
-            theme(axis.text.x = element_text(angle = 90))
-        })
+        }
+      })
+   
+          output$expression_density = renderPlot({
+            print('expression_density')
+            ggplot(values$dataset_list$data$expression_data_l_select) + 
+              geom_density(aes(value,col = sample_name))
+            
+          })
+          output$expression_boxplot = renderPlot({
+            print('expression_boxplot')
+            ggplot(values$dataset_list$data$expression_data_l_select) + 
+              geom_boxplot(aes(y = value, x = sample_name, col = sample_name)) + 
+              theme(axis.text.x = element_text(angle = 90))
+          })
         
-        df_l
-    })
-    
-    output$expression_df_l = renderDataTable({
-      expression_data_l()
-    })
-    
+  
 
-    
-    
-    
-
-    
     
     ## _Ratios ##### 
+     
+          
+               
     
     output$expression_data = renderDataTable({
+      
       print('expression_data')
    
         if(input$run_ratios[1] > process_values$run_ratios){
-          print(input$run_ratios[1])
-          print(process_values$run_ratios)
-          process_values$run_ratios = process_values$run_ratios + 1
-          print(input$run_ratios[1])
-          print(process_values$run_ratios)
-          
-       
           values$dataset_list$ratio = list() 
-          #values$dataset_list$data = list()
-          #values$dataset_list[['expression_data']]$row_id = values$dataset_list[['expression_data']]$Probe.Set.ID
+     
           
-          #values$dataset_list$data$original_data = values$dataset_list[['original_data']]
-          #values$dataset_list$data$expression_data = values$dataset_list[['expression_data']]
           
-          df = values$dataset_list$data[['expression_data']]
-          dim(df)
-          df_l = values$dataset_list$data$expression_data_l
-          dim(df_l)
-          #save_dataset(values)
-          #colnames(df)
-          # names(values$dataset_list$input)
-          # df_l = gather(df,key = sample_name, values = values$dataset_list$input$expression_columns) %>% 
-          #   mutate(data_type = 'expression') %>% 
-          #   mutate(sample = NA)
-          # #df_l
-          # colnames(df_l)
-          # 
-          # #names(values$dataset_list$input$condition)
-          # 
-          # for(condition in names(values$dataset_list$input$condition)){
-          #   #print(values$dataset_list$input$condition[[condition]][['name']])
-          #   #print(values$dataset_list$input$condition[[condition]][['columns']])
-          #   df_l$sample[df_l$sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
-          #     values$dataset_list$input$condition[[condition]][['name']]
-          # }
+          df_l = values$dataset_list$data$expression_data_l_select
+          df_l %>% as.tbl
+          unique(df_l$sample_name)
+          #dim(df_l)
+
           
-          #df_l %>%  as.tbl
-          #View(df_l)
-          
-          #df_l = dataset_list[['expression_data_id_l']] %>% as_tibble
-          #df_l
           df_ratio_l = df_l
           if(values$dataset_list$input$data_type == 'Expression'){
+            
+            sample_df = df_l %>% 
+              dplyr::select(full_sample_name,sample_name) %>% 
+              filter(!duplicated(full_sample_name))
+            sample_df
+            rename_list = sample_df$sample_name
+            names(rename_list) = sample_df$full_sample_name
+            rename_list
+            
+            df = values$dataset_list$data[['expression_data']]
+            df %>%  as.tbl
+            dim(df)
             withProgress(message = 'Calculating Ratios', {
-            unique(df_l$data_type)
-  
+            #unique(df_l$data_type)
+            condition =  names(values$dataset_list$input$condition)[1]
+            condition
+            condition =  names(values$dataset_list$input$condition)[2]
+            condition
             for(condition in names(values$dataset_list$input$condition)){
               print(condition)
               condition_name = values$dataset_list$input$condition[[condition]][['name']]
               condition_name
               condition_columns = values$dataset_list$input$condition[[condition]][['columns']]
               condition_columns
-              rownames(df) = df$row_id
-              rep_df = rep_ratio_function(as.data.frame(df),condition_columns)
-              rep_df
-              head(rep_df)
-              
-              #condition_list = dataset_list[[condition]]
-              #print(condition_list)
-              #col_names = condition_list
-              #col_names
               #rownames(df) = df$row_id
-              #rep_df = rep_ratio_function(as.data.frame(df),col_names)
-              #re
-              rep_colnames = colnames(rep_df)
-              rep_df[apply(rep_df, 2 , function(x) !is.finite(x))] = NA
-              colnames(rep_df)
-              rep_df_l <- rep_df %>% as_tibble() %>% 
-                mutate(row_id = rownames(rep_df)) %>% 
-                gather(., key = sample_name, values = rep_colnames) %>% 
-                #rename(sample_name = key) %>% 
-                right_join(., dplyr::select(df_l, -c('value','sample','sample_name','data_type')), by = 'row_id') %>% 
+              colnames(df_l)
+              rep_df = rep_ratio_function(df,condition_columns,rename_list) %>% as.tbl %>%  
+                
+      
+                right_join(., 
+                           dplyr::select(df_l, -c('value','sample','full_sample_name', 'sample_name','data_type')), 
+                           by = 'row_id') %>% 
+                 
                 mutate(sample = condition_name) %>% 
                 mutate(data_type = 'replicate_ratio') %>% 
-                #as_tibble() %>% 
+                filter(is.finite(value)) %>%  
+                na.omit(value) %>% 
                 dplyr::select(colnames(df_l))
               
-              #df_l
-              rep_df_l
-              #View(rep_df_l)
-              df_ratio_l = rbind(df_ratio_l,rep_df_l)
-              colnames(df_l)
-              colnames(rep_df_l)
+             
+              rep_df %>% as.tbl
               
-              #dataset_list[[gsub('columns','rep_ratio',condition)]] = rep_df
-              #df = cbind(df,rep_df)
+              df_ratio_l = rbind(df_ratio_l,rep_df)
             }
-            df_ratio_l %>% filter(data_type == 'replicate_ratio')
+            
+            
+            #View(df_ratio_l %>% filter(data_type == 'replicate_ratio'))
             unique(df_ratio_l$data_type)
-            df
-            paired_ratio_df =  paired_ratio_function(as.data.frame(df),values$dataset_list$input$condition[['2']][['columns']],values$dataset_list$input$condition[['1']][['columns']])
-            paired_ratio_df
-            paired_ratio_df[apply(paired_ratio_df, 2 , function(x) !is.finite(x))] = NA
-            head(paired_ratio_df)
-            ratio_df_l <- paired_ratio_df %>% 
-              as_tibble() %>% 
-              mutate(row_id = rownames(paired_ratio_df)) %>% 
-              gather(., key = sample_name, values = colnames(paired_ratio_df)) %>% 
+            #df
+            paired_ratio_df =  paired_ratio_function(as.data.frame(df),values$dataset_list$input$condition[['2']][['columns']],values$dataset_list$input$condition[['1']][['columns']],rename_list)
+            paired_ratio_df = paired_ratio_df %>% 
+              
+            
+            #paired_ratio_df[apply(paired_ratio_df, 2 , function(x) !is.finite(x))] = NA
+            #head(paired_ratio_df)
+            #ratio_df_l <- paired_ratio_df %>% 
+            #  as_tibble() %>% 
+            #  mutate(row_id = rownames(paired_ratio_df)) %>% 
+             # gather(., key = sample_name, values = colnames(paired_ratio_df)) %>% 
               #rename(sample_name = key) %>% 
-              right_join(., dplyr::select(df_l, -c('value','sample','sample_name','data_type')), by = 'row_id') %>% 
+              right_join(., dplyr::select(df_l, -c('value','sample','full_sample_name', 'sample_name','data_type')), by = 'row_id') %>% 
               mutate(sample = paste0(values$dataset_list$input$condition[['2']][['name']],' / ',values$dataset_list$input$condition[['1']][['name']])) %>% 
               mutate(data_type = 'comparison_ratio') %>% 
+              filter(is.finite(value)) %>%
+              na.omit(value) %>% 
               dplyr::select(colnames(df_l)) %>% 
               as_tibble()
-            head(ratio_df_l$sample)
-            unique(ratio_df_l$data_type)
-            ratio_df_l
-            colnames(df_ratio_l)
-            df_ratio_l = rbind(df_ratio_l,ratio_df_l)
+            paired_ratio_df %>% as.tbl
+            #head(ratio_df_l$sample)
+            #unique(ratio_df_l$data_type)
+            #ratio_df_l
+            #colnames(df_ratio_l)
+            df_ratio_l = rbind(df_ratio_l,paired_ratio_df)
+            df_ratio_l %>% as.tbl
+            View(df_ratio_l)
             unique(df_ratio_l$data_type)
             
+            #sample_df = df_l %>% 
+            #  dplyr::select(full_sample_name,sample_name) %>% 
+            #  filter(!duplicated(full_sample_name))
+            #sample_df
+            
+            #for(sample_name in sample_df$full_sample_name){
+            #  print(sample_name)
+            #  df_ratio_l$sample_name[df_ratio_l$full_sample_name == sample_name] = sample_df$sample_name[sample_df$full_sample_name == sample_name]
+            #}
+            #unique(df_ratio_l$sample_name)
+            
+            df_ratio_l %>% as.tbl
             values$dataset_list$data$df_ratio_l = df_ratio_l
             
-            colnames(df_ratio_l)
-            unique(df_ratio_l$sample)
-            df = cbind(df,paired_ratio_df)
-            values$dataset_list$data$df_ratio = df
+            #colnames(df_ratio_l)
+            #unique(df_ratio_l$sample)
+            #df = cbind(df,paired_ratio_df)
+            #values$dataset_list$data$df_ratio = df
             #unique(df_ratio_l$sample)
             })
           }else{
-            df_ratio_l = df_l
-            if(!is.null(values$dataset_list$input$proteome$proteome_label)){
-              if(values$dataset_list$input$proteome$proteome_label == 'SILAC'){
-                df_ratio_l = rbind(values$dataset_list$data$expression_data_l,
-                df_l %>%  
+            #df_ratio_l = df_l
+            #df_ratio_l %>% as.tbl
+            #if(!is.null(values$dataset_list$input$proteome$proteome_label)){
+              if(values$dataset_list$input$data_type == 'Ratio'){
+                values$dataset_list$data$expression_data_l_select %>% as.tbl
+                unique(values$dataset_list$data$expression_data_l_select$data_type)
+                unique(values$dataset_list$data$expression_data_l_select$sample)
+                unique(values$dataset_list$data$expression_data_l_select$sample_name)
+                
+                df_ratio_l = rbind(values$dataset_list$data$expression_data_l_select,
+                  values$dataset_list$data$expression_data_l_select %>%  
                     as.tbl %>% 
                     filter(sample == 'comparison_ratio') %>% 
                     mutate(value = log2(value)) %>% 
                     mutate(data_type = 'comparison_ratio'),
-                df_l %>% 
+                  values$dataset_list$data$expression_data_l_select %>% 
                     as.tbl %>% 
                     filter(sample == 'rev_comparison_ratio') %>% 
-                    mutate("value" = log2(value)*-1) %>% 
+                    mutate(value = log2(value)*-1) %>% 
                     mutate(data_type = 'comparison_ratio'),
-                df_l %>%  
+                values$dataset_list$data$expression_data_l_select %>%  
                   filter(sample == 'replicate_ratio') %>% 
                   mutate(value = log2(value)) %>% 
                   mutate(data_type = 'replicate_ratio'),
-                df_l %>% 
+                values$dataset_list$data$expression_data_l_select %>% 
                   filter(sample == 'rev_replicate_ratio') %>% 
                   mutate(value = log2(value) * -1) %>% 
                   mutate(value = value * -1, data_type = 'replicate_ratio')
                 )
-       
-                
-                df_l %>%  as.tbl
-                df_ratio_l %>% as.tbl
-                
-                head(df_l)
-                unique(df_ratio_l$data_type)
-                unique(df_ratio_l$sample)
-                unique(df_ratio_l$sample_name)
-                
-                df_l %>%  filter(sample == 'rev_comparison_ratio') %>% as.tbl
-                df_ratio_l %>% filter(sample == 'rev_comparison_ratio' & data_type == 'comparison_ratio') %>% as.tbl
-                
                 values$dataset_list$data$df_ratio_l = df_ratio_l
-              }
             }
                 
           }
           
-            withProgress(message = 'Summarising Data', {
+          df_ratio_l %>% as.tbl
+          unique(df_ratio_l$data_type)
+          unique(df_ratio_l$data_type)
+          unique(df_ratio_l$sample)
+          unique(df_ratio_l$sample_name)
+      withProgress(message = 'Summarising Data', {
+
+              #df_id_summary
+              df_ratio_l = values$dataset_list$data$df_ratio_l
+              df_temp = df_ratio_l %>% filter(data_type == 'replicate_ratio')
+              unique(df_temp$sample)
               
-            
-              df_id_summary <- df_ratio_l %>% 
+                    
+              summary_id_data_type_sample <- values$dataset_list$data$df_ratio_l %>% 
                 filter(id != '' & !is.na(id)) %>% 
                 group_by(id, data_type, sample) %>% 
                 summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
-              df_id_summary
-              values$dataset_list$data$df_id_summary = df_id_summary
+              summary_id_data_type_sample
+              values$dataset_list$data$summary_id_data_type_sample = summary_id_data_type_sample
+              
+              summary_id_data_type_sample_name <- values$dataset_list$data$df_ratio_l %>% 
+                filter(id != '' & !is.na(id)) %>% 
+                group_by(id, data_type, sample_name) %>% 
+                summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
+              summary_id_data_type_sample_name
+              values$dataset_list$data$summary_id_data_type_sample_name = summary_id_data_type_sample_name
             
-            
-              df_sample_name_summary = df_ratio_l %>%
+              #df_sample_name_summary
+              summary_data_type_sample_name_sample = values$dataset_list$data$df_ratio_l %>%
                 filter(id != '' & !is.na(id)) %>% 
                 group_by(data_type, sample_name,sample) %>% 
                 summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
-              df_sample_name_summary
-              values$dataset_list$data$df_sample_name_summary = df_sample_name_summary
+              summary_data_type_sample_name_sample
+              values$dataset_list$data$summary_data_type_sample_name_sample = summary_data_type_sample_name_sample
               
-              df_sd_sample = df_sample_name_summary %>% 
+              #df_sd_sample
+              sd_data_type_sample = summary_data_type_sample_name_sample %>% 
                 filter(data_type != values$dataset_list$input$data_type) %>% 
                 group_by(data_type, sample) %>% 
                 summarise(max_sd = max(sd,na.rm = T), mean_sd = max(mean,na.rm = T)) %>% 
                 ungroup()
-              
-              df_sd_sample
-              df_sd_data_type = df_sample_name_summary %>% 
+              sd_data_type_sample
+             
+              sd_data_type = summary_data_type_sample_name_sample %>% 
                 filter(data_type != values$dataset_list$input$data_type) %>% 
                 group_by(data_type) %>% 
-                summarise(max_sd = max(sd,na.rm = T), mean_sd = max(mean,na.rm = T)) %>% 
+                summarise(max_sd = max(sd,na.rm = T), mean_sd = mean(sd,na.rm = T)) %>% 
                 ungroup() %>% 
                 mutate(sample = 'All') %>% 
-                dplyr::select(colnames(df_sd_sample))
-              df_sd_data_type  
-              df_sd = rbind(df_sd_sample,df_sd_data_type)
-              df_sd
-              values$dataset_list$data$df_sd = df_sd
-              values$dataset_list$ratio$rep_sd = values$dataset_list$data[['df_sd']] %>% filter(data_type == 'replicate_ratio', sample == 'All') %>%  pull(max_sd)
-              #rep_sd
-              values$dataset_list$ratio$comp_sd = values$dataset_list$data[['df_sd']] %>% filter(data_type == 'comparison_ratio', sample == 'All') %>%  pull(max_sd)
-              #comp_sd
+                dplyr::select(colnames(sd_data_type_sample))
+              sd_data_type
               
-            # ggplot(df_mean %>% filter(data_type != 'expression')) +
-            #   geom_density(aes(x = mean, col = sample))
-            # 
-            # ggplot(df_sd %>% filter(data_type != 'expression')) +
-            #    geom_boxplot(aes(y = sd,fill = data_type, x = sample)) + 
-            
-            
+              sd_df = rbind(sd_data_type_sample,sd_data_type)
+              sd_df
+              values$dataset_list$data$sd_df = sd_df
+              values$dataset_list$ratio$sd_rep = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'replicate_ratio', sample == 'All') %>%  pull(max_sd)
+              values$dataset_list$ratio$sd_rep
+              values$dataset_list$ratio$sd_comp = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'comparison_ratio', sample == 'All') %>%  pull(max_sd)
+              values$dataset_list$ratio$sd_comp
+              
+              values$dataset_list$ratio$mean_comp = values$dataset_list$data[["summary_id_data_type_sample_name"]] %>%
+                filter(data_type == 'comparison_ratio') %>%
+                pull(mean) %>%
+                mean(.,na.rm = T)
+              values$dataset_list$ratio$mean_comp
+              values$dataset_list$ratio$mean_rep = values$dataset_list$data[["summary_id_data_type_sample_name"]] %>%
+                filter(data_type == 'replicate_ratio') %>%
+                pull(mean) %>%
+                mean(.,na.rm = T)
+              values$dataset_list$ratio$mean_rep
+              
+              if(length(values$dataset_list$ratio$sd_rep) > 0){
+                values$dataset_list$ratio$sd_cutoff = values$dataset_list$ratio$sd_rep
+              }else{
+                if(length(values$dataset_list$ratio$sd_comp) > 0){
+                  values$dataset_list$ratio$sd_cutoff = values$dataset_list$ratio$sd_comp
+                }else{
+                  values$dataset_list$ratio$sd_cutoff = 2
+                }
+              }
+              values$dataset_list$ratio$sd_cutoff
             })
          
-            
-            #dataset_list[['paired_ratio']] = paired_ratio_df
-            #names(dataset_list)
-            #if(input$save_ratios == T){
-            #values$dataset_list = dataset_list
-            
-            #print(paste('saveRDS :',save_dataset_list_path()))
-            #saveRDS(dataset_list,save_dataset_list_path())
-            #}
+          
             process_values$run_ratios = process_values$run_ratios + 1
             rds_path = values$dataset_list[['rds_path']]
             print(paste('saveRDS : ',rds_path))
@@ -6150,82 +6441,112 @@ shinyServer(function(input, output) {
         }
         
       #})
-      colnames(df)
-      output$ratio_boxplot_comp = renderPlot({
-        ggplot(df %>% filter(data_type == 'comparison_ratio')) +
-          geom_boxplot(aes(y = value, x = sample_name, col = sample_name, fill = sample)) +
-          ggtitle('Comparison Ratios') + 
-          theme(axis.text.x=element_text(angle = 90))
-      })
-      output$ratio_boxplot_rep = renderPlot({
-        if(dim(df %>% filter(data_type == 'replicate_ratio'))[1] > 0){
-          ggplot(df %>% filter(data_type == 'replicate_ratio')) +
-            geom_boxplot(aes(y = value, x = sample_name, col = sample_name, fill = sample)) +
-            ggtitle('Replicate Ratios') + 
-            theme(axis.text.x=element_text(angle = 90))
-        }
-      })
-      
-      
-      
-      output$density_plot = renderPlot({
-        print('density_plot')
-        withProgress(message = 'Density plot', {
-          #density_plot_data_list = density_plot_data()
-          dataset_list = values$dataset_list
-          names(dataset_list)
-          df_id_summary = dataset_list$data[['df_id_summary']]
-          df_id_summary
-          df_sd = dataset_list$data[['df_sd']]
-          df_sd
-          rep_sd = df_sd %>% 
-            filter(data_type == 'replicate_ratio', sample == 'All') %>% 
-            pull(max_sd)
-          rep_sd
-          comp_sd = df_sd %>% 
-            filter(data_type == 'comparison_ratio', sample == 'All') %>% 
-            pull(max_sd)
-          comp_sd
-          
-          comp_mean = df_id_summary %>% 
-            filter(data_type == 'comparison_ratio') %>% 
-            pull(mean) %>% 
-            mean(.,na.rm = T)
-          comp_mean
-          ggplot(df_id_summary %>% filter(data_type != values$dataset_list$input$data_type)) + 
-            geom_density(aes(mean,col = sample),size = 1) + 
-            geom_vline(xintercept = 2*rep_sd, col = 'green', alpha = 0.5) +
-            geom_vline(xintercept = -2*rep_sd, col = 'green', alpha = 0.5) +
-            geom_vline(xintercept = 2*comp_sd, col = 'blue', alpha = 0.5) +
-            geom_vline(xintercept = -2*comp_sd, col = 'blue', alpha = 0.5) +
-            geom_vline(xintercept = comp_mean, col = 'red', alpha = 0.5) + 
-            xlim(-4*comp_sd,4*comp_sd)
-        })
-        
-        
-      })
-      
-      output$sd_boxplot = renderPlot({
-        print('df_boxplot')
-        withProgress(message = 'Stat upload in progress', {
-          #dataset_list = values$dataset_list
-          
-          #df_sd = values$dataset_list$data[['df_sample_name_summary']]
-          #df_sd
-          ggplot(values$dataset_list$data[['df_sample_name_summary']] %>% filter(data_type != values$dataset_list$input$data_type)) +
-            geom_boxplot(aes(y = sd, x = sample, fill = data_type)) +
-            geom_point(aes(y = sd, x = sample))
-        })
-        
-      }) 
+      #df_l %>%  as.tbl
+      #colnames(df)
+
       
       
       df
       
       
     })
+          
     
-    
+          output$ratio_boxplot_comp = renderPlot({
+            plot_data = values$dataset_list$data$df_ratio_l %>% filter(data_type == 'comparison_ratio')
+            plot_data %>% as.tbl
+            if(dim(plot_data)[1] > 0){
+              ggplot(plot_data) +
+                geom_boxplot(aes(y = value, x = sample_name, col = sample_name, fill = sample)) +
+                ggtitle('Comparison Ratios') + 
+                theme(axis.text.x=element_text(angle = 90))
+                #theme(legend.position="none")
+            }
+          })
+          output$ratio_boxplot_rep = renderPlot({
+            plot_data = values$dataset_list$data$df_ratio_l %>% filter(data_type == 'replicate_ratio')
+            if(dim(plot_data)[1] > 0){
+              ggplot(plot_data) +
+                geom_boxplot(aes(y = value, x = sample_name, col = sample_name, fill = sample)) +
+                ggtitle('Replicate Ratios') + 
+                theme(axis.text.x=element_text(angle = 90))
+            }
+          })
+          
+          output$density_data_select_ui = renderUI({
+            selectInput('ratio_plot_data','Select Data',names(values$dataset_list$data),'summary_id_data_type_sample')
+          })
+          
+          output$density_data_col_select_ui = renderUI({
+            columns = colnames(values$dataset_list$data[[input$ratio_plot_data]])
+            column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+            selectInput('ratio_plot_col','Colour by',column_selection,'sample')
+          })
+          
+          output$density_plot = renderPlot({
+            print('density_plot')
+            #withProgress(message = 'Density plot', {
+         
+              density_data = values$dataset_list$data[[input$ratio_plot_data]]
+              density_data %>%  as.tbl
+              #temp_df = density_data %>% filter(data_type == 'replicate_ratio')
+              #unique(temp_df$sample)
+              sd_df = values$dataset_list$data[['sd_df']]
+              sd_rep =  values$dataset_list$ratio[['sd_rep']]
+              sd_rep
+              sd_comp = values$dataset_list$ratio[['sd_comp']]
+              sd_comp
+     
+              mean_comp = values$dataset_list$ratio$mean_comp
+              mean_comp
+  
+              ggplot(density_data %>% filter(data_type != values$dataset_list$input$data_type)) + 
+                geom_density(aes_string('mean',col = input$ratio_plot_col),size = 1) + 
+                geom_vline(xintercept = 2*sd_rep, col = 'green', alpha = 0.5) +
+                geom_vline(xintercept = -2*sd_rep, col = 'green', alpha = 0.5) +
+                geom_vline(xintercept = 2*sd_comp, col = 'blue', alpha = 0.5) +
+                geom_vline(xintercept = -2*sd_comp, col = 'blue', alpha = 0.5) +
+                #geom_vline(xintercept = mean_comp, col = 'red', alpha = 0.5) + 
+                xlim(-4*sd_comp,4*sd_comp)
+            #})
+            
+            
+          })
+          
+          output$sd_boxplot_data_select_ui = renderUI({
+            selectInput('sd_boxplot_plot_data','Select Data',names(values$dataset_list$data),'summary_data_type_sample_name_sample')
+          })
+          output$sd_boxplot_x_select_ui = renderUI({
+            columns = colnames(values$dataset_list$data[[input$sd_boxplot_plot_data]])
+            #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+            selectInput('sd_boxplot_plot_x','x',columns,'sample')
+          })
+          output$sd_boxplot_y_select_ui = renderUI({
+            columns = colnames(values$dataset_list$data[[input$sd_boxplot_plot_data]])
+            #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+            selectInput('sd_boxplot_plot_y','y',columns,'sd')
+          })
+          output$sd_boxplot_box_col_select_ui = renderUI({
+            columns = colnames(values$dataset_list$data[[input$sd_boxplot_plot_data]])
+            column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+            selectInput('sd_boxplot_box_col','Colour ',column_selection,'data_type')
+          })
+          output$sd_boxplot_point_col_select_ui = renderUI({
+            columns = colnames(values$dataset_list$data[[input$sd_boxplot_plot_data]])
+            column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+            selectInput('sd_boxplot_point_col','Colour ',column_selection,'data_type')
+          })
+          
+          output$sd_boxplot = renderPlot({
+            print('df_boxplot')
+              ggplot(values$dataset_list$data[[input$sd_boxplot_plot_data]] %>% filter(data_type != values$dataset_list$input$data_type)) +
+                geom_boxplot(aes_string(y = input$sd_boxplot_plot_y, x = input$sd_boxplot_plot_x, col = input$sd_boxplot_box_col)) +
+                geom_point(aes_string(y = input$sd_boxplot_plot_y, x = input$sd_boxplot_plot_x,col = input$sd_boxplot_point_col), size = 4)
+          }) 
+          
+          
+          
+          
     output$MA_plot_sample_comp = renderPlot({
       ggplot(values$dataset_list$data$df_ratio %>% filter(data_type == 'comparison_ratio')) +
         geom_point(aes(x = value, y = log2(intensity), col = sample), alpha = 0.5) +
@@ -6242,6 +6563,7 @@ shinyServer(function(input, output) {
     
     #### _stat_data ####
     
+    
     stat_df = reactiveVal()
     observeEvent(input$run_stat,{
       values$dataset_list$data[['stat']] = NULL
@@ -6255,14 +6577,35 @@ shinyServer(function(input, output) {
         unique(df_ratio_l$sample)
         
      
-        df_mean = df_ratio_l %>% as.tbl %>% 
-          filter(data_type == 'comparison_ratio') %>% 
-          group_by(id) %>% 
-          summarise(mean = mean(value,na.rm = T)) %>% 
-          ungroup() 
+      
+        
+        # df_count = df_ratio_l %>% as.tbl %>% 
+        #   filter(data_type == 'comparison_ratio') %>% 
+        #   group_by(id) %>% 
+        #   count() %>% 
+        #   ungroup()
+        # df_count %>%  as.tbl
+        # 
+        # df_mean = inner_join(df_mean,df_count)
+        
         
         if(values$dataset_list$input$data_type == 'Expression'){
+          df_mean = df_ratio_l %>% as.tbl %>% 
+            filter(data_type == 'comparison_ratio') %>% 
+            group_by(id) %>% 
+            summarise(mean = mean(value,na.rm = T)) %>% 
+            ungroup()
+          df_mean %>%  as.tbl
+          df_count = df_ratio_l %>% 
+            filter(data_type == 'comparison_ratio') %>% 
+            group_by(id) %>% 
+            count() %>% 
+            ungroup()
+          df_count %>% as.tbl
+          df_mean = inner_join(df_mean,df_count)
+          df_mean %>%  as.tbl
           sample_names = unique(df_ratio_l %>% filter(data_type == 'Expression') %>%  pull(sample))
+          sample_names
           var1 = rlang::parse_quosures(paste(sample_names[1]))[[1]]
           var1
           var2 = rlang::parse_quosures(paste(sample_names[2]))[[1]]
@@ -6270,16 +6613,43 @@ shinyServer(function(input, output) {
           
           df_t_test <-
             df_ratio_l %>% as.tbl() %>%
-            filter(data_type == 'expression') %>% 
+            filter(data_type == 'Expression') %>% 
             spread(sample,value) %>% 
             group_by(id) %>% 
             summarise(p_value = tryCatch(t.test(as.numeric(unlist(!!var1)),as.numeric(unlist(!!var2)))$p.value, error = function(e) NA)) %>% 
             ungroup() %>% 
             mutate('BH' = p.adjust(p_value,method = 'BH'))
+          
+          df_t_test %>% as.tbl
+          
         }
         if(values$dataset_list$input$data_type == 'Ratio'){
+          
+          
+          
+          df_ratio_mean = df_ratio_l %>% 
+            filter(data_type == 'comparison_ratio') %>% 
+            group_by(id,sample_name,data_type) %>% 
+            summarise(value = mean(value, rm.na = T))
+          df_ratio_mean %>% as.tbl
+          df_mean = df_ratio_mean %>% as.tbl %>% 
+            filter(data_type == 'comparison_ratio') %>% 
+            group_by(id) %>% 
+            summarise(mean = mean(value,na.rm = T)) %>% 
+            ungroup()
+          df_mean %>%  as.tbl
+          df_count = df_ratio_mean %>% 
+            filter(data_type == 'comparison_ratio') %>% 
+            group_by(id) %>% 
+            count() %>% 
+            ungroup()
+          df_count
+          
+          df_mean = inner_join(df_mean,df_count)
+          df_mean %>% as.tbl
+          
           df_t_test <-
-            df_ratio_l %>% as.tbl() %>%
+            df_ratio_mean %>% as.tbl() %>%
             filter(data_type == 'comparison_ratio') %>% 
             group_by(id) %>% 
             summarise(p_value = tryCatch(t.test(value,mu = 0)$p.value, error = function(e) NA)) %>% 
@@ -6288,7 +6658,7 @@ shinyServer(function(input, output) {
           df_t_test %>% as.tbl
         }
         #df_ratio_l %>% filter(id == 'AAK1')
-        df_t_test
+        #df_t_test
         df_stat = left_join(df_mean,df_t_test)
         df_stat
         values$dataset_list$data[['stat']] = df_stat
@@ -6312,7 +6682,7 @@ shinyServer(function(input, output) {
           withProgress(message = 'Stat upload in progress', {
             
           df_stat = values$dataset_list$data[['stat']]
-          
+          df_stat %>% as.tbl
           output$fdr_plot = renderPlot({
             print('fdr_plot')
             withProgress(message = 'FDR plot', {
@@ -6354,9 +6724,9 @@ shinyServer(function(input, output) {
           output$volcano_plot = renderPlot({
             print('volcano_plot')
             withProgress(message = 'Volcano plot', {
-            rep_sd = values$dataset_list$ratio[['rep_sd']] 
+            rep_sd = values$dataset_list$ratio[['sd_rep']] 
             rep_sd
-            comp_sd = values$dataset_list$ratio[['comp_df']]
+            comp_sd = values$dataset_list$ratio[['sd_comp']]
             comp_sd
             ggplot(df_stat) + 
               geom_point(aes(x = mean,y = -log10(BH)), size = 0.5) + 
@@ -6368,32 +6738,45 @@ shinyServer(function(input, output) {
             })
           })
           
+          df_stat %>% as.tbl
+          df_stat %>% filter(n > 10)
+          output$stat_num_plot = renderPlot({
+            ggplot(df_stat) +
+              geom_histogram(aes(as.factor(n)), stat = "count") + 
+              ggtitle('Counts of Data')
+          })
+          
           output$stat_info_text = renderText({
             withProgress(message = 'Info text', {
-              if(length(values$dataset_list$ratio[['rep_sd']]) > 0){
-                rep_sd = values$dataset_list$ratio[['rep_sd']]
-              }else{
-                if(length(values$dataset_list$ratio[['comp_sd']]) > 0){
-                  rep_sd = values$dataset_list$ratio[['comp_sd']]
-                }else{
-                  rep_sd = 2
-                }
-              }
-                
-              rep_sd
-              
+              sd_cutoff = values$dataset_list$ratio$sd_cutoff
+              sd_cutoff
               df_sig_up = df_stat %>% 
-                filter(BH < 0.05 & mean > rep_sd*2)
+                filter(BH < 0.05 & mean > sd_cutoff*2)
               dim(df_sig_up)
               df_sig_down = df_stat %>% 
-                filter(BH < 0.05 & mean < -rep_sd*2)
+                filter(BH < 0.05 & mean < -sd_cutoff*2)
               dim(df_sig_down)
               df_sig = rbind(df_sig_up,df_sig_down)
               
+              output$sig_data = renderDataTable({
+                df_sig
+              })
+              
+              output$sig_stat_num_plot = renderPlot({
+                ggplot(df_sig) +
+                  geom_histogram(aes(as.factor(n)), stat = "count") +
+                  ggtitle('Counts of data significantly differentially expressed')
+              })
+              
+              
+              values$dataset_list$data[['sig_data']] = df_sig
               paste0('Total \t\t: ',dim(df_stat)[1],'<br/>',
                          'Significant \t: ',dim(df_sig)[1],'<br/>',
                          'Up \t\t: ',dim(df_sig_up)[1],'<br/>',
-                         'Down \t\t: ',dim(df_sig_down)[1],'<br/>'
+                         'Down \t\t: ',dim(df_sig_down)[1],'<br/>', 
+                         '1sd \t\t: ',signif(sd_cutoff,3),'<br/>',
+                         '2sd cutoff\t\t: ',signif(sd_cutoff,3)*2,'<br/>',
+                         'BH cutoff\t\t: 0.05 <br/>'
               )
             })
           })
@@ -6997,3 +7380,4 @@ shinyServer(function(input, output) {
   #proteinGroups
 
 })
+      

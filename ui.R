@@ -35,13 +35,16 @@ shinyUI(fluidPage(
                     tabsetPanel(selected = '',
                                 
                     #### _Upload ####
-                    tabPanel('Upload',
+                    tabPanel('Upload',tabsetPanel(selected = 'Single',
+                        #### __Single ####
+                        tabPanel('Single',
+
 
                             column(12,uiOutput('file_path_ui')),
                             column(12,tags$hr()),
                             tags$h5('File upload properties'),
             
-                             # ___Input: Checkbox if file has header ----
+                         
                              column(2,uiOutput('file_header_ui')),
                             column(5,uiOutput('file_sep_ui')),
                             column(5,uiOutput('file_quote_ui')),
@@ -65,8 +68,6 @@ shinyUI(fluidPage(
                             column(4,uiOutput('maxquant_ui')),
                             column(4,uiOutput('proteome_label_ui')),
                             column(12,tags$hr()),
-                         
-                           
 
                            column(12),
                            column(6,uiOutput('experiment_name_ui')),
@@ -82,59 +83,49 @@ shinyUI(fluidPage(
                                   textOutput('col2_len')),
                            column(4,uiOutput('id_column_3_ui'),
                                   textOutput('col3_len')),
+                         
                            column(12,tags$hr()),
-                           column(3,uiOutput('intensity_ui')),
-                           column(12),
+                           column(12,numericInput('condition_number','Number of Conditions',2)),
                            #column(3),
-                           column(3,uiOutput('condition_1_name_ui')),
-                           column(3,uiOutput('condition_2_name_ui')),
-                           column(3,uiOutput('condition_3_name_ui')),
-                           column(3,uiOutput('condition_4_name_ui')),
-                           column(12),
+                           column(6,uiOutput('condition_1_name_ui')),
+                           column(6,uiOutput('condition_2_name_ui')),
+                           column(6,uiOutput('condition_1_columns_ui')),
+                           column(6,uiOutput('condition_2_columns_ui')),
+                           column(12,tags$hr()),
+                           column(6,uiOutput('condition_3_name_ui')),
+                           column(6,uiOutput('condition_4_name_ui')),
+                           column(12,tags$hr()),
                            
-                           column(3,uiOutput('condition_1_columns_ui')),
-                           column(3,uiOutput('condition_2_columns_ui')),
-                           column(3,uiOutput('condition_3_columns_ui')),
-                           column(3,uiOutput('condition_4_columns_ui')),
                            
-                           column(12,
-                           uiOutput('sample_name_prefix')),
+                           column(6,uiOutput('condition_3_columns_ui')),
+                           column(6,uiOutput('condition_4_columns_ui')),
+                           column(12,tags$hr()),
+                           column(12,uiOutput('intensity_ui')),
+                           column(12,tags$hr()),
                            
-                           # conditionalPanel(condition = "input.upload_data_type == 'Other'",
-                           #                  column(3,uiOutput('condition_1_name_ui'),
-                           #                         uiOutput('condition_1_ui')),
-                           #                  column(3,uiOutput('condition_2_name_ui'),
-                           #                         uiOutput('condition_2_ui')),
-                           #                  column(3,uiOutput('condition_3_name_ui'),
-                           #                         uiOutput('condition_3_ui')),
-                           #                  column(3,uiOutput('condition_4_name_ui'),
-                           #                         uiOutput('condition_4_ui'))
-                           # ),
                            
-                          #  conditionalPanel(condition = "input.mq_type == 'LFQ'",
-                          #    column(3,uiOutput('condition_1_name_ui'),
-                          #           uiOutput('condition_1_ui')),
-                          #    column(3,uiOutput('condition_2_name_ui'),
-                          #           uiOutput('condition_2_ui')),
-                          #    column(3,uiOutput('condition_3_name_ui'),
-                          #           uiOutput('condition_3_ui')),
-                          #    column(3,uiOutput('condition_4_name_ui'),
-                          #           uiOutput('condition_4_ui'))
-                          #  ),
-                          # conditionalPanel(condition = "input.mq_type == 'SILAC'",
-                          #          column(4,uiOutput('silac_comp_ui'),
-                          #                 uiOutput('silac_comp_rev_ui')),
-                          #       
-                          #          column(4,uiOutput('silac_rep_ui'),
-                          #                 uiOutput('silac_rep_rev_ui')),
-                          #          column(4,uiOutput('silac_incorp_ui'))
-                          # ),
-                           #column(12,uiOutput('save_experiment_ui')),
+                           column(4,uiOutput('sample_name_prefix')),
+                           column(4,uiOutput('sample_name_prefix_replace')),
+                        
                           
                           column(12,tags$hr()),
-                           column(12,uiOutput('save_output_ui'))
-                           #column(12,dataTableOutput('experiment_df'))
-                         ),
+                           column(6,uiOutput('save_output_ui')),
+                            column(4,radioButtons('data_replace','Replace Data',c(T,F)))
+                          ),
+                        #### __Join ####
+                        tabPanel('Join',
+                                 uiOutput('join_dataset_ui'),
+                                 column(12),
+                                 column(6,uiOutput('experiment_join_name_ui')),
+                                 
+                                 column(6,uiOutput('experiment_join_code_ui')),
+                                 
+                                 column(12,uiOutput('experiment_join_description_ui')),
+                                 column(12,uiOutput('upload_data_join_type_ui')),
+                                 column(12,tags$hr()),
+                                 actionButton('join_datasets','Join')
+                                 )
+                         )),
                     ###_ID_mapping ####
                     tabPanel('ID mapping',
                              tabsetPanel(
@@ -184,15 +175,33 @@ shinyUI(fluidPage(
                              )
                     ),
                     ###_Numbers####     
-                    tabPanel('Numbers',
-                             uiOutput('upload_select_samples_ui'),
-                             
-                             plotOutput('sample_numbers'),
-                             plotOutput('expression_density'),
-                             plotOutput('expression_boxplot'),
-                             dataTableOutput('expression_df_l')
+                    tabPanel('Expression Data Long',
+                            
+                             dataTableOutput('expression_data_l')
                              
                              ),
+                    
+                    tabPanel('Rename Samples',
+                             #textOutput('sample_text_ui'),
+                             #uiOutput('sample_text_ui')
+                             #uiOutput('sample_name_1_text'),
+                             #uiOutput('sample_name_3_text')
+                             textOutput('sample_names_text'),
+                             uiOutput('sample_text_ui'),
+                             actionButton('run_rename','Run'),
+                             dataTableOutput('rename_expression_data')
+                             
+                             
+                             
+                             ),
+                    
+                    tabPanel('Select Samples',
+                             column(9,uiOutput('upload_select_samples_ui')),
+                             column(3,radioButtons('upload_run_select','Run',c(T,F))),
+                             column(12,plotOutput('sample_numbers'),
+                                    plotOutput('expression_density'),
+                                    plotOutput('expression_boxplot')
+                             )),
                     ###_Ratio####
                     tabPanel('Ratio',
                              #radioButtons('run_ratios','Run Ratios',c(F,T),inline = T),
@@ -205,9 +214,20 @@ shinyUI(fluidPage(
                              column(12),
                              column(6,plotOutput('ratio_boxplot_comp')),
                              column(6,plotOutput('ratio_boxplot_rep')),
-                             column(12),
-                             column(6,plotOutput('density_plot')),
-                             column(6,plotOutput('sd_boxplot')),
+                             column(12,tags$hr()),
+                             column(6,uiOutput('density_data_select_ui')),
+                             column(6,uiOutput('density_data_col_select_ui')),
+                             #column(6,selectInput('ratio_plot_col','Colour by',c('sample','sample_name','data_type','experiment'))),
+                             column(12,plotOutput('density_plot')),
+                             column(12,tags$hr()),
+                             column(12,uiOutput('sd_boxplot_data_select_ui')),
+                             column(6,uiOutput('sd_boxplot_x_select_ui')),
+                             column(6,uiOutput('sd_boxplot_y_select_ui')),
+                             column(6,uiOutput('sd_boxplot_box_col_select_ui')),
+                             column(6,uiOutput('sd_boxplot_point_col_select_ui')),
+                             
+                             
+                             column(12,plotOutput('sd_boxplot')),
                              column(12),
                              dataTableOutput('expression_data')
                              
@@ -226,8 +246,13 @@ shinyUI(fluidPage(
                              actionButton('run_stat','Run'),
                              plotOutput('fdr_plot'),
                              plotOutput('volcano_plot'),
+                             plotOutput('stat_num_plot'),
                              htmlOutput('stat_info_text'),
-                             dataTableOutput('stat_data_table')
+                             dataTableOutput('stat_data_table'),
+                             
+                             plotOutput('sig_stat_num_plot'),
+                             dataTableOutput('sig_data')
+                             
                             
                              
                              )

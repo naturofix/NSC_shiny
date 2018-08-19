@@ -1658,41 +1658,61 @@ create_dir_list_function = function(path_list){
 }
 
 
-rep_ratio_function = function(df,col_names){
-  df_n  = df[,NULL]
+rep_ratio_function = function(df,col_names,rename_list){
+  #df_n  = df[,NULL]
+  df_n = data.frame(row_id = character(0),full_sample_name = character(0),sample_name = character(0), value = numeric(0))
+  df_n
   for(i in c(1:length(col_names))){
     for(j in c(1:length(col_names))){
       if(i < j){
         print(paste(c(i,j),collapse = ' : '))
-        name = paste(col_names[i],col_names[j],sep='__')
+        full_name = paste(col_names[i],col_names[j],sep=' / ')
+        full_name
+        name = paste(rename_list[col_names[i]],rename_list[col_names[j]],sep = ' / ')
         name
         ratio = log2(df[,col_names[i]]/df[,col_names[j]])
-        #ratio[apply(ratio, 2 , function(x) !is.finite(x))] = NA
-        
+        names(ratio) = 'value'
         ratio
-        df_n[,name] = ratio
+        #ratio %>% as.tbl
+        #ratio[apply(ratio, 2 , function(x) !is.finite(x))] = NA
+        df_b = data.frame(row_id = df$row_id,full_sample_name = full_name,sample_name = name, value = ratio)
+        df_b %>%  as.tbl
+        #ratio
+        df_n = rbind(df_n,df_b)
       }
       #print(j)
     }
     #print(i)
   }
+  df_n %>% as.tbl
   return(df_n)
   
 }
 
-paired_ratio_function = function(df,col_names_1,col_names_2){
-  df_n  = df[,NULL]
+paired_ratio_function = function(df,col_names_1,col_names_2,rename_list){
+  #df_n  = df[,NULL]
+  df_n = data.frame(row_id = character(0),full_sample_name = character(0),sample_name = character(0), value = numeric(0))
+  
   for(i in c(1:length(col_names_1))){
     for(j in c(1:length(col_names_2))){
       if(i <= j){
         print(paste(c(i,j),collapse = ' : '))
-        name = paste(col_names_1[i],col_names_2[j],sep='__')
+        full_name = paste(col_names_1[i],col_names_2[j],sep=' / ')
+        full_name
+        name = paste(rename_list[col_names_1[i]],rename_list[col_names_2[j]],sep = ' / ')
+        
         name
         print(name)
         ratio = log2(df[,col_names_1[i]]/df[,col_names_2[j]])
+        names(ratio) = 'value'
+        ratio
         #ratio[apply(ratio, 2 , function(x) !is.finite(x))] = NA
         ratio
-        df_n[,name] = ratio
+        df_b = data.frame(row_id = df$row_id,full_sample_name = full_name,sample_name = name, value = ratio)
+        df_b %>%  as.tbl
+        #ratio
+        df_n = rbind(df_n,df_b)
+        #df_n[,name] = ratio
       }
       #print(j)
     }
