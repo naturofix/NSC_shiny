@@ -85,20 +85,23 @@ shinyUI(fluidPage(
                                   textOutput('col3_len')),
                          
                            column(12,tags$hr()),
-                           column(12,numericInput('condition_number','Number of Conditions',2)),
-                           #column(3),
-                           column(6,uiOutput('condition_1_name_ui')),
-                           column(6,uiOutput('condition_2_name_ui')),
-                           column(6,uiOutput('condition_1_columns_ui')),
-                           column(6,uiOutput('condition_2_columns_ui')),
+                           column(12,uiOutput('condition_number_ui')),
+                           column(12,uiOutput('condition_name_loop_ui')),
                            column(12,tags$hr()),
-                           column(6,uiOutput('condition_3_name_ui')),
-                           column(6,uiOutput('condition_4_name_ui')),
-                           column(12,tags$hr()),
-                           
-                           
-                           column(6,uiOutput('condition_3_columns_ui')),
-                           column(6,uiOutput('condition_4_columns_ui')),
+                           # 
+                           # #column(3),
+                           # column(6,uiOutput('condition_1_name_ui')),
+                           # column(6,uiOutput('condition_2_name_ui')),
+                           # column(6,uiOutput('condition_1_columns_ui')),
+                           # column(6,uiOutput('condition_2_columns_ui')),
+                           # column(12,tags$hr()),
+                           # column(6,uiOutput('condition_3_name_ui')),
+                           # column(6,uiOutput('condition_4_name_ui')),
+                           # column(12,tags$hr()),
+                           # 
+                           # 
+                           # column(6,uiOutput('condition_3_columns_ui')),
+                           # column(6,uiOutput('condition_4_columns_ui')),
                            column(12,tags$hr()),
                            column(12,uiOutput('intensity_ui')),
                            column(12,tags$hr()),
@@ -107,7 +110,7 @@ shinyUI(fluidPage(
                            column(4,uiOutput('sample_name_prefix')),
                            column(4,uiOutput('sample_name_prefix_replace')),
                         
-                          
+                          #column(12,textOutput('input_sample_number_text')),
                           column(12,tags$hr()),
                            column(6,uiOutput('save_output_ui')),
                             column(4,radioButtons('data_replace','Replace Data',c(T,F)))
@@ -204,16 +207,24 @@ shinyUI(fluidPage(
                              )),
                     ###_Ratio####
                     tabPanel('Ratio',
-                             #radioButtons('run_ratios','Run Ratios',c(F,T),inline = T),
                              actionButton("run_ratios", "Run Ratios"),
                              
-                             #dataTableOutput('expression_data'),
+                             dataTableOutput('expression_data'),
+                        #radioButtons('select_ratio_type','Select Ratio Type',
+                        #             list('P'))
+                            uiOutput('ratio_data_type_select_ui'),
+                            #actionButton('show_ratio_plost','Show Plots'),
+                             tabsetPanel(
+                      
+                        tabPanel('Paired Ratios',
+                             #radioButtons('run_ratios','Run Ratios',c(F,T),inline = T),
+                            
                              
                              #textOutput('dataset_list_print'),
                              #textOutput('dataset_type_print'),
                              column(12),
-                             column(6,plotOutput('ratio_boxplot_comp')),
-                             column(6,plotOutput('ratio_boxplot_rep')),
+                             column(12,plotOutput('ratio_boxplot_comp')),
+                             #column(6,plotOutput('ratio_boxplot_rep')),
                              column(12,tags$hr()),
                              column(6,uiOutput('density_data_select_ui')),
                              column(6,uiOutput('density_data_col_select_ui')),
@@ -227,35 +238,79 @@ shinyUI(fluidPage(
                              column(6,uiOutput('sd_boxplot_point_col_select_ui')),
                              
                              
-                             column(12,plotOutput('sd_boxplot')),
-                             column(12),
-                             dataTableOutput('expression_data')
+                             column(12,plotOutput('sd_boxplot'))
+                             #column(12),
+                             #dataTableOutput('expression_data')
                              
                              #radioButtons('save_ratios','Save Ratios',c(F,T),inline = T)
                              
-                                
-                                ),
+                        ),
+                        tabPanel('First Element Ratio',
+                                 plotOutput('timeseries_intensity_boxplot'),
+                                 plotOutput('timeseries_fer_boxplot')
+                                 #dataTableOutput('timeseries_fer')
+                        )
+                        
+                                )),
                     tabPanel('MA',
                              #textInput('sample_name_prefix',"Sample Name Prefix", )
                              plotOutput('MA_plot_sample_comp'),
                              plotOutput('MA_plot_sample_name_comp')
                              ),
+                    
+                    
                     ###_Stat####
-                    tabPanel('Stat',
-                       
-                             actionButton('run_stat','Run'),
-                             plotOutput('fdr_plot'),
-                             plotOutput('volcano_plot'),
-                             plotOutput('stat_num_plot'),
-                             htmlOutput('stat_info_text'),
-                             dataTableOutput('stat_data_table'),
-                             
-                             plotOutput('sig_stat_num_plot'),
-                             dataTableOutput('sig_data')
-                             
-                            
-                             
-                             )
+                    tabPanel('Statistics', 
+                      column(4,selectInput('p_adjust_select',
+                                           'select multiple testing correction',
+                                           c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY","fdr","none"),
+                                           selected = 'BH')),
+                      column(4,numericInput('p_value_threshold','p-value threshold',0.05)),
+                      column(4,numericInput('value_threshold','value threshold',1)),
+                      column(12,tags$hr()),
+                      column(12,radioButtons('select_stat_test',
+                                  'Select Statisitc',
+                                  list("Pairwise Students T test" = 't_test',
+                                       'One way ANOVA' = 'anova',
+                                       'MANOVA'= 'manova'),
+                                  selected = 'anova',
+                                  inline = T)),
+                      actionButton('run_stat','Run'),
+                      uiOutput('stat_view_data_type_select_ui'),
+                      #tabsetPanel(
+                      #tabPanel('Students paired T test',
+                      #       actionButton('run_stat','Run')
+                      #       ),
+                      #tabPanel('ANOVA',
+                      #         actionButton('run_anova',"Run"),
+                      #         dataTableOutput('anova')
+                      #),
+                      #tabPanel('MANOVA'),
+                      
+                      #tabPanel('Plots',
+                               plotOutput('fdr_plot'),
+                               plotOutput('volcano_plot'),
+                               plotOutput('stat_num_plot'),
+                               htmlOutput('stat_info_text'),
+                               dataTableOutput('stat_data_table'),
+                               
+                               plotOutput('sig_stat_num_plot'),
+                               dataTableOutput('sig_data')
+                               
+                               
+                               ),
+                      
+                    
+                    tabPanel('Timeseries',tabsetPanel(
+                          
+                      
+                          tabPanel('Individual Plots',
+                                   uiOutput('timeseries_id_select_ui'),
+                                   plotOutput('timeseries_intensity_boxplot_single'),
+                                   plotOutput('timeseries_fer_boxplot_single')
+                                   
+                                   )
+                                                      ))
                     
                     
                     
