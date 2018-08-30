@@ -4534,7 +4534,7 @@ shinyServer(function(input, output) {
           
           dataset_list = values$dataset_list
         }
-        
+        View(values$dataset_list)
         #names(dataset_list)
         data_list = names(values$dataset_list$data)
         if(!is.null(values$dataset_list$maxquant)){
@@ -5271,6 +5271,7 @@ shinyServer(function(input, output) {
           print(paste('saveRDS : ',rds_path))
           saveRDS(values$dataset_list,rds_path)
         })
+        beep()
         print('done save_dataset')
       })
     })
@@ -5285,158 +5286,159 @@ shinyServer(function(input, output) {
     
     observeEvent(input$save_upload,{
       #values$dataset_list = list()
-      values$dataset_list[['full_path']] = values$upload_list$full_path
-      if(input$data_replace == T){
-        values$dataset_list[['input']] = list()
-      }
-      values$dataset_list[['input']][['header']] = input$header
-      values$dataset_list[['input']][['sep']] = input$sep
-      values$dataset_list[['input']][['quote']] = input$quote
-      
-      values$dataset_list[['input']][['data_origin']] = input$data_origin
-      values$dataset_list[['input']][['data_type']] = input$data_type
-      
-      if(input$data_origin == 'Proteome'){
+      withProgress( message = 'Saving Dataset', {
+        values$dataset_list[['full_path']] = values$upload_list$full_path
         if(input$data_replace == T){
-          values$dataset_list$input$proteome = list()
+          values$dataset_list[['input']] = list()
         }
-        values$dataset_list[['input']][['proteome']][['type']] = input$proteome_type
-        if(input$proteome_type == 'Discovery'){
-          values$dataset_list[['input']][['proteome']][['maxquant']] = input$maxquant
-          if(input$maxquant == T){
-            values$dataset_list[['input']][['proteome']][['proteome_label']] = input$proteome_label
-            if(input$data_replace == T){
-              values$dataset_list[['maxquant']] = list()
+        values$dataset_list[['input']][['header']] = input$header
+        values$dataset_list[['input']][['sep']] = input$sep
+        values$dataset_list[['input']][['quote']] = input$quote
+        
+        values$dataset_list[['input']][['data_origin']] = input$data_origin
+        values$dataset_list[['input']][['data_type']] = input$data_type
+        
+        if(input$data_origin == 'Proteome'){
+          if(input$data_replace == T){
+            values$dataset_list$input$proteome = list()
+          }
+          values$dataset_list[['input']][['proteome']][['type']] = input$proteome_type
+          if(input$proteome_type == 'Discovery'){
+            values$dataset_list[['input']][['proteome']][['maxquant']] = input$maxquant
+            if(input$maxquant == T){
+              values$dataset_list[['input']][['proteome']][['proteome_label']] = input$proteome_label
+              if(input$data_replace == T){
+                values$dataset_list[['maxquant']] = list()
+              }
+              base_path = dirname(values$upload_list[['full_path']])
+              base_path
+              values$dataset_list[['base_path']] = base_path
+              values$dataset_list$maxquant$proteinGroups = read.csv(paste(base_path,'proteinGroups.txt',sep='/'),
+                                                                    header = input$header,
+                                                                    sep = input$sep,
+                                                                    quote = input$quote)
+              values$dataset_list$maxquant$peptides = read.csv(paste(base_path,'peptides.txt',sep='/'),
+                                                                    header = input$header,
+                                                                    sep = input$sep,
+                                                                    quote = input$quote)
+              values$dataset_list$maxquant$evidence = read.csv(paste(base_path,'evidence.txt',sep='/'),
+                                                                    header = input$header,
+                                                                    sep = input$sep,
+                                                                    quote = input$quote)
+              values$dataset_list$maxquant$summary = read.csv(paste(base_path,'summary.txt',sep='/'),
+                                                                    header = input$header,
+                                                                    sep = input$sep,
+                                                                    quote = input$quote)
+              values$dataset_list$maxquant$parameters = read.csv(paste(base_path,'parameters.txt',sep='/'),
+                                                                    header = input$header,
+                                                                    sep = input$sep,
+                                                                    quote = input$quote)
             }
-            base_path = dirname(values$upload_list[['full_path']])
-            base_path
-            values$dataset_list[['base_path']] = base_path
-            values$dataset_list$maxquant$proteinGroups = read.csv(paste(base_path,'proteinGroups.txt',sep='/'),
-                                                                  header = input$header,
-                                                                  sep = input$sep,
-                                                                  quote = input$quote)
-            values$dataset_list$maxquant$peptides = read.csv(paste(base_path,'peptides.txt',sep='/'),
-                                                                  header = input$header,
-                                                                  sep = input$sep,
-                                                                  quote = input$quote)
-            values$dataset_list$maxquant$evidence = read.csv(paste(base_path,'evidence.txt',sep='/'),
-                                                                  header = input$header,
-                                                                  sep = input$sep,
-                                                                  quote = input$quote)
-            values$dataset_list$maxquant$summary = read.csv(paste(base_path,'summary.txt',sep='/'),
-                                                                  header = input$header,
-                                                                  sep = input$sep,
-                                                                  quote = input$quote)
-            values$dataset_list$maxquant$parameters = read.csv(paste(base_path,'parameters.txt',sep='/'),
-                                                                  header = input$header,
-                                                                  sep = input$sep,
-                                                                  quote = input$quote)
           }
         }
-      }
-      
-      values$dataset_list[['input']][['experiment_name']] = input$experiment_name
-      values$dataset_list[['input']][['experiment_code']] = input$experiment_code
-      values$dataset_list[['input']][['experiment_description']] = input$experiment_description
-      #str(values$dataset_list[['input']])
-      if(input$data_replace == T){
-        values$dataset_list[['input']][['id_column']] = list()
-      }
-      
-      values$dataset_list[['input']][['id_column']][['1']] = input$id_column_1
-      if(!is.null(input$id_column_2)){
-        if(input$id_column_2 != ''){
-          values$dataset_list[['input']][['id_column']][['2']] = input$id_column_2
-        }
-      }
-      if(!is.null(input$id_column_3)){
-        if(input$id_column_3 != ''){
-          values$dataset_list[['input']][['id_column']][['3']] = input$id_column_3
-        }
-      }
-      if(!is.null(input$id_column_4)){
-        if(input$id_column_4 != ''){
-          values$dataset_list[['input']][['id_column']][['4']] = input$id_column_4
-        }
-      }
-      
-      if(input$data_replace == T){
-        values$dataset_list[['input']][['condition']] = list()
-      }
-      for(i in c(1:input$condition_number)){
-        values$dataset_list[['input']][['condition']][[paste(i)]] = list()
-        values$dataset_list[['input']][['condition']][[paste(i)]][['name']] = input[[paste0('condition_',i,'_name')]]
-        values$dataset_list[['input']][['condition']][[paste(i)]][['columns']] = input[[paste0('condition_',i)]]
-        values$dataset_list[['input']][['condition_columns']][[input[[paste('condition_',i,'_name')]]]] = input[[paste('condition_',i)]]
-      }
-
-      #if(input$data_type == 'Timecourse'){
-        condition_order = c()
-        for(i in c(1:length(values$dataset_list$input$condition))){
-          print(i)
-          condition_order = c(condition_order,values$dataset_list$input$condition[[paste(i)]]$name)
-        }
-        condition_order
-        values$dataset_list$input$condition_order = condition_order
-      #}
-      
-      if(!is.null(input$sample_name_prefix)){
-        values$dataset_list[['input']][['sample_name_prefix']] = input$sample_name_prefix
-      }
-      if(!is.null(input$sample_name_prefix)){
-        values$dataset_list[['input']][['sample_name_prefix_replace']] = input$sample_name_prefix_replace
-      }
-
- 
-      
-      id_columns = paste(values$dataset_list$input$id_column)
-      id_columns
-      expression_columns = c()
-      x = '2'
-      expression_columns = paste(unlist(sapply(names(values$dataset_list$input$condition), 
-                                        function(x) sapply(values$dataset_list$input$condition[[x]][['columns']], 
-                                                           function(y)c(expression_columns,y)))))
-      expression_columns
-      #sapply(expression_columns, function(x) as.character(x))
-      #paste(expression_columns)
-      values$dataset_list$input$id_columns = id_columns
-      values$dataset_list$input$expression_columns = expression_columns
-      
-      #colnames(values$dataset_list$data$original_data)
-      
-      
-      
-      if(!is.null(input$intensity_columns)){
-        values$dataset_list$input$intensity_columns = input$intensity_columns
         
-      }
-      #columns2include = c(id_columns,expression_columns,input$intensity_columns)
-      if(input$data_replace == T){
-        values$dataset_list$data = list()
-        values$dataset_list$data[['original_data']] = values$upload_list$original_data
-      
-        expression_data = values$dataset_list$data$original_data[,c(id_columns,expression_columns,input$intensity_columns)] %>% 
-          mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
-          dplyr::select(row_id, everything())
-        expression_data %>%  as.tbl
-      
-        values$dataset_list$data$expression_data = expression_data
+        values$dataset_list[['input']][['experiment_name']] = input$experiment_name
+        values$dataset_list[['input']][['experiment_code']] = input$experiment_code
+        values$dataset_list[['input']][['experiment_description']] = input$experiment_description
+        #str(values$dataset_list[['input']])
+        if(input$data_replace == T){
+          values$dataset_list[['input']][['id_column']] = list()
+        }
         
-      
-        dim(values$dataset_list$data$expression_data)
-      }
-      rds_path = paste0('data/data_list/',input$experiment_code,'_data_list.rds')
-      values$dataset_list[['rds_path']] = rds_path
-      print(paste('saveRDS :',rds_path))
-      
-      withProgress(message = 'saveRDS', {
-        saveRDS(values$dataset_list,rds_path)
+        values$dataset_list[['input']][['id_column']][['1']] = input$id_column_1
+        if(!is.null(input$id_column_2)){
+          if(input$id_column_2 != ''){
+            values$dataset_list[['input']][['id_column']][['2']] = input$id_column_2
+          }
+        }
+        if(!is.null(input$id_column_3)){
+          if(input$id_column_3 != ''){
+            values$dataset_list[['input']][['id_column']][['3']] = input$id_column_3
+          }
+        }
+        if(!is.null(input$id_column_4)){
+          if(input$id_column_4 != ''){
+            values$dataset_list[['input']][['id_column']][['4']] = input$id_column_4
+          }
+        }
+        
+        if(input$data_replace == T){
+          values$dataset_list[['input']][['condition']] = list()
+        }
+        for(i in c(1:input$condition_number)){
+          values$dataset_list[['input']][['condition']][[paste(i)]] = list()
+          values$dataset_list[['input']][['condition']][[paste(i)]][['name']] = input[[paste0('condition_',i,'_name')]]
+          values$dataset_list[['input']][['condition']][[paste(i)]][['columns']] = input[[paste0('condition_',i)]]
+          #values$dataset_list[['input']][['condition_columns']][[input[[paste('condition_',i,'_name')]]]] = input[[paste('condition_',i)]]
+        }
+  
+        #if(input$data_type == 'Timecourse'){
+          condition_order = c()
+          for(i in c(1:length(values$dataset_list$input$condition))){
+            print(i)
+            condition_order = c(condition_order,values$dataset_list$input$condition[[paste(i)]]$name)
+          }
+          condition_order
+          values$dataset_list$input$condition_order = condition_order
+        #}
+        
+        if(!is.null(input$sample_name_prefix)){
+          values$dataset_list[['input']][['sample_name_prefix']] = input$sample_name_prefix
+        }
+        if(!is.null(input$sample_name_prefix)){
+          values$dataset_list[['input']][['sample_name_prefix_replace']] = input$sample_name_prefix_replace
+        }
+  
+   
+        
+        id_columns = paste(values$dataset_list$input$id_column)
+        id_columns
+        expression_columns = c()
+        x = '2'
+        expression_columns = paste(unlist(sapply(names(values$dataset_list$input$condition), 
+                                          function(x) sapply(values$dataset_list$input$condition[[x]][['columns']], 
+                                                             function(y)c(expression_columns,y)))))
+        expression_columns
+        #sapply(expression_columns, function(x) as.character(x))
+        #paste(expression_columns)
+        values$dataset_list$input$id_columns = id_columns
+        values$dataset_list$input$expression_columns = expression_columns
+        
+        #colnames(values$dataset_list$data$original_data)
+        
+        
+        
+        if(!is.null(input$intensity_columns)){
+          values$dataset_list$input$intensity_columns = input$intensity_columns
+          
+        }
+        #columns2include = c(id_columns,expression_columns,input$intensity_columns)
+        if(input$data_replace == T){
+          values$dataset_list$data = list()
+          values$dataset_list$data[['original_data']] = values$upload_list$original_data
+        
+          expression_data = values$dataset_list$data$original_data[,c(id_columns,expression_columns,input$intensity_columns)] %>% 
+            mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
+            dplyr::select(row_id, everything())
+          expression_data %>%  as.tbl
+        
+          values$dataset_list$data$expression_data = expression_data
+          
+        
+          dim(values$dataset_list$data$expression_data)
+        }
+        rds_path = paste0('data/data_list/',input$experiment_code,'_data_list.rds')
+        values$dataset_list[['rds_path']] = rds_path
+        print(paste('saveRDS :',rds_path))
+        
+        withProgress(message = 'saveRDS', {
+          saveRDS(values$dataset_list,rds_path)
+        })
+        
+        values$upload_datasets = unique(c(values$upload_datasets,input$experiment_code))
+        values$upload_dataset_selected = input$experiment_code
       })
-      
-      values$upload_datasets = unique(c(values$upload_datasets,input$experiment_code))
-      values$upload_dataset_selected = input$experiment_code
-      
-    
+      beep()
       })
     ### ___join datasets ####
     
@@ -5456,7 +5458,9 @@ shinyServer(function(input, output) {
       values$dataset_list$data = list()
       init = 0
       withProgress(message = 'Joining Datasets', {
+      dataset = input$join_dataset[3]
       for(dataset in input$join_dataset){
+        print('')
         print(dataset)
         withProgress(message = paste('Upload : readRDS :',dataset), {
           dataset_list = tryCatch(readRDS(paste0("data/data_list/",dataset,"_data_list.rds")), error=function(e) list())
@@ -5464,10 +5468,15 @@ shinyServer(function(input, output) {
           if(length(dataset_list) > 0){
             values$dataset_list$join[[dataset]] = dataset_list
             data_add_list = c('expression_data_l','expression_data_l_select','df_ratio_l')
+            data_entry = data_add_list[1]
             for(data_entry in data_add_list){
               print(data_entry)
+              print(length(colnames(dataset_list$data[[data_entry]])))
               print(colnames(dataset_list$data[[data_entry]]))
-              print(unique(dataset_list$data[[data_entry]]$sample_name))
+              print(length(colnames(values$dataset_list$data[[data_entry]])))
+              
+              print(colnames(values$dataset_list$data[[data_entry]]))
+              #print(unique(dataset_list$data[[data_entry]]$sample_name))
               if(!is.null(dataset_list$data[[data_entry]])){
                 if(is.null(values$dataset_list$data[[data_entry]])){
                   values$dataset_list$data[[data_entry]] = dataset_list$data[[data_entry]]
@@ -6016,6 +6025,7 @@ shinyServer(function(input, output) {
 
     
     
+    
     #### _Expression Data Long ####
     output$expression_data_l = renderDataTable({
       print('expression_data_l')
@@ -6023,17 +6033,21 @@ shinyServer(function(input, output) {
           withProgress(message = 'gathering expression data', {
             
           df = values$dataset_list$data[['expression_data']]
+          df %>%  as.tbl
           #colnames(df)
           if(!is.null(values$dataset_list$input$intensity_columns)){
             df = df %>%  dplyr::select(-one_of(values$dataset_list$input$intensity_columns))
           }  
             
-            
+          df %>%  as.tbl
+          
           df_l = gather(df,
                         key = full_sample_name, 
                         values = values$dataset_list$input$expression_columns) %>% 
               mutate(data_type = values$dataset_list$input$data_type)
           
+          df_l %>% as.tbl
+          unique(df_l$full_sample_name)
             if(values$dataset_list$input$sample_name_prefix != ''){
                 df_l = df_l %>% mutate(sample_name = sapply(full_sample_name, 
                               function(x) 
@@ -6049,27 +6063,41 @@ shinyServer(function(input, output) {
                                                             
             df_l = df_l %>% mutate(sample = NA) 
             df_l %>% as.tbl
+            
+            intensity_replace = 'Intensity.'
+            
             if(!is.null(values$dataset_list$input$intensity_columns)){
+              intensity_replace = 'Intensity.'
+              if(values$dataset_list$input$intensity_columns[1] == 'Intensity'){
+                intensity_replace = 'Intensity'
+              }
+              intensity_replace
               df_i = gather(values$dataset_list$data[['expression_data']],
                             key = full_intensity_name,
-                            intensity = values$dataset_list$input$intensity_columns) %>% 
+                            intensity = values$dataset_list$input$intensity_columns) %>%
                 mutate(sample_name = sapply(full_intensity_name, function(x) 
-                  str_replace(x,'Intensity.',values$dataset_list$input$sample_name_prefix_replace))) %>% 
+                  str_replace(x,intensity_replace,values$dataset_list$input$sample_name_prefix_replace))) %>% 
                 dplyr::select(one_of(c('id','sample_name','value'))) %>% 
                 rename(value = 'intensity')
                 df_i %>% as.tbl
-              
+                levels(unique(df_i$sample_name))
+                levels(unique(df_l$sample_name))             
+                df_i %>% as.tbl
+              df_l %>% as.tbl
               df_j = full_join(df_l, df_i)
+              unique(df_j$sample_name)
               df_j %>%  as.tbl
               df_l = df_j
             }
-          
             unique(df_l$full_sample_name)
             unique(df_l$sample_name)
             for(condition in names(values$dataset_list$input$condition)){
+              print(condition)
               df_l$sample[df_l$full_sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
                 values$dataset_list$input$condition[[condition]][['name']]
             }
+            df_l %>% as.tbl
+            
             if(!is.null(values$dataset_list$input$proteome$maxquant)){
               if(values$dataset_list$input$proteome$maxquant == T){
                 dim(df_l)
@@ -6082,8 +6110,11 @@ shinyServer(function(input, output) {
             if(values$dataset_list$input$data_type == 'Timecourse'){
               df_l$timepoint = as.numeric(df_l$sample)
             }
-            df_l$sample = factor(df_l$sample,levels = values$dataset_list$input$condition_order)
-              
+            if(!is.null(values$dataset_list$input$condition_order)){
+              df_l$sample = factor(df_l$sample,levels = values$dataset_list$input$condition_order)
+            }
+            df_l %>% as.tbl
+            
             #}
           })
             values$dataset_list$data$expression_data_l = df_l
@@ -6094,7 +6125,7 @@ shinyServer(function(input, output) {
               saveRDS(values$dataset_list,rds_path)
             })
 
-
+        beep()
         df_l
         
         
@@ -6253,6 +6284,7 @@ shinyServer(function(input, output) {
         #if(input$run_ratios[1] > process_values$run_ratios){
     ###_Run Ratios####      
     observeEvent(input$run_ratios,{
+        print('run_ratios')
           values$dataset_list$ratio = list() 
      
           
@@ -6262,7 +6294,7 @@ shinyServer(function(input, output) {
           unique(df_l$sample_name)
           #dim(df_l)
 
-          
+          print(values$dataset_list$input$data_type)
           df_ratio_l = df_l
           if(values$dataset_list$input$data_type == 'Expression'){
             values$dataset_list$ratio$type = 'log2(Expression Ratio)'
@@ -6308,6 +6340,8 @@ shinyServer(function(input, output) {
               rep_df %>% as.tbl
               
               df_ratio_l = rbind(df_ratio_l,rep_df)
+     
+              
             }
             
             
@@ -6330,12 +6364,13 @@ shinyServer(function(input, output) {
         
             df_ratio_l = rbind(df_ratio_l,paired_ratio_df)
             df_ratio_l %>% as.tbl
-            View(df_ratio_l)
+            #View(df_ratio_l)
             unique(df_ratio_l$data_type)
             
        
             
             df_ratio_l %>% as.tbl
+            print('  done Expression Ratio')
             values$dataset_list$data$df_ratio_l = df_ratio_l
             
          
@@ -6369,36 +6404,244 @@ shinyServer(function(input, output) {
                   mutate(value = log2(value) * -1) %>% 
                   mutate(value = value * -1, data_type = 'replicate_ratio')
                 )
+                print('  done Ratio')
                 values$dataset_list$data$df_ratio_l = df_ratio_l
+               
+                
             }
                 
+          
           if(values$dataset_list$input$data_type == 'Timecourse'){
             values$dataset_list$ratio$type = 'log2(Mean of First Timepoint Ratio)'
-            df_mean = values$dataset_list$data$expression_data_l %>% as.tbl %>% 
-              group_by(id,sample) %>% 
+            values$dataset_list$data$expression_data_l %>% as.tbl
+            df_mean = values$dataset_list$data$expression_data_l_select %>% as.tbl %>% 
+              group_by(id,sample,experiment) %>% 
               summarise(mean = mean(value,na.rm = T)) %>% 
               group_by(id) %>%
               arrange(factor(sample, levels = values$dataset_list$input$condition_order)) %>% 
               filter(row_number() == 1L) %>% 
               ungroup() %>% 
               ungroup()
+            #beep()
             df_mean %>%  as.tbl
+            dim(df_mean)
             values$dataset_list$data$df_mean = df_mean
             df_mean %>% as.tbl
-            df_fed = values$dataset_list$data$expression_data_l %>% 
-              group_by(id) %>% 
-              mutate(value = log2(value / df_mean$mean[df_mean$id == unique(id)])) %>% 
-              mutate(data_type = 'First Element Ratio') %>% 
-              ungroup()
+            expression_data_l = values$dataset_list$data$expression_data_l_select
+            expression_data_l %>% as.tbl
+            length(unique(expression_data_l$id))
+            dim(values$dataset_list$data$expression_data_l)
+            df_fed = values$dataset_list$data$expression_data_l_select %>% 
+              group_by(experiment) %>% 
+                group_by(id) %>% 
+                  mutate(value = log2(value / df_mean$mean[df_mean$id == unique(id) & df_mean$experiment %in% experiment])) %>% 
+                  mutate(n = n()) %>% 
+                ungroup() %>% 
+              ungroup() %>% 
+              mutate(data_type = 'First Element Ratio')
+            #beep() 
             
+            df_l = values$dataset_list$data$expression_data_l_select %>%
+              group_by(experiment,id) %>% 
+                mutate(n = n()) %>% 
+              ungroup()
+            #ungroup()
+            df_l %>%  as.tbl
             df_fed %>%  as.tbl
-            df_ratio_l = rbind(values$dataset_list$data$expression_data_l,df_fed)
+            df_ratio_l = rbind(df_l,df_fed)
             df_ratio_l %>%  as.tbl
+            if(length(unique(df_ratio_l$experiment)) == 2){
+              ## df_ratio_l_im -----------  
+              experiments = unique(df_ratio_l$experiment)
+              experiments
+              df_ratio_l_im = values$dataset_list$data$expression_data_l_select  %>%
+                filter(data_type == 'Timecourse') %>% 
+                group_by(id) %>% 
+                summarise(#mean_1 = mean(value[experiment == experiments[1]],na.rm = T),
+                  #mean_2 = mean(value[experiment == experiments[2]],na.rm = T),
+                  n = n(),
+                  mean = log2(mean(value[experiment == experiments[1]],na.rm = T)/mean(value[experiment == experiments[2]],na.rm = T))) %>% 
+                ungroup() %>% 
+                mutate(data_type = 'ratio_of_mean_intensity',
+                       experiment = values$dataset_list$input$experiment_code,
+                       sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                rename(mean = 'value') %>% 
+                left_join(
+                  values$dataset_list$data$expression_data_l_select  %>% 
+                    dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+                    as.tbl %>% 
+                    filter(!duplicated(id)),
+                  .,
+                  by = 'id') %>% 
+                mutate(full_sample_name = NA,
+                       sample_name = NA,
+                       timepoint = NA)
+
+              #beep()
+              df_ratio_l_im %>% as.tbl
+              ###df_ratio_l_irm -----------  
+              
+              #slope = tryCatch(lm(value ~ timepoint)$coefficients[2],error = function(x) NA),
+              
+              df_ratio_l_slope = values$dataset_list$data$expression_data_l_select  %>%
+                filter(data_type == 'Timecourse') %>% 
+                group_by(id,experiment) %>% 
+                #mutate(experiment = unique(experiment))
+                summarise(
+                  n = n(),
+                  slope = tryCatch(lm(value ~ timepoint)$coefficients[2],error = function(x) NA)
+                  
+                  #mean = log2(mean(value[experiment == experiments[1]],na.rm = T)/mean(value[experiment == experiments[2]],na.rm = T))
+                ) %>% 
+                ungroup() %>% 
+                mutate(data_type = 'slope') %>% 
+                       #experiment = values$dataset_list$input$experiment_code,
+                       #sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                rename(slope = 'value') %>%
+                left_join(
+                  values$dataset_list$data$expression_data_l_select  %>% 
+                    dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+                    as.tbl %>% 
+                    filter(!duplicated(id)),
+                  .,
+                  by = 'id') %>% 
+                mutate(full_sample_name = NA,
+                       sample_name = NA,
+                       sample = NA,
+                       timepoint = NA)
+              df_ratio_l_slope  %>%  as.tbl
+              
+              experiments
+              df_ratio_l_slope_ratio = df_ratio_l_slope %>% 
+                filter(!is.na(value)) %>% 
+                group_by(id) %>% 
+                  filter(length(unique(experiment)) == 2) %>% 
+                  summarise(n = n(),
+                    slope_ratio = value[experiment == experiments[1]] / value[experiment == experiments[2]]) %>% 
+                ungroup() %>% 
+                mutate(data_type = 'slope_ratio',
+                  experiment = values$dataset_list$input$experiment_code) %>% 
+                #sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                rename(slope_ratio = 'value') %>%
+                left_join(
+                  values$dataset_list$data$expression_data_l_select  %>% 
+                    dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+                    as.tbl %>% 
+                    filter(!duplicated(id)),
+                  .,
+                  by = 'id') %>% 
+                mutate(full_sample_name = NA,
+                       sample_name = NA,
+                       sample = NA,
+                       timepoint = NA) %>% 
+                filter(!is.na(value))
+              df_ratio_l_slope  %>%  as.tbl
+              df_ratio_l_slope_ratio %>%  as.tbl
+                
+              
+              df_ratio_l_irm = values$dataset_list$data$expression_data_l_select  %>%
+                filter(data_type == 'Timecourse') %>% 
+                group_by(id,sample,timepoint) %>% 
+                summarise(
+                  n = n(),
+                  mean = log2(mean(value[experiment == experiments[1]],na.rm = T)/mean(value[experiment == experiments[2]],na.rm = T))
+                ) %>% 
+                ungroup() %>% 
+                mutate(data_type = 'ratio_of_mean_timepoint_intensity',
+                       experiment = values$dataset_list$input$experiment_code,
+                       sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                rename(mean = 'value') %>%
+                left_join(
+                  values$dataset_list$data$expression_data_l_select  %>% 
+                    dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+                    as.tbl %>% 
+                    filter(!duplicated(id)),
+                  .,
+                  by = 'id') %>% 
+                mutate(full_sample_name = NA,
+                       sample_name = NA)
+              
+  
+              df_ratio_l_irm %>% as.tbl
+              #colnames(df_ratio_l_irm)
+              #beep()
+              ## df_ratio_l_irm_m -----------  
+              df_ratio_l_irm_m = df_ratio_l_irm %>%
+                group_by(id) %>% 
+                summarise(
+                    n = n(),
+                    mean = mean(value,na.rm = T)
+                  ) %>% 
+                ungroup() %>% 
+                mutate(data_type = 'mean_ratio_of_mean_timepoint_intensity',
+                       experiment = values$dataset_list$input$experiment_code,
+                       sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                rename(mean = 'value')  %>%  
+                left_join(
+                  values$dataset_list$data$expression_data_l_select  %>% 
+                    dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+                    as.tbl %>% 
+                    filter(!duplicated(id)),
+                  .,
+                  by = 'id') %>% 
+                mutate(full_sample_name = NA,
+                       sample_name = NA,
+                       timepoint = NA)
+              
+              df_ratio_l_irm_m %>% as.tbl
           
+              #df_ratio_l_mean_and_slope = 
+              colnames(df_ratio_l)
+              colnames(df_ratio_l_im)
+              colnames(df_ratio_l_im)
+              colnames(df_ratio_l_irm)
+              colnames(df_ratio_l_irm_m)
+              colnames(df_ratio_l_slope)
+              colnames(df_ratio_l_slope_ratio)
+              df_ratio_l = rbind(df_ratio_l,
+                                 df_ratio_l_im,
+                                 df_ratio_l_irm,
+                                 df_ratio_l_irm_m,
+                                 df_ratio_l_slope,
+                                 df_ratio_l_slope_ratio)
+              #beep()
+              
+              #### ---------
+            }
+            df_ratio_l %>%  as.tbl
+            beep()
+            print('  done Timecourse Ratio')
+            values$dataset_list$data$df_ratio_l = df_ratio_l
+            
+   
+            
+            
           }
+
+           df_ratio_l %>%  as.tbl
+            summary = values$dataset_list$data$df_ratio_l %>% 
+              group_by(data_type,sample,sample_name) %>% 
+              summarise(mean = mean(value,na.rm = T),
+                        sd = sd(value, na.rm = T)) %>% 
+              ungroup()
+            summary %>% as.tbl
+            values$dataset_list$data$df_ratio_l_summary = summary
+          
+          
+          withProgress(message = 'saveRDS',{
+            rds_path = values$dataset_list[['rds_path']]
+            print(paste('saveRDS : ',rds_path))
+            saveRDS(values$dataset_list,rds_path)
+          })
+          
+        print('    run_ratios done')
+        beep()
         })
           
-          
+    output$ratio_df_l_summary = renderDataTable({
+      values$dataset_list$data$df_ratio_l_summary
+    })
+               
     output$summarising_data = renderDataTable({
           df_ratio_l %>% as.tbl
           unique(df_ratio_l$data_type)
@@ -6511,20 +6754,56 @@ shinyServer(function(input, output) {
     })
           
         output$ratio_data_type_select_ui = renderUI({
-          select_list = unique(values$dataset_list$data$df_ratio_l$data_type)
-          selectInput('ratio_data_type_select','Select Data Type',select_list,select_list[1],multiple = T)
+          if(!is.null(values$dataset_list$data$df_ratio_l$data_type)){
+            select_list = unique(values$dataset_list$data$df_ratio_l$data_type)
+            if(is.null(values$dataset_list$ratio$data_type_select)){
+              select = select_list[1]
+            }else{
+              select = values$dataset_list$ratio$data_type_select 
+            }
+            selectInput('ratio_data_type_select','Select Data Type',select_list,select,multiple = T)
+          }
         })
     
         ###_ratio_boxplot -----
+        
+        output$upload_ratio_boxplot_x_ui = renderUI({
+          columns = colnames(values$dataset_list$data$df_ratio_l)
+
+          selectInput('upload_ratio_boxplot_x','x',columns,'sample')
+        })
+        output$upload_ratio_boxplot_y_ui = renderUI({
+          columns = colnames(values$dataset_list$data$df_ratio_l)
+          
+          selectInput('upload_ratio_boxplot_y','x',columns,'value')
+        })
+        output$upload_ratio_boxplot_col_ui = renderUI({
+          columns = colnames(values$dataset_list$data$df_ratio_l)
+          #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+          selectInput('upload_ratio_boxplot_col','Colour ',columns,'sample_name')
+        })
+        output$upload_ratio_boxplot_fill_ui = renderUI({
+          columns = colnames(values$dataset_list$data$df_ratio_l)
+          #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+          selectInput('upload_ratio_boxplot_fill','Fill',c(NULL,columns),'sample_name')
+        })
           output$ratio_boxplot_comp = renderPlot({
-            plot_data = values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$ratio_data_type_select)
-            plot_data %>% as.tbl
-            if(dim(plot_data)[1] > 0){
-              ggplot(plot_data) +
-                geom_boxplot(aes(y = value, x = sample_name, col = sample_name, fill = sample)) +
-                ggtitle(input$ratio_data_type_select) + 
-                theme(axis.text.x=element_text(angle = 90))
-                #theme(legend.position="none")
+            if(!is.null(input$ratio_data_type_select)){
+              
+              plot_data = values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$ratio_data_type_select)
+              plot_data %>% as.tbl
+              if(dim(plot_data)[1] > 0){
+                values$dataset_list$ratio$data_type_select = input$ratio_data_type_select
+              
+                ggplot(plot_data) +
+                  geom_boxplot(aes_string(y = input$upload_ratio_boxplot_y, 
+                                          x = input$upload_ratio_boxplot_x, 
+                                          col = input$upload_ratio_boxplot_col, 
+                                          fill = input$upload_ratio_boxplot_fill)) +
+                  ggtitle(input$ratio_data_type_select) + 
+                  theme(axis.text.x=element_text(angle = 90))
+                  #theme(legend.position="none")
+              }
             }
           })
           # output$ratio_boxplot_rep = renderPlot({
@@ -6633,13 +6912,13 @@ shinyServer(function(input, output) {
               print('df_boxplot')
               if(!is.null(input$sd_boxplot_point_col)){
                 print('run')
-                  density_data = values$dataset_list$data$df_ratio_l %>%  
+                  df_sum = values$dataset_list$data$df_ratio_l_summary %>%  
                   filter(data_type %in% input$ratio_data_type_select)
-                df_sum = density_data %>% 
-                  group_by(data_type,sample,sample_name) %>% 
-                  summarise(mean = mean(value,na.rm = T),
-                            sd = sd(value,na.rm = T)) %>% 
-                  ungroup()
+                #df_sum = density_data %>% 
+                #  group_by(data_type,sample,sample_name) %>% 
+                #  summarise(mean = mean(value,na.rm = T),
+                #            sd = sd(value,na.rm = T)) %>% 
+                #  ungroup()
                 df_sum %>% as.tbl
                 ggplot(df_sum, aes_string(x = input$sd_boxplot_plot_x, y = input$sd_boxplot_plot_y)) +
                   geom_boxplot(aes_string(col = input$sd_boxplot_box_col)) +
@@ -6651,6 +6930,18 @@ shinyServer(function(input, output) {
             #       geom_point(aes_string(y = input$sd_boxplot_plot_y, x = input$sd_boxplot_plot_x,col = input$sd_boxplot_point_col), size = 4)
             }) 
           #})
+            
+            output$summary_ratio = renderDataTable({
+              df_ratio = values$dataset_list$data$df_ratio_l
+              colnames(df_ratio)
+              summary = df_ratio %>% 
+                group_by(data_type,sample,sample_name) %>% 
+                  summarise(mean = mean(value,na.rm = T),
+                            sd = sd(value, na.rm = T)) %>% 
+                ungroup()
+              summary %>% as.tbl
+              values$dataset_list$data$df_ratio_l_summary = summary
+              })
    
     #### _Timeseries ####
       output$timeseries_fer = renderDataTable({
@@ -6749,29 +7040,91 @@ shinyServer(function(input, output) {
           
           
     output$MA_plot_sample_comp = renderPlot({
-      ggplot(values$dataset_list$data$df_ratio %>% filter(data_type == 'comparison_ratio')) +
+
+      
+      ggplot(values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$ratio_data_type_select)) +
         geom_point(aes(x = value, y = log2(intensity), col = sample), alpha = 0.5) +
-        ggtitle('Comparison Ratio by sample')
+        ggtitle('MA plot by sample')
       })
     
     output$MA_plot_sample_name_comp = renderPlot({
-      
-      ggplot(values$dataset_list$data$df_ratio %>% filter(data_type == 'comparison_ratio')) +
+      ggplot(values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$ratio_data_type_select)) +
         geom_point(aes(x = value, y = log2(intensity), col = sample_name), alpha = 0.5) + 
-        ggtitle('Comparison Ration by sample name')
+        ggtitle('MA plot by sample name')
     })
     
     ##_Stat #####
     
     #### _stat_data ####
     
-    stat_df = reactiveVal()
+    #stat_df = reactiveVal()
+    output$upload_select_stat_test_ui = renderUI({
+      if(is.null(values$dataset_list$stat$test)){
+        selected = 't_test'
+      }else{
+        selected = values$dataset_list$stat$test
+      }
+      radioButtons('select_stat_test',
+                           'Select Statisitc',
+                           list("Pairwise Students T test" = 't_test',
+                                'One way ANOVA' = 'anova',
+                                'MANOVA'= 'manova'),
+                           selected = selected,
+                           inline = T)
+    })
+    output$upload_p_adjust_select_ui = renderUI({
+      if(is.null(values$dataset_list$stat$p_adjust)){
+        selected = "BH"
+      }else{
+        selected = values$dataset_list$stat$p_adjust
+      }
+
+      selectInput('p_adjust_select',
+                  'Multiple testing correction',
+                  c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY","fdr","none"),
+                  selected = selected)
+    })
+    
+    output$upload_p_value_threshold_ui = renderUI({
+      if(is.null(values$dataset_list$stat$p_value_threshold)){
+        selected = 0.05
+      }else{
+        selected = values$dataset_list$stat$p_value_threshold
+      }
+      numericInput('p_value_threshold','p-value threshold',selected)
+    })
+    
+    
+    output$stat_view_data_type_select_ui = renderUI({
+      #if(!is.null(values$dataset_list$data$df_stat)){
+        select_list = unique(values$dataset_list$data$df_stat$data_type)
+        if(is.null(values$dataset_list$stat$stat_view_data_type)){
+          if(!is.null(values$dataset_list$data$df_stat)){
+          
+            selected = unique(values$dataset_list$data$df_stat$data_type)[1]
+          }else{
+            selected = NULL
+          }
+        }else{
+          selected = values$dataset_list$stat$stat_view_data_type
+        }
+        selectInput('stat_view_data_type','Select Data Type',
+                    select_list,
+                    selected,
+                    multiple = T)
+      
+    })
+    
+    
     observeEvent(input$run_stat,{
+      
       print('run_stat')
-      values$dataset_list$data$stat = list()
-      values$dataset_list$data$stat$test = input$select_stat_test
-      values$dataset_list$data$stat$p_value_threshold = input$p_value_threshold
-      values$dataset_list$data$stat$value_threshold = input$value_threshold
+      values$dataset_list$stat = list()
+      values$dataset_list$stat$test = input$select_stat_test
+      #values$dataset_list$stat$p_adjust = input$p_adjust
+      #values$dataset_list$stat$p_value_threshold = input$p_value_threshold
+      #values$dataset_list$stat$value_threshold = NULL
+      #values$dataset_list$stat$value_threshold
       df_stat = NULL
       withProgress(message = 'Statistical Calcluation in progress', {
 
@@ -6780,6 +7133,7 @@ shinyServer(function(input, output) {
       
         unique(df_ratio_l$data_type)
         unique(df_ratio_l$sample)
+        unique(df_ratio_l$experiment)
         if(input$select_stat_test == 't_test'){
 
           if(values$dataset_list$input$data_type == 'Expression'){
@@ -6857,7 +7211,7 @@ shinyServer(function(input, output) {
               ungroup() %>% 
               mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select))
               
-              rename(mean = 'value')
+              #rename(mean = 'value')
             df_t_test %>% as.tbl
           }
           #df_ratio_l %>% filter(id == 'AAK1')
@@ -6890,6 +7244,38 @@ shinyServer(function(input, output) {
           df_stat %>% as.tbl
           
         }
+        if(input$select_stat_test == 'manova'){
+          df_ratio_l %>% as.tbl
+          
+        
+          df = df_ratio_l %>%
+            filter(data_type == 'Timecourse')
+          df
+          View(df)
+          df_stat =  df %>%  
+            group_by(id) %>% 
+              summarise(
+                p_value = tryCatch(anova(lm(value ~ as.numeric(timepoint):experiment))$'Pr(>F)'[1],error = function(x) NA)
+              ) %>%
+            ungroup() %>%
+            #na.omit() %>% 
+            #group_by(data_type) %>%
+            mutate(p_adjust = p.adjust(p_value,input$p_adjust_select)) %>%
+            #ungroup() %>% 
+            mutate(experiment = paste(unique(df$experiment),collapse = ' : '))
+          
+          unique(df_ratio_l$data_type)
+          df_stat = 
+            right_join(df_stat, 
+                      df_ratio_l %>% 
+                        #filter(data_type %in% c('ratio_of_mean_intensity', 'mean_ratio_of_mean_timepoint_intensity')) %>% 
+                        dplyr::select(c(id,value,data_type,n))
+                      ) 
+            #mutate(n = 0)
+          df_stat %>% as.tbl
+  
+          
+        }
         values$dataset_list$data$df_stat = df_stat
         withProgress(message = 'saveRDS',{
           rds_path = values$dataset_list[['rds_path']]
@@ -6898,6 +7284,7 @@ shinyServer(function(input, output) {
           saveRDS(values$dataset_list,rds_path)
         })
         #values$dataset_list = dataset_list
+        beep()
         print('   run_stat -- done')
         
       })
@@ -6906,144 +7293,332 @@ shinyServer(function(input, output) {
     
     output$stat_data_table = renderDataTable({
       print('stat_data')
-        print('running be patient ...')
+        if(input$run_stat_plot == T){
+        
         #dataset_list = values$dataset_list
         #names(dataset_list)
         if(!is.null(values$dataset_list$data$df_stat)){
-          withProgress(message = 'Stat upload in progress', {
+          if(!is.null(input$p_adjust_select)){
+            print('running be patient ...')
             
-            df_stat = values$dataset_list$data$df_stat
+            values$dataset_list$stat$p_adjust = input$p_adjust_select
+            
+            
+            df_stat = values$dataset_list$data$df_stat %>% 
+              group_by(data_type) %>% 
+                mutate(p_adjust = p.adjust(p_value,method = input$p_adjust_select)) %>% 
+              ungroup()
+            #values$dataset_list$data$df_stat = df_stat
             df_stat %>% as.tbl
-  
-          #output$stat_data_table = renderDataTable(df_stat)
+            print('   stat_data done')
             df_stat
-          })
+          }
         }
+      }
       
     })
-          output$stat_view_data_type_select_ui = renderUI({
-            if(!is.null(values$dataset_list$data$df_stat)){
-              selectInput('stat_view_data_type','Select Data Type',
-                          unique(values$dataset_list$data$df_stat$data_type),
-                          unique(values$dataset_list$data$df_stat$data_type)[1],
-                          multiple = T)
-            }
-          })
+
     
-          output$fdr_plot = renderPlot({
-            print('fdr_plot')
-            if(!is.null(values$dataset_list$data$df_stat)){
+    #__fdr_plot -------
+    output$fdr_plot = renderPlot({
+      print('fdr_plot')
+      if(!is.null(input$stat_view_data_type)){
+        values$dataset_list$stat$stat_view_data_type = input$stat_view_data_type
+      }
+      if(!is.null(input$p_value_threshold)){
+        values$dataset_list$stat$p_value_threshold = input$p_value_threshold
+      }
+        
+      if(input$run_stat_plot == T){
+        if(!is.null(values$dataset_list$data$df_stat)){
+          if(!is.null(input$p_value_threshold)){
+            print('   running')
+            #values$dataset_list$stat$p_value_threshold = input$p_value_threshold
+  
+            #values$dataset_list$data$stat$stat_view_data_type = input$stat_view_data_type
+            withProgress(message = 'FDR plot', {
               
+              df_stat = values$dataset_list$data$df_stat %>% 
+                filter(data_type %in% input$stat_view_data_type)
+              p_values  = df_stat %>% 
+                pull(get(input$upload_df_p_select))
+              #df_stat
+              #df_stat %>% as.tbl
+              #p_values = as.numeric(unlist(df_stat[,input$upload_df_p_select]))
               
-                
-              withProgress(message = 'FDR plot', {
-                df_stat  = values$dataset_list$data$df_stat %>% filter(data_type == input$stat_view_data_type)
-                df_stat %>% as.tbl
-                hist_data = hist(as.numeric(df_stat$p_value),breaks=100,plot=FALSE)
-                hist_data
-                top_5 = (mean(hist_data$counts[(length(hist_data$counts)*0.8):length(hist_data$counts)]))
-                top_5
-                #print(str(hist_data$counts))
-                #print(top_5)
-                count = 0.05*length(hist_data$counts)
-                count
-                p_values = df_stat$p_value
-                p_values = p_values[!is.na(p_values)]
-                sig_p_values = p_values[p_values < 0.05]
-                t_number = length(sig_p_values)
-                t_number
-                #print(count)
-                #print(top_5)
-                fdr = round((top_5*count)/t_number*100,digits=2)
-                fdr
-                
-                
-                ggplot(df_stat) + 
-                  geom_histogram(aes(p_value),binwidth = 0.01) +
-                  geom_hline(yintercept = top_5, col = 'green') +
-                  geom_segment(aes(x = 0.8, xend = 1.2, y = top_5, yend = top_5), col = 'blue') +
-                  geom_vline(xintercept = 0.05, col = 'red') + 
-                  geom_text(aes(x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, label = paste0('FDR = ',fdr)), size = 5) +
-                  coord_cartesian(xlim = c(0,1)) +
-                  xlab('p value')
-              })
+              hist_data = hist(p_values,breaks=100,plot=FALSE)
+              hist_data
+              top_5 = (mean(hist_data$counts[(length(hist_data$counts)*0.8):length(hist_data$counts)]))
+              top_5
+              #print(str(hist_data$counts))
+              #print(top_5)
+              count = input$p_value_threshold*length(hist_data$counts)
+              count
+              #p_values = as.numeric(unlist(df_stat[,input$upload_df_p_select]))
+              p_values = p_values[!is.na(p_values)]
+              sig_p_values = p_values[p_values < input$p_value_threshold]
+              t_number = length(sig_p_values)
+              t_number
+              #print(count)
+              #print(top_5)
+              fdr = round((top_5*count)/t_number*100,digits=2)
+              fdr
               
-            }
-            
-          })
+              p = ggplot(df_stat) + 
+                geom_histogram(aes_string(input$upload_df_p_select),binwidth = 0.01) +
+                geom_hline(yintercept = top_5, col = 'green') +
+                geom_segment(aes(x = 0.8, xend = 1.2, y = top_5, yend = top_5), col = 'blue') +
+                geom_vline(xintercept = input$p_value_threshold, col = 'red') + 
+                geom_text(aes(x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, label = paste0('FDR = ',fdr)), size = 5) +
+                coord_cartesian(xlim = c(0,1)) +
+                xlab(input$upload_df_p_select)
+              print('  fdr plot done')
+              
+              p 
+            })
+        }
+      }
+      }
+    })
+    #__stat_volcano plot ---------
+    output$df_stat_summary_data_type = renderDataTable({  
+      
+      if(input$run_stat_plot == T){
+        
+      
+        if(values$dataset_list$input$data_type == 'Timecourse'){
+          df_stat_summary_data_type =  values$dataset_list$data$df_stat %>% 
+            group_by(data_type) %>% 
+            summarise(mean = mean(value,na.rm = T),
+                      sd = sd(value,na.rm = T)) %>% 
+            ungroup()
+          df_stat_summary_data_type %>%  as.tbl
           
-          output$volcano_plot = renderPlot({
-            print('volcano_plot')
-            if(!is.null(values$dataset_list$data$df_stat)){
-              
-              withProgress(message = 'Volcano plot', {
-                rep_sd = values$dataset_list$ratio[['cutoff_rep']] 
-                rep_sd
-                comp_sd = values$dataset_list$ratio[['cutoff_comp']]
-                comp_sd
-                ggplot(values$dataset_list$data$df_stat %>% filter(data_type == input$stat_view_data_type)) + 
-                  geom_point(aes(x = value,y = -log10(p_adjust)), size = 0.5) + 
-                  geom_hline(yintercept = -log10(0.05), col = 'red') +
-                  geom_vline(xintercept = 2* rep_sd, col = 'green') +
-                  geom_vline(xintercept = -2* rep_sd, col = 'green') +
-                  geom_vline(xintercept = 2* comp_sd, col = 'blue') +
-                  geom_vline(xintercept = -2* comp_sd, col = 'blue')
-              })
-            }
-          })
+          cutoff = df_stat_summary_data_type$sd[df_stat_summary_data_type$data_type == input$stat_view_data_type]
           
-          #df_stat %>% as.tbl
-          #df_stat %>% filter(n > 10)
-          output$stat_num_plot = renderPlot({
-            print('stat_num_plot')
-            if(!is.null(values$dataset_list$data$df_stat)){
-                
-              ggplot(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type)) +
-                geom_histogram(aes(as.factor(n)), stat = "count") + 
-                ggtitle('Counts of Data')
+          cutoff
+          #values$dataset_list$ratio$cutoff = cutoff
+          #values$dataset_list$ratio$cutoff
+        }
+        if(values$dataset_list$input$data_type == 'Expression' |values$dataset_list$input$data_type == 'Ratio'){
+          # comp_sds = values$dataset_list$data$df_ratio_l_summary %>% 
+          #   filter(data_type == 'comparison_ratio') %>% 
+          #   pull(sd)
+          # cutoff_comp = max(comp_sds,na.rm = T)    
+          # cutoff_comp
+          # 
+          # rep_sds = values$dataset_list$data$df_ratio_l_summary %>% 
+          #   filter(data_type == 'replicate_ratio') %>% 
+          #   pull(sd)
+          # cutoff_rep = max(rep_sds,na.rm = T)    
+          # cutoff_rep
+          # if(is.na(cutoff_rep)){
+          #   if(is.na(cutoff_comp)){
+          #     cutoff = 2
+          #     }else{
+          #       cutoff = cutoff_comp
+          #     }
+          #   }else{
+          #     cutoff = cutoff_rep
+          #   }
+          # values$dataset_list$ratio$cutoff_comp = cutoff_comp
+          # values$dataset_list$ratio$cutoff_rep = cutoff_rep
+          # values$dataset_list$ratio$cutoff = cutoff
+          df_stat_summary_data_type = values$dataset_list$data$df_ratio_l_summary %>% 
+            group_by(data_type) %>% 
+            summarise(mean = mean(mean,na.rm = T),
+                      mean_sd = mean(sd,na.rm = T),
+                      min_sd = min(sd,na.rm = T),
+                      sd = max(sd,na.rm = T)
+                      ) %>% 
+            ungroup()
+        
+        cutoff_comp = df_stat_summary_data_type$sd[df_stat_summary_data_type$data_type == 'comparison_ratio']
+        cutoff_rep = df_stat_summary_data_type$sd[df_stat_summary_data_type$data_type == 'replicate_ratio']
+        if(is.null(cutoff_rep)){
+          if(is.null(cutoff_comp)){
+            cutoff = 2
+          }else{
+            cutoff = cutoff_comp
+          }
+        }else{
+          cutoff = cutoff_rep
+        }
+        values$dataset_list$ratio$cutoff_comp = cutoff_comp
+        values$dataset_list$ratio$cutoff_rep = cutoff_rep
+      }
+        
+        
+        values$dataset_list$ratio$cutoff = cutoff
+        values$dataset_list$data$df_stat_summary_data_type = df_stat_summary_data_type
+        
+        df_stat_summary_data_type
+      }
+    })
+    output$upload_value_threshold_ui = renderUI({
+     # if(!is.null(values$dataset_list$ratio$cutoff)){
+        selected = 0
+        if(is.null(values$dataset_list$stat$value_threshold)){
+            selected = 0
+            if(is.numeric(values$dataset_list$ratio$cutoff)){
+              selected = signif(values$dataset_list$ratio$cutoff,3)
             }
-          })
-          
-          output$stat_info_text = renderText({
-            print('stat_info_text')
-            if(!is.null(values$dataset_list$data$df_stat)){
-              
-              withProgress(message = 'Info text', {
-                cutoff = values$dataset_list$ratio$cutoff
-                cutoff
-                df_sig_up = values$dataset_list$data$df_stat  %>% 
-                  filter(data_type == input$stat_view_data_type) %>% 
-                  filter(p_adjust < 0.05 & value > cutoff*2)
-                dim(df_sig_up)
-                df_sig_down = values$dataset_list$data$df_stat  %>% 
-                  filter(data_type == input$stat_view_data_type) %>%
-                  filter(p_adjust < 0.05 & value < -cutoff*2)
-                dim(df_sig_down)
-                df_sig = rbind(df_sig_up,df_sig_down)
-                
-                output$sig_data = renderDataTable({
-                  df_sig
-                })
-                
-                output$sig_stat_num_plot = renderPlot({
-                  ggplot(df_sig) +
-                    geom_histogram(aes(as.factor(n)), stat = "count") +
-                    ggtitle('Counts of data significantly differentially expressed')
-                })
-                
-                
-                values$dataset_list$data[['sig_data']] = df_sig
-                paste0('Total \t\t: ',dim(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type))[1],'<br/>',
-                       'Significant \t: ',dim(df_sig)[1],'<br/>',
-                       'Up \t\t: ',dim(df_sig_up)[1],'<br/>',
-                       'Down \t\t: ',dim(df_sig_down)[1],'<br/>', 
-                       'cutoff\t\t: ',signif(cutoff,3)*2,'<br/>',
-                       'p_adjust cutoff\t\t: 0.05 <br/>'
-                )
-              })
-            }
-          })
+        }else{
+          selected = signif(values$dataset_list$stat$value_threshold,3)
+        }
+        numericInput('value_threshold','value threshold',selected)
+      #}
+    })
+    
+    output$upload_cutoff_multiple_ui = renderUI({
+      if(is.null(values$dataset_list$stat$cutoff_multiple)){
+        selected = 2
+      }else{
+        selected = values$dataset_list$stat$cutoff_multiple
+      }
+      numericInput('cutoff_multiple','Multiply Cutoff',selected)
+    })
+    
+    
+    
+    output$upload_stat_volcano_show_sd_ui = renderUI({
+      if(is.null(values$dataset_list$stat$upload_stat_volcano_show_sd)){
+        selected = T
+      }else{
+        selected = values$dataset_list$stat$upload_stat_volcano_show_sd
+      }
+      
+      radioButtons('upload_stat_volcano_show_sd','Show standard Deviations',c(T,F),selected)
+    })
    
+    
+    output$volcano_plot = renderPlot({
+      print('volcano_plot')
+      if(input$run_stat_plot == T){
+        
+      if(!is.null(input$value_threshold)){
+        print('    runnning')
+        values$dataset_list$stat$value_threshold = input$value_threshold
+        values$dataset_list$stat$cutoff_multiple = input$cutoff_multiple
+        values$dataset_list$stat$upload_stat_volcano_show_sd = input$upload_stat_volcano_show_sd
+        withProgress(message = 'Volcano plot', {
+          rep_sd = values$dataset_list$ratio[['cutoff_rep']] 
+          rep_sd
+          comp_sd = values$dataset_list$ratio[['cutoff_comp']]
+          comp_sd
+          p = ggplot(values$dataset_list$data$df_stat %>% filter(data_type == input$stat_view_data_type)) + 
+            geom_point(aes(x = value,y = -log10(p_adjust)), size = input$upload_stat_volcano_size) + 
+            geom_hline(yintercept = -log10(input$p_value_threshold), col = 'orange')
+            if(!is.null(values$dataset_list$data$df_sig_down)){
+              p = p + geom_point(data = values$dataset_list$data$df_sig_down, 
+                                 aes(x = value,y = -log10(p_adjust)), 
+                                 size = input$upload_stat_volcano_size,
+                                 col =  'green')
+            }
+            if(!is.null(values$dataset_list$data$df_sig_up)){
+              p = p + geom_point(data = values$dataset_list$data$df_sig_up, 
+                                 aes(x = value,y = -log10(p_adjust)), 
+                                 size = input$upload_stat_volcano_size,
+                                 col =  'red')
+            }
+            if(!is.null(values$dataset_list$data$df_stat_summary_data_type)){
+              if(input$upload_stat_volcano_show_sd == T){
+              p = p + 
+                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_view_data_type), aes(xintercept = sd),col = 'gray') +
+                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_view_data_type), aes(xintercept = -sd),col = 'gray')
+              }
+              p = p +  geom_vline(xintercept = input$value_threshold * input$cutoff_multiple, col = 'blue') +
+                geom_vline(xintercept = input$value_threshold * -input$cutoff_multiple, col = 'blue')
+            }
+            p = p + xlim(input$upload_stat_volcano_xlim[1],input$upload_stat_volcano_xlim[2])
+          
+          print('    volcano done')  
+          p
+        })
+        }
+      }
+    })
+    output$upload_stat_volcano_xlim_ui = renderUI({
+      lim_values =  values$dataset_list$data$df_stat %>% 
+        filter(data_type == input$stat_view_data_type) %>% 
+        pull(value)
+      lim_min = min(lim_values,na.rm = T)
+      lim_max = max(lim_values,na.rm = T)
+      lim = max(c(ceiling(abs(lim_min)),ceiling(abs(lim_max))))
+      sliderInput('upload_stat_volcano_xlim', 'xlim',
+                  min = lim * -1,
+                  max = lim,
+                  value = c(min(lim_values,na.rm = T),max(lim_values,na.rm = T)),
+                  step = 0.1, round = TRUE,width = 1200)
+    })
+    
+    output$stat_num_plot = renderPlot({
+      print('stat_num_plot')
+      if(input$run_stat_plot == T){
+        
+        if(!is.null(values$dataset_list$data$df_stat)){
+          print('   running')
+          p = ggplot(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type)) +
+            geom_histogram(aes(as.factor(n)), stat = "count") + 
+            ggtitle('Counts of Data')
+          print('   stat nump plot done')
+          p
+        }
+      }
+    })
+    
+  
+    
+    output$stat_info_text = renderText({
+
+      print('stat_info_text')
+      if(input$run_stat_plot == T){
+        
+      if(!is.null(values$dataset_list$data$df_stat)){
+        print('    running')
+        withProgress(message = 'Info text', {
+          cutoff = values$dataset_list$stat$value_threshold
+          cutoff
+          df_sig_up = values$dataset_list$data$df_stat  %>% 
+            filter(data_type == input$stat_view_data_type) %>% 
+            filter(p_adjust < input$p_value_threshold & value > cutoff * input$cutoff_multiple)
+          dim(df_sig_up)
+          values$dataset_list$data$df_sig_up = df_sig_up
+          df_sig_down = values$dataset_list$data$df_stat  %>% 
+            filter(data_type == input$stat_view_data_type) %>%
+            filter(p_adjust < input$p_value_threshold & value < -cutoff*input$cutoff_multiple)
+          dim(df_sig_down)
+          values$dataset_list$data$df_sig_down = df_sig_down
+          
+          df_sig = rbind(df_sig_up,df_sig_down)
+          values$dataset_list$data$df_sig = df_sig
+          
+          output$sig_data = renderDataTable({
+            df_sig
+          })
+          
+          output$sig_stat_num_plot = renderPlot({
+            ggplot(df_sig) +
+              geom_histogram(aes(as.factor(n)), stat = "count") +
+              ggtitle('Counts of data significantly differentially expressed')
+          })
+          
+          
+          values$dataset_list$data[['sig_data']] = df_sig
+          print('    done stat info')
+          paste0('Total \t\t: ',dim(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type))[1],'<br/>',
+                 'Significant \t: ',dim(df_sig)[1],'<br/>',
+                 'Up \t\t: ',dim(df_sig_up)[1],'<br/>',
+                 'Down \t\t: ',dim(df_sig_down)[1],'<br/>', 
+                 'cutoff\t\t: ',input$value_threshold * input$cutoff_multiple,'<br/>',
+                 'p_adjust\t\t',input$p_adjust_select,'<br/>',
+                 'p_adjust cutoff\t\t:',input$p_value_threshold,' <br/>'
+          )
+        })
+      }
+      }
+    })
+
     
 
     

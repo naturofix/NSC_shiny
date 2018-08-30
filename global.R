@@ -37,6 +37,7 @@ library(tidyr)
 library(dplyr)
 library(purrr)
 
+library(beepr)
 #parralel processing
 library(promises)
 library(future)

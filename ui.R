@@ -183,46 +183,52 @@ shinyUI(fluidPage(
                              dataTableOutput('expression_data_l')
                              
                              ),
-                    
-                    tabPanel('Rename Samples',
-                             #textOutput('sample_text_ui'),
-                             #uiOutput('sample_text_ui')
-                             #uiOutput('sample_name_1_text'),
-                             #uiOutput('sample_name_3_text')
-                             textOutput('sample_names_text'),
-                             uiOutput('sample_text_ui'),
-                             actionButton('run_rename','Run'),
-                             dataTableOutput('rename_expression_data')
-                             
-                             
-                             
-                             ),
-                    
-                    tabPanel('Select Samples',
-                             column(9,uiOutput('upload_select_samples_ui')),
-                             column(3,radioButtons('upload_run_select','Run',c(T,F))),
-                             column(12,plotOutput('sample_numbers'),
-                                    plotOutput('expression_density'),
-                                    plotOutput('expression_boxplot')
-                             )),
+                    tabPanel('Edit Samples',tabsetPanel(
+                      tabPanel('Rename Samples',
+                               #textOutput('sample_text_ui'),
+                               #uiOutput('sample_text_ui')
+                               #uiOutput('sample_name_1_text'),
+                               #uiOutput('sample_name_3_text')
+                               textOutput('sample_names_text'),
+                               uiOutput('sample_text_ui'),
+                               actionButton('run_rename','Run'),
+                               dataTableOutput('rename_expression_data')
+                               
+                               
+                               
+                               ),
+                      
+                      tabPanel('Select Samples',
+                               column(9,uiOutput('upload_select_samples_ui')),
+                               column(3,radioButtons('upload_run_select','Run',c(T,F))),
+                               column(12,plotOutput('sample_numbers'),
+                                      plotOutput('expression_density'),
+                                      plotOutput('expression_boxplot')
+                                 )
+                               )
+                      )),
                     ###_Ratio####
                     tabPanel('Ratio',
                              actionButton("run_ratios", "Run Ratios"),
                              
-                             dataTableOutput('expression_data'),
                         #radioButtons('select_ratio_type','Select Ratio Type',
                         #             list('P'))
                             uiOutput('ratio_data_type_select_ui'),
                             #actionButton('show_ratio_plost','Show Plots'),
-                             tabsetPanel(
+                             #tabsetPanel(
                       
-                        tabPanel('Paired Ratios',
+                        #tabPanel('Paired Ratios',
                              #radioButtons('run_ratios','Run Ratios',c(F,T),inline = T),
                             
                              
                              #textOutput('dataset_list_print'),
                              #textOutput('dataset_type_print'),
-                             column(12),
+                          column(12,tags$hr()),
+                            column(3,uiOutput('upload_ratio_boxplot_x_ui')),
+                            column(3,uiOutput('upload_ratio_boxplot_y_ui')),
+                            column(3,uiOutput('upload_ratio_boxplot_col_ui')),
+                            column(3,uiOutput('upload_ratio_boxplot_fill_ui')),
+                        
                              column(12,plotOutput('ratio_boxplot_comp')),
                              #column(6,plotOutput('ratio_boxplot_rep')),
                              column(12,tags$hr()),
@@ -238,65 +244,70 @@ shinyUI(fluidPage(
                              column(6,uiOutput('sd_boxplot_point_col_select_ui')),
                              
                              
-                             column(12,plotOutput('sd_boxplot'))
+                             column(12,plotOutput('sd_boxplot')),
+                            column(12,dataTableOutput('expression_data')),
+                        column(12,dataTableOutput('ratio_df_l_summary')),
+                        
                              #column(12),
                              #dataTableOutput('expression_data')
                              
                              #radioButtons('save_ratios','Save Ratios',c(F,T),inline = T)
                              
-                        ),
-                        tabPanel('First Element Ratio',
-                                 plotOutput('timeseries_intensity_boxplot'),
-                                 plotOutput('timeseries_fer_boxplot')
+                       # ),
+                        #tabPanel('First Element Ratio',
+                                # plotOutput('timeseries_intensity_boxplot'),
+                                # plotOutput('timeseries_fer_boxplot')
                                  #dataTableOutput('timeseries_fer')
-                        )
+                        #),
                         
-                                )),
-                    tabPanel('MA',
+                        #        )),
+                    #tabPanel('MA',
                              #textInput('sample_name_prefix',"Sample Name Prefix", )
-                             plotOutput('MA_plot_sample_comp'),
-                             plotOutput('MA_plot_sample_name_comp')
-                             ),
+                             column(12,plotOutput('MA_plot_sample_comp')),
+                             column(12,plotOutput('MA_plot_sample_name_comp'))
+                            ),
                     
                     
                     ###_Stat####
                     tabPanel('Statistics', 
-                      column(4,selectInput('p_adjust_select',
-                                           'select multiple testing correction',
-                                           c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY","fdr","none"),
-                                           selected = 'BH')),
-                      column(4,numericInput('p_value_threshold','p-value threshold',0.05)),
-                      column(4,numericInput('value_threshold','value threshold',1)),
+                      column(7,uiOutput('upload_select_stat_test_ui')),
+
+                      column(4,uiOutput('upload_p_adjust_select_ui')),
+
+                      column(1,actionButton('run_stat','Run')),
+                      column(12,radioButtons('run_stat_plot','Run Plots',c(F,T),selected = F,inline = F)),
+
                       column(12,tags$hr()),
-                      column(12,radioButtons('select_stat_test',
-                                  'Select Statisitc',
-                                  list("Pairwise Students T test" = 't_test',
-                                       'One way ANOVA' = 'anova',
-                                       'MANOVA'= 'manova'),
-                                  selected = 'anova',
-                                  inline = T)),
-                      actionButton('run_stat','Run'),
-                      uiOutput('stat_view_data_type_select_ui'),
-                      #tabsetPanel(
-                      #tabPanel('Students paired T test',
-                      #       actionButton('run_stat','Run')
-                      #       ),
-                      #tabPanel('ANOVA',
-                      #         actionButton('run_anova',"Run"),
-                      #         dataTableOutput('anova')
-                      #),
-                      #tabPanel('MANOVA'),
-                      
-                      #tabPanel('Plots',
-                               plotOutput('fdr_plot'),
-                               plotOutput('volcano_plot'),
-                               plotOutput('stat_num_plot'),
-                               htmlOutput('stat_info_text'),
-                               dataTableOutput('stat_data_table'),
-                               
-                               plotOutput('sig_stat_num_plot'),
-                               dataTableOutput('sig_data')
-                               
+                      column(3,uiOutput('stat_view_data_type_select_ui')),
+
+                      column(12,
+                              dataTableOutput('stat_data_table'),
+                              plotOutput('stat_num_plot')
+                             ),
+                              column(6,uiOutput('upload_p_value_threshold_ui')),
+
+                              column(6,selectInput('upload_df_p_select','Select p value',c('p_value','p_adjust'),'p_value')),
+                      column(12,
+                              plotOutput('fdr_plot'),
+
+
+                              dataTableOutput('df_stat_summary_data_type'),
+                              column(3,uiOutput('upload_value_threshold_ui')),
+                              column(3,uiOutput('upload_cutoff_multiple_ui')),
+                              column(3,uiOutput('upload_stat_volcano_show_sd_ui')),
+
+                              column(12,tags$hr()),
+
+                              column(12,plotOutput('volcano_plot')),
+                              column(2,numericInput('upload_stat_volcano_size','Size',1)),
+                              column(8,uiOutput('upload_stat_volcano_xlim_ui')),
+                              column(12,tags$hr()),
+                              column(12,htmlOutput('stat_info_text')),
+
+                              column(12,dataTableOutput('sig_data')),
+                              column(12,plotOutput('sig_stat_num_plot'))
+                      )
+
                                
                                ),
                       
