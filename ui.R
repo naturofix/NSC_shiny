@@ -11,7 +11,7 @@ shinyUI(fluidPage(
     actionButton('debug_button','debug'),
     
     
-    column(4,uiOutput('select_sample_ui')),
+    column(4,uiOutput('header_select_dataset_ui')),
     column(2,radioButtons('boxplot_full','Subset',c('full','subset'),selected = 'subset')),
     
     column(2,
@@ -279,6 +279,8 @@ shinyUI(fluidPage(
 
                       column(12,tags$hr()),
                       column(3,uiOutput('stat_view_data_type_select_ui')),
+                      column(7),
+                      column(2,actionButton('upload_export','Export Dataset')),
 
                       column(12,
                               dataTableOutput('stat_data_table'),

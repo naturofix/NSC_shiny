@@ -41,7 +41,33 @@ library(beepr)
 #parralel processing
 library(promises)
 library(future)
+
 plan(multiprocess)
+
+#library(RSQLite)
+library(RMySQL)
+localuserpassword <- "crunch"
+db_type = 'MySQL'
+load_database = function(db_type){
+  if(db_type == 'MySQL'){
+    db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='localhost')
+  }
+  if(db_type == 'SQLite'){
+    db <- dbConnect(RSQLite::SQLite(), 'data/sqlite.db')
+  }
+  return(db)
+}
+mydb = load_database(db_type)
+db_table_list = dbListTables(mydb)
+db_table_list
+refresh_db = F
+
+#db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='localhost')
+#dbListTables(storiesDb)
+#dbDisconnect(storiesDb)
+# MySQL settings
+#create database crunch;
+#GRANT ALL PRIVILEGES ON crunch.* TO 'crunch'@'localhost' IDENTIFIED BY 'crunch';
 
 #library(biomaRt)
 
