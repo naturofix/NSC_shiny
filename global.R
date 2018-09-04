@@ -60,12 +60,10 @@ load_database = function(db_type){
 mydb = load_database(db_type)
 db_table_list = dbListTables(mydb)
 db_table_list
-refresh_db = F
+dbDisconnect(mydb)
 
-#db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='localhost')
-#dbListTables(storiesDb)
-#dbDisconnect(storiesDb)
 # MySQL settings
+# sudo /usr/local/mysql/support-files/mysql.server start
 #create database crunch;
 #GRANT ALL PRIVILEGES ON crunch.* TO 'crunch'@'localhost' IDENTIFIED BY 'crunch';
 

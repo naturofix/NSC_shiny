@@ -46,8 +46,13 @@ shinyServer(function(input, output) {
   
   output$join_dataset_ui = renderUI({
     datasets = values$upload_datasets
+    if(is.null(values$dataset_list$join)){
+      selected = ''
+    }else{
+      selected = names(values$dataset_list$join)
+    }
     #selected = values$join_dataset_selected
-    selectInput('join_dataset','Dataset to Join',datasets,multiple = T)
+    selectInput('join_dataset','Dataset to Join',datasets,selected,multiple = T)
   })
   
   output$dataset_select_ui = renderUI({
@@ -269,7 +274,22 @@ shinyServer(function(input, output) {
       }
       radioButtons('data_origin','Data Origin',c('Transcriptome','Proteome','Other'),selected,inline = T)
     }
-    
+  }) # data type
+  
+  output$upload_data_origin_join_ui = renderUI({
+    #if(!is.null(values$upload_list[['original_data']])){
+      if(is.null(values$dataset_list$join)){
+        selected = ''
+      }else{
+        data_origin = unique(sapply(names(values$dataset_list$join), function(x) values$dataset_list$join[[x]]$input$data_origin))
+        if(length(data_origin) == 1){
+          selected = data_origin
+        }else{
+          selected = 'Other'
+        }
+      }
+      radioButtons('data_origin_join','Data Origin',c('Transcriptome','Proteome','Other'),selected,inline = T)
+    #}
   }) # data type
   
   output$upload_data_type_ui = renderUI({
@@ -299,7 +319,7 @@ shinyServer(function(input, output) {
         selected = values$dataset_list[['input']][['data_type']]
       }
     }
-    radioButtons('data_join_type','Data Type',c('Expression','Ratio','Timecourse'),selected,inline = T)
+    radioButtons('data_type_join','Data Type',c('Expression','Ratio','Timecourse'),selected,inline = T)
     #}
     
   })
@@ -384,6 +404,40 @@ shinyServer(function(input, output) {
       textInput('experiment_code','Experiment Code',selected)
       
     }
+  })
+  
+  output$taxonomy_ui = renderUI({
+    if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+      if(is.null(values$dataset_list[['input']][['taxonomy']])){
+        selected = 9606
+      }else{
+        selected = values$dataset_list[['input']][['taxonomy']]
+      }
+      
+      numericInput('taxonomy','Taxonomy',selected)
+      
+    }
+  })
+  
+  output$taxonomy_join_ui = renderUI({
+    #if(!is.null(values$upload_list[['original_data']]) & !is.null(input$data_type)){
+      if(is.null(values$dataset_list$join)){
+        selected = 9606
+      }else{
+        if(is.null(values$dataset_list$join$taxonomy)){
+          data_origin = unique(sapply(names(values$dataset_list$join), function(x) values$dataset_list$join[[x]]$input$taxonomy))
+          if(length(data_origin) == 1){
+            selected = data_origin
+          }else{
+            selected = 9606
+          }
+        }else{
+          selected = values$dataset_list$join$taxonomy
+        }
+      }
+      numericInput('taxonomy_join','Taxonomy',selected)
+      
+    #}
   })
   
   output$experiment_description_ui = renderUI({
@@ -804,7 +858,7 @@ shinyServer(function(input, output) {
   }
   observeEvent(input$save_dataset,{
     rds_path = values$dataset_list[['rds_path']]
-    future({
+    #future({
       withProgress(message = 'Saving', {
         #print(paste0('Saving : ',rds_path)
         print(names(values$dataset_list))
@@ -814,7 +868,7 @@ shinyServer(function(input, output) {
       })
       beep()
       print('done save_dataset')
-    })
+    #})
   })
   
   ### ___save upload ####
@@ -880,6 +934,8 @@ shinyServer(function(input, output) {
       
       values$dataset_list[['input']][['experiment_name']] = input$experiment_name
       values$dataset_list[['input']][['experiment_code']] = input$experiment_code
+      values$dataset_list[['input']][['taxonomy']] = input$taxonomy
+      
       values$dataset_list[['input']][['experiment_description']] = input$experiment_description
       #str(values$dataset_list[['input']])
       if(input$data_replace == T){
@@ -988,50 +1044,66 @@ shinyServer(function(input, output) {
   observeEvent(input$join_datasets,{
     dataset = input$join_dataset[1]
     dataset
-    values$dataset_list = list()
-    values$dataset_list$input = list()
+    if(input$join_replace_data == T){
+      values$dataset_list = list()
+      values$dataset_list$input = list()
+      values$dataset_list$join = list()
+      values$dataset_list$data = list()
+      init = 0
+      withProgress(message = 'Joining Datasets', {
+        dataset = input$join_dataset[3]
+        for(dataset in input$join_dataset){
+          print('')
+          print(dataset)
+          withProgress(message = paste('Upload : readRDS :',dataset), {
+            dataset_list = tryCatch(readRDS(paste0("data/data_list/",dataset,"_data_list.rds")), error=function(e) list())
+            length(dataset_list)
+            if(length(dataset_list) > 0){
+              values$dataset_list$join[[dataset]] = dataset_list
+              data_add_list = c('expression_data_l','expression_data_l_select','df_ratio_l')
+              data_entry = data_add_list[1]
+              for(data_entry in data_add_list){
+                print(data_entry)
+                print(length(colnames(dataset_list$data[[data_entry]])))
+                print(colnames(dataset_list$data[[data_entry]]))
+                print(length(colnames(values$dataset_list$data[[data_entry]])))
+
+                print(colnames(values$dataset_list$data[[data_entry]]))
+                #print(unique(dataset_list$data[[data_entry]]$sample_name))
+                if(!is.null(dataset_list$data[[data_entry]])){
+                  if(is.null(values$dataset_list$data[[data_entry]])){
+                    values$dataset_list$data[[data_entry]] = dataset_list$data[[data_entry]]
+                  }else{
+                    values$dataset_list$data[[data_entry]] = rbind(values$dataset_list$data[[data_entry]],dataset_list$data[[data_entry]])
+                  }
+                }
+            
+                
+              }
+            }
+          })
+          
+        }
+        for(data_entry in data_add_list){
+          print(data_entry)
+          'experiment' %in% colnames(values$dataset_list$data[[data_entry]])
+          print(colnames(values$dataset_list$data[[data_entry]]))
+          values$dataset_list$data[[data_entry]] = values$dataset_list$data[[data_entry]] %>% 
+            as.tbl %>% 
+            rename(experiment = 'original_experiment') %>% 
+            mutate(experiment = input$experiment_join_code)
+        }
+      })
+    }
+    
     values$dataset_list[['input']][['experiment_name']] = input$experiment_join_name
     values$dataset_list[['input']][['experiment_code']] = input$experiment_join_code
     values$dataset_list[['input']][['experiment_description']] = input$experiment_join_description
-    values$dataset_list[['input']][['data_type']] = input$data_join_type
-    
-    values$dataset_list$join = list()
-    values$dataset_list$data = list()
-    init = 0
-    withProgress(message = 'Joining Datasets', {
-      dataset = input$join_dataset[3]
-      for(dataset in input$join_dataset){
-        print('')
-        print(dataset)
-        withProgress(message = paste('Upload : readRDS :',dataset), {
-          dataset_list = tryCatch(readRDS(paste0("data/data_list/",dataset,"_data_list.rds")), error=function(e) list())
-          length(dataset_list)
-          if(length(dataset_list) > 0){
-            values$dataset_list$join[[dataset]] = dataset_list
-            data_add_list = c('expression_data_l','expression_data_l_select','df_ratio_l')
-            data_entry = data_add_list[1]
-            for(data_entry in data_add_list){
-              print(data_entry)
-              print(length(colnames(dataset_list$data[[data_entry]])))
-              print(colnames(dataset_list$data[[data_entry]]))
-              print(length(colnames(values$dataset_list$data[[data_entry]])))
-              
-              print(colnames(values$dataset_list$data[[data_entry]]))
-              #print(unique(dataset_list$data[[data_entry]]$sample_name))
-              if(!is.null(dataset_list$data[[data_entry]])){
-                if(is.null(values$dataset_list$data[[data_entry]])){
-                  values$dataset_list$data[[data_entry]] = dataset_list$data[[data_entry]]
-                }else{
-                  values$dataset_list$data[[data_entry]] = rbind(values$dataset_list$data[[data_entry]],dataset_list$data[[data_entry]])
-                }
-              }
-            }
-          }
-        })
-        
-      }
-    })
-    print(unique(values$dataset_list$data[[data_entry]]$sample_name))
+    values$dataset_list[['input']][['data_type']] = input$data_type_join
+    values$dataset_list[['input']][['data_origin']] = input$data_origin_join
+    values$dataset_list[['input']][['taxonomy']] = input$taxonomy_join
+    values$dataset_list$input
+    #print(unique(values$dataset_list$data[[data_entry]]$sample_name))
     
     rds_path = paste0('data/data_list/',input$experiment_join_code,'_data_list.rds')
     values$dataset_list[['rds_path']] = rds_path
@@ -1955,13 +2027,15 @@ shinyServer(function(input, output) {
     if(values$dataset_list$input$data_type == 'Timecourse'){
       values$dataset_list$ratio$type = 'log2(Mean of First Timepoint Ratio)'
       values$dataset_list$data$expression_data_l %>% as.tbl
+      unique(values$dataset_list$data$expression_data_l$data_type)
+      
       df_mean = values$dataset_list$data$expression_data_l_select %>% as.tbl %>% 
         group_by(id,sample,experiment) %>% 
-        summarise(mean = mean(value,na.rm = T)) %>% 
-        group_by(id) %>%
-        arrange(factor(sample, levels = values$dataset_list$input$condition_order)) %>% 
-        filter(row_number() == 1L) %>% 
-        ungroup() %>% 
+          summarise(mean = mean(value,na.rm = T)) %>% 
+          group_by(id) %>%
+            arrange(factor(sample, levels = values$dataset_list$input$condition_order)) %>% 
+            filter(row_number() == 1L) %>% 
+          ungroup() %>% 
         ungroup()
       #beep()
       df_mean %>%  as.tbl
@@ -1984,16 +2058,17 @@ shinyServer(function(input, output) {
       
       df_l = values$dataset_list$data$expression_data_l_select %>%
         group_by(experiment,id) %>% 
-        mutate(n = n()) %>% 
+          mutate(n = n()) %>% 
         ungroup()
       #ungroup()
       df_l %>%  as.tbl
       df_fed %>%  as.tbl
       df_ratio_l = rbind(df_l,df_fed)
       df_ratio_l %>%  as.tbl
-      if(length(unique(df_ratio_l$experiment)) == 2){
+      unique(df_ratio_l$data_type)
+      if(length(unique(df_ratio_l$original_experiment)) == 2){
         ## df_ratio_l_im -----------  
-        experiments = unique(df_ratio_l$experiment)
+        experiments = unique(df_ratio_l$original_experiment)
         experiments
         df_ratio_l_im = values$dataset_list$data$expression_data_l_select  %>%
           filter(data_type == 'Timecourse') %>% 
@@ -2001,15 +2076,16 @@ shinyServer(function(input, output) {
           summarise(#mean_1 = mean(value[experiment == experiments[1]],na.rm = T),
             #mean_2 = mean(value[experiment == experiments[2]],na.rm = T),
             n = n(),
-            mean = log2(mean(value[experiment == experiments[1]],na.rm = T)/mean(value[experiment == experiments[2]],na.rm = T))) %>% 
+            mean = log2(mean(value[original_experiment == experiments[1]],na.rm = T)/mean(value[original_experiment == experiments[2]],na.rm = T))) %>% 
           ungroup() %>% 
           mutate(data_type = 'ratio_of_mean_intensity',
                  experiment = values$dataset_list$input$experiment_code,
+                 original_experiment = NA,
                  sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value') %>% 
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2026,7 +2102,7 @@ shinyServer(function(input, output) {
         
         df_ratio_l_slope = values$dataset_list$data$expression_data_l_select  %>%
           filter(data_type == 'Timecourse') %>% 
-          group_by(id,experiment) %>% 
+          group_by(id,original_experiment) %>% 
           #mutate(experiment = unique(experiment))
           summarise(
             n = n(),
@@ -2041,7 +2117,7 @@ shinyServer(function(input, output) {
           rename(slope = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2056,17 +2132,18 @@ shinyServer(function(input, output) {
         df_ratio_l_slope_ratio = df_ratio_l_slope %>% 
           filter(!is.na(value)) %>% 
           group_by(id) %>% 
-          filter(length(unique(experiment)) == 2) %>% 
+          filter(length(unique(original_experiment)) == 2) %>% 
           summarise(n = n(),
-                    slope_ratio = value[experiment == experiments[1]] / value[experiment == experiments[2]]) %>% 
+                    slope_ratio = value[original_experiment == experiments[1]] / value[original_experiment == experiments[2]]) %>% 
           ungroup() %>% 
           mutate(data_type = 'slope_ratio',
-                 experiment = values$dataset_list$input$experiment_code) %>% 
+                 experiment = values$dataset_list$input$experiment_code,
+                original_experiment = NA) %>%
           #sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(slope_ratio = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2085,16 +2162,17 @@ shinyServer(function(input, output) {
           group_by(id,sample,timepoint) %>% 
           summarise(
             n = n(),
-            mean = log2(mean(value[experiment == experiments[1]],na.rm = T)/mean(value[experiment == experiments[2]],na.rm = T))
+            mean = log2(mean(value[original_experiment == experiments[1]],na.rm = T)/mean(value[original_experiment == experiments[2]],na.rm = T))
           ) %>% 
           ungroup() %>% 
           mutate(data_type = 'ratio_of_mean_timepoint_intensity',
                  experiment = values$dataset_list$input$experiment_code,
+                 original_experiment = NA,
                  sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2116,11 +2194,12 @@ shinyServer(function(input, output) {
           ungroup() %>% 
           mutate(data_type = 'mean_ratio_of_mean_timepoint_intensity',
                  experiment = values$dataset_list$input$experiment_code,
+                 original_experiment = NA,
                  sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value')  %>%  
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2133,13 +2212,13 @@ shinyServer(function(input, output) {
         
         
         #df_ratio_l_mean_and_slope = 
-        colnames(df_ratio_l)
-        colnames(df_ratio_l_im)
-        colnames(df_ratio_l_im)
-        colnames(df_ratio_l_irm)
-        colnames(df_ratio_l_irm_m)
-        colnames(df_ratio_l_slope)
-        colnames(df_ratio_l_slope_ratio)
+        length(colnames(df_ratio_l))
+        length(colnames(df_ratio_l_im))
+               length(colnames(df_ratio_l_im))
+                      length(colnames(df_ratio_l_irm))
+                             length( colnames(df_ratio_l_irm_m))
+                                     length(colnames(df_ratio_l_slope))
+                                            length(colnames(df_ratio_l_slope_ratio))
         df_ratio_l = rbind(df_ratio_l,
                            df_ratio_l_im,
                            df_ratio_l_irm,
@@ -2637,10 +2716,10 @@ shinyServer(function(input, output) {
   })
   
   
-  output$stat_view_data_type_select_ui = renderUI({
+  output$stat_mean_data_type_select_ui = renderUI({
     #if(!is.null(values$dataset_list$data$df_stat)){
     select_list = unique(values$dataset_list$data$df_stat$data_type)
-    if(is.null(values$dataset_list$stat$stat_view_data_type)){
+    if(is.null(values$dataset_list$stat$stat_mean_data_type)){
       if(!is.null(values$dataset_list$data$df_stat)){
         
         selected = unique(values$dataset_list$data$df_stat$data_type)[1]
@@ -2648,16 +2727,16 @@ shinyServer(function(input, output) {
         selected = NULL
       }
     }else{
-      selected = values$dataset_list$stat$stat_view_data_type
+      selected = values$dataset_list$stat$stat_mean_data_type
     }
-    selectInput('stat_view_data_type','Select Data Type',
+    selectInput('stat_mean_data_type','Mean Data Type',
                 select_list,
                 selected,
                 multiple = T)
     
   })
   
-  
+  #__run_stat ______________________________________________________________________
   observeEvent(input$run_stat,{
     
     print('run_stat')
@@ -2796,26 +2875,21 @@ shinyServer(function(input, output) {
         
         df = df_ratio_l %>%
           filter(data_type == 'Timecourse')
-        df
-        View(df)
         df_stat =  df %>%  
           group_by(id) %>% 
           summarise(
-            p_value = tryCatch(anova(lm(value ~ as.numeric(timepoint):experiment))$'Pr(>F)'[1],error = function(x) NA)
+            p_value = tryCatch(anova(lm(value ~ as.numeric(timepoint):original_experiment))$'Pr(>F)'[1],error = function(x) NA)
           ) %>%
           ungroup() %>%
-          #na.omit() %>% 
-          #group_by(data_type) %>%
-          mutate(p_adjust = p.adjust(p_value,input$p_adjust_select)) %>%
-          #ungroup() %>% 
-          mutate(experiment = paste(unique(df$experiment),collapse = ' : '))
-        
+          mutate(p_adjust = p.adjust(p_value,input$p_adjust_select))
+
+        df_stat %>%  as.tbl
         unique(df_ratio_l$data_type)
         df_stat = 
           right_join(df_stat, 
                      df_ratio_l %>% 
                        #filter(data_type %in% c('ratio_of_mean_intensity', 'mean_ratio_of_mean_timepoint_intensity')) %>% 
-                       dplyr::select(c(id,value,data_type,n))
+                       dplyr::select(id,value,data_type,n)
           ) 
         #mutate(n = 0)
         df_stat %>% as.tbl
@@ -2836,7 +2910,7 @@ shinyServer(function(input, output) {
     })
   })
   
-  
+
   output$stat_data_table = renderDataTable({
     print('stat_data')
     if(input$run_stat_plot == T){
@@ -2868,8 +2942,8 @@ shinyServer(function(input, output) {
   #__fdr_plot -------
   output$fdr_plot = renderPlot({
     print('fdr_plot')
-    if(!is.null(input$stat_view_data_type)){
-      values$dataset_list$stat$stat_view_data_type = input$stat_view_data_type
+    if(!is.null(input$stat_mean_data_type)){
+      values$dataset_list$stat$stat_mean_data_type = input$stat_mean_data_type
     }
     if(!is.null(input$p_value_threshold)){
       values$dataset_list$stat$p_value_threshold = input$p_value_threshold
@@ -2881,11 +2955,11 @@ shinyServer(function(input, output) {
           print('   running')
           #values$dataset_list$stat$p_value_threshold = input$p_value_threshold
           
-          #values$dataset_list$data$stat$stat_view_data_type = input$stat_view_data_type
+          #values$dataset_list$data$stat$stat_mean_data_type = input$stat_mean_data_type
           withProgress(message = 'FDR plot', {
             
             df_stat = values$dataset_list$data$df_stat %>% 
-              filter(data_type %in% input$stat_view_data_type)
+              filter(data_type %in% input$stat_mean_data_type)
             p_values  = df_stat %>% 
               pull(get(input$upload_df_p_select))
             #df_stat
@@ -2909,6 +2983,7 @@ shinyServer(function(input, output) {
             #print(top_5)
             fdr = round((top_5*count)/t_number*100,digits=2)
             fdr
+            values$dataset_list$stat$fdr = fdr
             
             p = ggplot(df_stat) + 
               geom_histogram(aes_string(input$upload_df_p_select),binwidth = 0.01) +
@@ -2940,7 +3015,7 @@ shinyServer(function(input, output) {
           ungroup()
         df_stat_summary_data_type %>%  as.tbl
         
-        cutoff = df_stat_summary_data_type$sd[df_stat_summary_data_type$data_type == input$stat_view_data_type]
+        cutoff = df_stat_summary_data_type$sd[df_stat_summary_data_type$data_type == input$stat_mean_data_type]
         
         cutoff
         #values$dataset_list$ratio$cutoff = cutoff
@@ -3052,7 +3127,7 @@ shinyServer(function(input, output) {
           rep_sd
           comp_sd = values$dataset_list$ratio[['cutoff_comp']]
           comp_sd
-          p = ggplot(values$dataset_list$data$df_stat %>% filter(data_type == input$stat_view_data_type)) + 
+          p = ggplot(values$dataset_list$data$df_stat %>% filter(data_type == input$stat_mean_data_type)) + 
             geom_point(aes(x = value,y = -log10(p_adjust)), size = input$upload_stat_volcano_size) + 
             geom_hline(yintercept = -log10(input$p_value_threshold), col = 'orange')
           if(!is.null(values$dataset_list$data$df_sig_down)){
@@ -3070,8 +3145,8 @@ shinyServer(function(input, output) {
           if(!is.null(values$dataset_list$data$df_stat_summary_data_type)){
             if(input$upload_stat_volcano_show_sd == T){
               p = p + 
-                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_view_data_type), aes(xintercept = sd),col = 'gray') +
-                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_view_data_type), aes(xintercept = -sd),col = 'gray')
+                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_mean_data_type), aes(xintercept = sd),col = 'gray') +
+                geom_vline(data = values$dataset_list$data$df_stat_summary_data_type %>% filter(data_type %in% input$stat_mean_data_type), aes(xintercept = -sd),col = 'gray')
             }
             p = p +  geom_vline(xintercept = input$value_threshold * input$cutoff_multiple, col = 'blue') +
               geom_vline(xintercept = input$value_threshold * -input$cutoff_multiple, col = 'blue')
@@ -3086,7 +3161,7 @@ shinyServer(function(input, output) {
   })
   output$upload_stat_volcano_xlim_ui = renderUI({
     lim_values =  values$dataset_list$data$df_stat %>% 
-      filter(data_type == input$stat_view_data_type) %>% 
+      filter(data_type == input$stat_mean_data_type) %>% 
       pull(value)
     lim_min = min(lim_values,na.rm = T)
     lim_max = max(lim_values,na.rm = T)
@@ -3104,7 +3179,7 @@ shinyServer(function(input, output) {
       
       if(!is.null(values$dataset_list$data$df_stat)){
         print('   running')
-        p = ggplot(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type)) +
+        p = ggplot(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_mean_data_type)) +
           geom_histogram(aes(as.factor(n)), stat = "count") + 
           ggtitle('Counts of Data')
         print('   stat nump plot done')
@@ -3126,12 +3201,12 @@ shinyServer(function(input, output) {
           cutoff = values$dataset_list$stat$value_threshold
           cutoff
           df_sig_up = values$dataset_list$data$df_stat  %>% 
-            filter(data_type == input$stat_view_data_type) %>% 
+            filter(data_type == input$stat_mean_data_type) %>% 
             filter(p_adjust < input$p_value_threshold & value > cutoff * input$cutoff_multiple)
           dim(df_sig_up)
           values$dataset_list$data$df_sig_up = df_sig_up
           df_sig_down = values$dataset_list$data$df_stat  %>% 
-            filter(data_type == input$stat_view_data_type) %>%
+            filter(data_type == input$stat_mean_data_type) %>%
             filter(p_adjust < input$p_value_threshold & value < -cutoff*input$cutoff_multiple)
           dim(df_sig_down)
           values$dataset_list$data$df_sig_down = df_sig_down
@@ -3152,7 +3227,7 @@ shinyServer(function(input, output) {
           
           values$dataset_list$data[['sig_data']] = df_sig
           print('    done stat info')
-          paste0('Total \t\t: ',dim(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_view_data_type))[1],'<br/>',
+          paste0('Total \t\t: ',dim(values$dataset_list$data$df_stat  %>% filter(data_type == input$stat_mean_data_type))[1],'<br/>',
                  'Significant \t: ',dim(df_sig)[1],'<br/>',
                  'Up \t\t: ',dim(df_sig_up)[1],'<br/>',
                  'Down \t\t: ',dim(df_sig_down)[1],'<br/>', 
@@ -3165,127 +3240,417 @@ shinyServer(function(input, output) {
     }
   })
   
+  ### result ---------------
+  output$upload_result_expression_data_type_select_ui = renderUI({
+    #if(!is.null(values$dataset_list$data$df_stat)){
+    select_list = unique(values$dataset_list$data$df_ratio_l$data_type)
+    if(is.null(values$dataset_list$result$expression_data_type)){
+      if(!is.null(values$dataset_list$data$df_stat)){
+        
+        selected = unique(values$dataset_list$data$df_ratio_l$data_type)[1]
+      }else{
+        selected = NULL
+      }
+    }else{
+      selected = values$dataset_list$result$expression_data_type
+    }
+    selectInput('stat_expression_data_type','Expression Data Type',
+                select_list,
+                selected,
+                multiple = T)
+    
+  })
   
-  ### export --------------
+  output$upload_result_expression_boxplot = renderPlot({
+    if(!is.null(input$stat_expression_data_type)){
+      if(is.null(values$dataset_list$result)){
+        values$dataset_list$result = list()
+      }
+      values$dataset_list$result$expression_data_type = input$stat_expression_data_type
+      
+      plot_data = values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$stat_expression_data_type)
+      plot_data %>% as.tbl
+      if(dim(plot_data)[1] > 0){
+        #values$dataset_list$ratio$stat_expression_data_type = input$stat_expression_data_type
+        
+        ggplot(plot_data) +
+          geom_boxplot(aes(y = value, 
+                           x = sample_name,
+                           col = sample_name))+
+          #fill = input$upload_ratio_boxplot_fill)
+          #) +
+          ggtitle(input$stat_expression_data_type) + 
+          theme(axis.text.x=element_text(angle = 90))
+        #theme(legend.position="none")
+      }
+    }
+  })
   
-  observeEvent(input$upload_export,{
-    withProgress(message = 'MySQL',{
-      db_table_list = dbListTables(mydb)
-      db_table_list
-      print('info')
+  output$upload_result_mean_data_type_select_ui = renderUI({
+    #if(!is.null(values$dataset_list$data$df_stat)){
+    select_list = unique(values$dataset_list$data$df_stat$data_type)
+    if(is.null(values$dataset_list$result$mean_data_type)){
+      if(!is.null(values$dataset_list$data$df_stat)){
+        
+        selected = unique(values$dataset_list$data$df_stat$data_type)[1]
+      }else{
+        selected = NULL
+      }
+    }else{
+      selected = values$dataset_list$result$mean_data_type
+    }
+    selectInput('result_mean_data_type','Mean Data Type',
+                select_list,
+                selected,
+                multiple = T)
+    
+  })
+  
+  output$upload_df_info = renderDataTable({
+    
     if(is.null(values$dataset_list$ratio$cutoff_rep)){
       values$dataset_list$ratio$cutoff_rep = NA
     }
     if(is.null(values$dataset_list$ratio$cutoff_comp)){
       values$dataset_list$ratio$cutoff_comp = NA
     }
+    if(is.null(values$dataset_list$input$taxonomy)){
+      values$dataset_list$input$taxonomy = 9606
+    }
     input_list = values$dataset_list$input
     
     df_info = data.frame(
+      experiment = input_list$experiment_code,
+      experiment_name = input_list$experiment_name,
+      experiment_description = input_list$experiment_description,
       data_origin = input_list$data_origin,
       data_type = input_list$data_type,
-      experiment_name = input_list$experiment_name,
-      experiment = input_list$experiment_code,
-      experiment_description = input_list$experiment_description,
+      taxonomy = input_list$taxonomy,
       rds_path = values$dataset_list$rds_path,
       ratio_threshold = values$dataset_list$stat$value_threshold * values$dataset_list$stat$cutoff_multiple,
       ratio_sd_rep = values$dataset_list$ratio$cutoff_rep,
       ratio_sd_comp = values$dataset_list$ratio$cutoff_comp,
-      ratio_value_type = values$dataset_list$stat$stat_view_data_type,
+      expression_data_type = values$dataset_list$result$expression_data_type,
+      mean_value_type = values$dataset_list$stat$stat_mean_data_type,
       stat_test = values$dataset_list$stat$test,
       stat_adjust = values$dataset_list$stat$p_adjust,
-      stat_p_value_threshold = values$dataset_list$stat$p_value_threshold
+      stat_p_value_threshold = values$dataset_list$stat$p_value_threshold,
+      fdr = values$dataset_list$stat$fdr
     )
+    if(is.null(values$dataset_list$result)){
+      values$dataset_list$result = list()
+    }
+    values$dataset_list$result$info = df_info
     df_info
-    if(!"info" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "info", df_info,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM info WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+  })
+  
+  ### export --------------
+  add_key = function(mydb,table_name,col,n){
+    cmd = paste0("ALTER TABLE ",table_name," MODIFY COLUMN `",col,"` varchar(",n,") PRIMARY KEY;")
+    print(cmd)
+    dbGetQuery(mydb, cmd)
+  }
+  
+  add_index_list = function(mydb,table_name,col_list,n){
+    for(col in col_list){
+      cmd = paste0("ALTER TABLE ",table_name," MODIFY COLUMN `",col,"` varchar(",n,");")
       print(cmd)
-      dbGetQuery(mydb,cmd)
-      #dbGetQuery(mydb,'drop table info')
-      dbWriteTable(mydb, "info", df_info,append = T)
-    }
-    
-    print('id')
-    id_df = values$dataset_list$data$expression_data %>% 
-      as.tbl %>% 
-      mutate(id_key = paste(experiment,row_id)) %>% 
-      dplyr::select(c('id_key','experiment','row_id','id',values$dataset_list$input$id_columns)) %>% 
-      gather(.,key = name,values = values$dataset_list$input$id_columns)
-    id_df
-    
-    
-    
-    if(!"id" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "id", values$dataset_list$data$df_ratio_l,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM id WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+      dbGetQuery(mydb, cmd)
+      cmd = paste0("ALTER TABLE ",table_name," ADD INDEX ",col,"_index (",col,");")
       print(cmd)
-      dbGetQuery(mydb,cmd)
-      dbWriteTable(mydb, "id", values$dataset_list$data$df_ratio_l,append = T)
+      dbGetQuery(mydb, cmd)
     }
+  }
+  
+  alter_column_varchar_list = function(mydb,table_name,col_list,n){
+    for(entry in col_list){
+      cmd = paste0("ALTER TABLE ",table_name," MODIFY COLUMN `",entry,"` varchar(",n,");")
+      print(cmd)
+      dbGetQuery(mydb, cmd)
+    }
+  }
+  
+  observeEvent(input$upload_export,{
+    
+    withProgress(message = 'MySQL',{
+      mydb = load_database(db_type)
+      db_table_list = dbListTables(mydb)
+      db_table_list
+      
+      show_table = F
+      
+      drop_table = F
+      if(drop_table == T){
+        #dbGetQuery(mydb,'DROP TABLE summary;')
+      }
+      alter_tables = F
+      if(alter_tables == T){
+        #table_list = c('ratio','stat','sig_data','summary')
+        #table_list = c('ratio')
+        
+        for(entry in table_list){
+          dbGetQuery(mydb, paste0('describe ',entry,';'))
+          cmd = paste0('ALTER TABLE ',entry,' ADD original_experiment varchar(255);')
+          print(cmd)
+          dbGetQuery(mydb,cmd)
+          dbGetQuery(mydb, paste0('describe ',entry,';'))
+        }
+      }
+     
+      print('info')
+      if("info" %in% input$sql_update_select){
+        withProgress(message = 'info',{
+            table_name = 'info'
+            df_info = values$dataset_list$result$info
+            df_info
+            print(dim(df_info))
+            
+            if(!"info" %in% db_table_list | input$refresh_db == T){
+              print('   write : overwrite')
+              dbWriteTable(mydb, "info", df_info[NULL,],overwrite = T, row.names = F)
+              dbGetQuery(mydb,'describe info;')
+              add_key(mydb,table_name,"experiment",512)
+              alter_column_varchar_list(mydb,table_name,c('data_origin','data_type','taxonomy','stat_test','stat_adjust'),32)
+              alter_column_varchar_list(mydb,table_name,c('experiment_name','expression_data_type','mean_value_type','rds_path'),512)
+              dbWriteTable(mydb, "info", df_info,append = T,row.names = F)
+              print(dbGetQuery(mydb,'describe info;'))
 
-    print('ratio')
-    colnames(values$dataset_list$data$df_ratio_l)
-    ratio_columns = c("row_id", "id","experiment","full_sample_name","value","data_type","sample_name","sample")
-    ratio_columns
-    ratio_export = values$dataset_list$data$df_ratio_l %>% 
-      dplyr::select(ratio_columns) %>% 
-      mutate(key = paste(experiment,sample,row_id))
-    ratio_export %>% as.tbl
-    ratio_export$key[1]
-    if(!"ratio" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "ratio", values$dataset_list$data$df_ratio_l,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM ratio WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
-      print(cmd)
-      dbGetQuery(mydb,cmd)
-      dbWriteTable(mydb, "ratio", values$dataset_list$data$df_ratio_l,append = T)
-    }
-    
-    print('stat')
-    stat_export = values$dataset_list$data$df_stat %>% 
-      mutate(key = paste(experiment,id, data_type))
-    stat_export %>% as.tbl
-    if(!"stat" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "stat", stat_export,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM stat WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
-      print(cmd)
-      dbGetQuery(mydb,cmd)
-      dbWriteTable(mydb, "stat", stat_export,append = T)
-    }
-    print('sig_data')
-    sig_export = values$dataset_list$data$sig_data %>% 
-      mutate(key = paste(experiment,id,data_type))
-    sig_export %>% as.tbl
-    if(!"sig_data" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "sig_data", sig_export,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM stat WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
-      print(cmd)
-      dbGetQuery(mydb,cmd)
-      #dbGetQuery(mydb,'drop table sig_dat')
-      dbWriteTable(mydb, "sig_data", sig_export,append = T)
-    }
-    
-    print('summary')
-    sum_export = values$dataset_list$data$df_stat_summary_data_type %>% 
-      mutate(experiment = values$dataset_list$input$experiment_code) %>% 
-      mutate(key = paste(experiment,data_type))
-    sum_export %>% as.tbl
-    if(!"stat_summary" %in% db_table_list | refresh_db == T){
-      dbWriteTable(mydb, "stat_summary", sum_export,overwrite = T)
-    }else{
-      cmd = paste0("DELETE FROM stat_summary WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
-      print(cmd)
-      dbGetQuery(mydb,cmd)
-      #dbGetQuery(mydb,'drop table sig_dat')
-      dbWriteTable(mydb, "stat_summary", sum_export,append = T)
-    }
-    #dbGetQuery(mydb, 'describe stat_summary;')
+            }else{
+              cmd = paste0("DELETE FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+              print(cmd)
+              dbGetQuery(mydb,cmd)
+              #dbGetQuery(mydb,'drop table info')
+              print('   write : append')
+              dbWriteTable(mydb, table_name, df_info,append = T,row.names = F)
+            }
+            print('   write : done')
+          })
+      }
+      
+      if("id" %in% input$sql_update_select){ withProgress(message = 'id',{
+          table_name = 'id'
+          print(table_name)
+          if(!'experiment' %in% colnames(values$dataset_list$data$expression_data_l_select)){
+            print('experiment missing')
+            
+            values$dataset_list$data$expression_data_l_select = values$dataset_list$data$expression_data_l_select %>% 
+              mutate(experiment = values$dataset_list$input$experiment_code)
+          }
+          if(!'original_experiment' %in% colnames(values$dataset_list$data$expression_data_l_select)){
+            print('original experiment missing')
+            values$dataset_list$data$expression_data_l_select = values$dataset_list$data$expression_data_l_select %>% 
+              mutate(original_experiment = NA)
+          }
+        
+          id_df = values$dataset_list$data$expression_data_l_select %>% 
+            as.tbl %>% 
+            dplyr::select(-one_of(c('full_sample_name','value','data_type','sample_name','sample'))) %>% 
+            group_by(row_id,experiment,original_experiment) %>% 
+              filter(row_number(row_id) == 1) %>% 
+            ungroup() %>% 
+            gather(key = name, values = colnames(.)[!colnames(.) %in% c('row_id','experiment','original_experiment')]) %>% 
+            mutate(key = paste(experiment,row_id,name)) %>% 
+            dplyr::select(key,experiment,original_experiment,row_id,name,everything())
+          id_df %>% as.tbl
+          colnames(id_df)
+          print(dim(id_df))
+          
+          if(!"id" %in% db_table_list | input$refresh_db == T){
+            print('   write : overwrite')
+            dbWriteTable(mydb, "id", id_df[NULL,],overwrite = T,row.names = F)
+            add_key(mydb,table_name,'key','1024')
+            add_index_list(mydb,table_name,c('experiment','original_experiment'),'512')
+            add_index_list(mydb,table_name,c('row_id'),'1024')
+            alter_column_varchar_list(mydb,table_name,c('name'),512)
+            alter_column_varchar_list(mydb,table_name,c('value'),2048)
+            dbWriteTable(mydb, "id", id_df,append = T,row.names = F)
+            print(dbGetQuery(mydb,paste0('describe ',table_name,';')))
+            
+          }else{
+            cmd = paste0("DELETE FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+            print(cmd)
+            dbGetQuery(mydb,cmd)
+            print('  write : append')
+            dbWriteTable(mydb, table_name, id_df,append = T,row.names = F)
+            
+          }
+          if(show_table == T){
+            dbGetQuery(mydb,paste0("SELECT * FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")) %>% as.tbl
+          }
+          print('   write : done')
+        })}
+      if("data" %in% input$sql_update_select){withProgress(message = 'ratio',{
+          print('data')
+          table_name = 'data'
+          colnames(values$dataset_list$data$df_ratio_l)
+          ratio_columns = c("row_id", "id","experiment",'original_experiment',"full_sample_name","value","data_type","sample_name","sample")
+          ratio_columns
+          if(!'experiment' %in% colnames(values$dataset_list$data$df_ratio_l)){
+            print('experiment missing')
+            
+            values$dataset_list$data$df_ratio_l = values$dataset_list$data$df_ratio_l %>% 
+              mutate(experiment = values$dataset_list$input$experiment_code)
+          }
+          if(!'original_experiment' %in% colnames(values$dataset_list$data$df_ratio_l)){
+            print('original experiment missing')
+            values$dataset_list$data$df_ratio_l = values$dataset_list$data$df_ratio_l %>% 
+              mutate(original_experiment = NA)
+          }
+          
+          ratio_export = values$dataset_list$data$df_ratio_l %>% 
+            #group_by(experiment,sample,row_id) %>% 
+            #  filter()
+            dplyr::select(ratio_columns) %>% 
+            mutate(key = paste(experiment,data_type,sample_name,row_id)) %>% 
+            dplyr::select(key,experiment,original_experiment,sample_name,row_id,everything())
+          ratio_export %>% as.tbl
+          export_table = ratio_export
+          if(T %in% unique(duplicated(export_table$key))){
+            print(paste('duplicates : TRUE'))
+            export_table = export_table[!duplicated(export_table),]
+          }
+          print(dim(export_table))
+          if(!"data" %in% db_table_list | input$refresh_db == T){
+            print('   write : overwrite')
+            dbWriteTable(mydb, table_name, export_table[NULL,],overwrite = T,row.names = F)
+            add_key(mydb,table_name,'key','1024')
+            add_index_list(mydb,table_name,c('experiment','original_experiment', 'id','data_type','sample','sample_name'),'512')
+            add_index_list(mydb,table_name,c('row_id'),'1024')
+            alter_column_varchar_list(mydb,table_name,c('full_sample_name'),1024)
+
+            print(dbGetQuery(mydb,paste('describe',table_name,';')))
+            dbWriteTable(mydb, table_name, export_table,append = T,row.names =F)
+            
+          }else{
+            cmd = paste0("DELETE FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+            print(cmd)
+            dbGetQuery(mydb,cmd)
+            print('  write : append')
+            
+            dbWriteTable(mydb, table_name, ratio_export,append = T,row.names = F)
+          }
+
+          
+          print('   write : done')
+      })}
+      if("stat" %in% input$sql_update_select){withProgress(message = 'stat',{  
+          print('stat')
+          table_name = 'stat'
+          if(!'experiment' %in% colnames(values$dataset_list$data$df_stat)){
+            print('experiment missing')
+            values$dataset_list$data$df_stat = values$dataset_list$data$df_stat %>% 
+              mutate(experiment = values$dataset_list$input$experiment_code)
+          }
+          stat_export = values$dataset_list$data$df_stat %>% 
+            mutate(key = paste(experiment,id, data_type)) %>% 
+            dplyr::select(key,experiment,id,data_type,everything())
+          stat_export %>% as.tbl
+          export_table = stat_export
+          if(T %in% unique(duplicated(export_table$key))){
+            print(paste('duplicates : TRUE'))
+            export_table = export_table[!duplicated(export_table),]
+          }
+          print(dim(export_table))
+          
+          if(!"stat" %in% db_table_list | input$refresh_db == T){
+            print('  write : overwrite')
+            dbWriteTable(mydb, table_name, export_table[NULL,],overwrite = T,row.names = F)
+            add_key(mydb,table_name,'key','512')
+     
+            add_index_list(mydb,table_name,c('experiment','id','data_type'),'512')
+            
+            dbGetQuery(mydb,paste('describe',table_name,';'))
+            dbWriteTable(mydb, table_name, export_table,append = T,row.names = F)
+            
+          }else{
+            cmd = paste0("DELETE FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+            print(cmd)
+            dbGetQuery(mydb,cmd)
+            print('  write : append')
+            
+            dbWriteTable(mydb, table_name, stat_export,append = T,row.names = F)
+          }
+          print('   write : done')
+      })}
+      if("sig_data" %in% input$sql_update_select){withProgress(message = 'sig_data',{
+          print('sig_data')
+          table_name = 'sig_data'
+          if(!'experiment' %in% colnames(values$dataset_list$data$sig_data)){
+            print('experiment missing')
+            values$dataset_list$data$sig_data = values$dataset_list$data$sig_data %>% 
+              mutate(experiment = values$dataset_list$input$experiment_code)
+          }
+          sig_export = values$dataset_list$data$sig_data %>% 
+            mutate(key = paste(experiment,id,data_type)) %>% 
+            dplyr::select(key,experiment,id,data_type,everything())
+          sig_export %>% as.tbl
+          export_table = sig_export
+          if(T %in% unique(duplicated(export_table$key))){
+            print(paste('duplicates : TRUE'))
+            export_table = export_table[!duplicated(export_table),]
+          }
+          print(dim(export_table))
+          
+          if(!"sig_data" %in% db_table_list | input$refresh_db == T){
+            print('  write : overwrite')
+            dbWriteTable(mydb, table_name, export_table[NULL,],overwrite = T,row.names = F)
+            add_key(mydb,table_name,'key','512')
+            add_index_list(mydb,table_name,c('experiment','id','data_type'),'512')
+
+            dbGetQuery(mydb,paste('describe',table_name,';'))
+            dbWriteTable(mydb, table_name, export_table,append = T,row.names = F)
+            
+          }else{
+            cmd = paste0("DELETE FROM sig_data WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+            print(cmd)
+            dbGetQuery(mydb,cmd)
+            print('  write : append')
+            dbWriteTable(mydb, "sig_data", sig_export,append = T,row.names = F)
+          }
+          print('   write : done')
+      })}
+      if("summary" %in% input$sql_update_select){withProgress(message = 'summary',{  
+          table_name = 'stat_summary'
+          print(table_name)
+          if(!'experiment' %in% colnames(values$dataset_list$data$df_stat_summary_data_type)){
+            print('experiment missing')
+            values$dataset_list$data$df_stat_summary_data_type = values$dataset_list$data$df_stat_summary_data_type %>% 
+              mutate(experiment = values$dataset_list$input$experiment_code)
+          }
+          sum_export = values$dataset_list$data$df_stat_summary_data_type %>% 
+            mutate(experiment = values$dataset_list$input$experiment_code) %>% 
+            mutate(key = paste(experiment,data_type)) %>% 
+            dplyr::select(key,experiment,data_type,everything())
+          sum_export %>% as.tbl
+          export_table = sum_export
+          if(T %in% unique(duplicated(export_table$key))){
+            print(paste('duplicates : TRUE'))
+            export_table = export_table[!duplicated(export_table),]
+          }
+          print(dim(export_table))
+          
+          if(!"stat_summary" %in% db_table_list | input$refresh_db == T){
+            print('  write : overwrite')
+            dbWriteTable(mydb, table_name, export_table[NULL,],overwrite = T,row.names = F)
+            add_key(mydb,table_name,'key','512')
+            add_index_list(mydb,table_name,c('experiment','data_type'),'512')
+            dbGetQuery(mydb,paste('describe',table_name,';'))
+            dbWriteTable(mydb, table_name, export_table,append = T,row.names = F)
+          }else{
+            cmd = paste0("DELETE FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")
+            print(cmd)
+            dbGetQuery(mydb,cmd)
+            #dbGetQuery(mydb,'drop table sig_dat')
+            print('  write : append')
+            
+            dbWriteTable(mydb, table_name, sum_export,append = T,row.names = F)
+          }
+          print('   write : done')
+          #dbGetQuery(mydb, 'describe stat_summary;')
+      })}
+    dbDisconnect(mydb)
     print('   done export')
+    
     })
     
     
@@ -3310,12 +3675,200 @@ shinyServer(function(input, output) {
     
   })
   ############ END UPLOAD ########################
-  ################################################
+
+  ########### DATABASE #########################
+  
+  observeEvent(input$index_db,{
+    mydb = load_database(db_type)
+    
+    cmd = 'describe id;'
+    cmd = "ALTER TABLE id MODIFY COLUMN `key` varchar(512) PRIMARY KEY;"
+    cmd = "CREATE INDEX id ON ratio 'id';"
+    cmd = "ALTER TABLE ratio MODIFY COLUMN `id` varchar(124);"
+    print(cmd)
+    dbGetQuery(mydb, cmd)
+    cmd = "ALTER TABLE ratio ADD INDEX id_index (id);"
+    print(cmd)
+    dbGetQuery(mydb, cmd)
+    dbDisconnect(mydb)
+    
+    
+    
+  })
+  
+  output$db_tables = renderText({
+    mydb = load_database(db_type)
+    
+    db_table_list = dbListTables(mydb)
+    dbDisconnect(mydb)
+    
+    db_table_list
+    paste('Table Names : ',paste(db_table_list,collapse = ', '))
+  })
+  
+  db_info = reactive({
+    mydb = load_database(db_type)
+    
+    df = dbReadTable(mydb,'info')
+    dbDisconnect(mydb)
+    df
+    })
+  output$db_describe_info = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe info;')
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_info = renderDataTable({
+    db_info()
+  })
+  
+  db_id = reactive({
+    mydb = load_database(db_type)
+    cmd = paste0("SELECT * FROM id WHERE experiment IN ('",paste(input$header_select_dataset, collapse = "', '"),"');")
+    print(cmd)
+    df = dbGetQuery(mydb,cmd)
+    df
+    #df = dbReadTable(mydb,'id')
+
+    df %>% as.tbl
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_describe_id = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe id;')
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_id = renderDataTable({
+    df_w = db_id()  %>% 
+      dplyr::select(-one_of(c('key'))) %>%  
+      spread(name,value)
+    output$db_id_experiments_text = renderText({
+      paste(dim(df_w)[1],':',paste(unique(df_w$experiment),collapse = ', '))
+    })
+   # df_w %>% as.tbl
+    df_w
+  })
+  
+
+  
+  db_data = reactive({
+    mydb = load_database(db_type)
+    
+
+    db_info = db_info()
+    db_info
+    df = data.frame()
+    entry = input$header_select_dataset[1]
+    for(entry in input$header_select_dataset){
+      print(entry)
+      data_type = db_info$expression_data_type[db_info$experiment == entry]
+      data_type
+      #cmd = paste0("SELECT * FROM ratio WHERE experiment = '",entry,"';")
+      #cmd
+      cmd = paste0("SELECT * FROM data WHERE experiment = '",entry,"' AND data_type = '",data_type,"';")
+      print(cmd)
+      df_n = dbGetQuery(mydb,cmd)
+      #df = dbReadTable(mydb,'ratio')
+      #dim(df)
+      #unique(df$experiment)
+      dim(df_n)
+      if(dim(df)[1] == 0){
+        df = df_n
+      }else{
+        df = rbind(df,df_n)
+      }
+    }
+    df %>% as.tbl
+    dbGetQuery(mydb,'describe sig_data;')
+    dbDisconnect(mydb)
+    #df[df$key == df$key[duplicated(df$key)][1],]
+    df
+  })
+  output$db_describe_data = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe data;')
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_data = renderDataTable({
+    
+    
+    df_w = db_data()  %>% 
+      as.tbl %>% 
+      dplyr::select(-one_of(c('key',
+                              'full_sample_name'))) %>%  
+      spread(sample_name,value)
+    df_w
+    output$db_data_experiments_text = renderText({
+      paste(dim(df_w)[1],':',paste(unique(df_w$experiment),collapse = ', '))
+    })
+    df_w
+  })
+    
+  output$db_stat = renderDataTable({
+    mydb = load_database(db_type)
+    
+    df = dbReadTable(mydb,'stat')
+    output$db_stat_experiments_text = renderText({
+      paste(dim(df)[1],':',paste(unique(df$experiment),collapse = ', '))
+    })
+    dim(df)
+    #df$key[duplicated(df$key)]
+    
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_describe_stat = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe stat;')
+    dbDisconnect(mydb)
+    df
+  })
+  
+  output$db_describe_sig_data = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe sig_data;')
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_sig_data = renderDataTable({
+    mydb = load_database(db_type)
+    
+    df = dbReadTable(mydb,'sig_data')
+    output$db_sig_data_experiments_text = renderText({
+      paste(dim(df)[1],':',paste(unique(df$experiment),collapse = ', '))
+    })
+    dim(df)
+    #df$key[duplicated(df$key)]
+    
+    dbDisconnect(mydb)
+    df
+  })
+  
+  output$db_describe_summary = renderDataTable({
+    mydb = load_database(db_type)
+    df = dbGetQuery(mydb,'describe stat_summary;')
+    dbDisconnect(mydb)
+    df
+  })
+  output$db_stat_summary = renderDataTable({
+    mydb = load_database(db_type)
+    output$db_summary_experiments_text = renderText({
+      paste(dim(df)[1],':',paste(unique(df$experiment),collapse = ', '))
+    })
+    df = dbReadTable(mydb,'stat_summary')
+    dbDisconnect(mydb)
+    df
+  })
   
   
   ############# HEADER ############################
   output$header_select_dataset_ui = renderUI({
-    datasets = values$upload_datasets
+    #datasets = values$upload_datasets
+    datasets = db_info()$experiment
     selected = values$upload_dataset_selected
     selectInput('header_select_dataset','Upload Dataset',datasets,selected,multiple = T)
   })
@@ -3408,7 +3961,7 @@ shinyServer(function(input, output) {
   data_name_list = reactive({
     print('data_name_list')
     data_df = data_df()
-    dl = data_df$data_list
+    dl = data_df$data_lists
     names(dl) = rownames(data_df)
     print('   data_name_list : done')
     

@@ -30,6 +30,7 @@ shinyUI(fluidPage(
                          column(4,uiOutput('dataset_select_ui')),
                          column(2,radioButtons('show_dataset','Show Table',c(F,T))),
                          column(2,actionButton('save_dataset', "Save")),
+                                
                          column(12,dataTableOutput('dataset_table')),
                     
                     tabsetPanel(selected = '',
@@ -72,7 +73,9 @@ shinyUI(fluidPage(
                            column(12),
                            column(6,uiOutput('experiment_name_ui')),
                            
-                           column(6,uiOutput('experiment_code_ui')),
+                           column(4,uiOutput('experiment_code_ui')),
+                           column(2,uiOutput('taxonomy_ui')),
+                           
                            
                            column(12,uiOutput('experiment_description_ui')),
                            column(12,tags$hr()),
@@ -121,12 +124,20 @@ shinyUI(fluidPage(
                                  column(12),
                                  column(6,uiOutput('experiment_join_name_ui')),
                                  
-                                 column(6,uiOutput('experiment_join_code_ui')),
+                                 column(3,uiOutput('experiment_join_code_ui')),
+                                 column(3,uiOutput('taxonomy_join_ui')),
                                  
                                  column(12,uiOutput('experiment_join_description_ui')),
-                                 column(12,uiOutput('upload_data_join_type_ui')),
-                                 column(12,tags$hr()),
-                                 actionButton('join_datasets','Join')
+                                 column(12,uiOutput('upload_data_join_type_ui'),
+                                        uiOutput('upload_data_origin_join_ui')
+                                        
+                                        ),
+                                 
+                                 column(8,
+                                        tags$hr(),
+                                 actionButton('join_datasets','Join')),
+                                 column(4,radioButtons('join_replace_data','Replace Data',c(T,F)))
+                                 
                                  )
                          )),
                     ###_ID_mapping ####
@@ -278,9 +289,11 @@ shinyUI(fluidPage(
                       column(12,radioButtons('run_stat_plot','Run Plots',c(F,T),selected = F,inline = F)),
 
                       column(12,tags$hr()),
-                      column(3,uiOutput('stat_view_data_type_select_ui')),
+                      
+                      
+                      column(3,uiOutput('stat_mean_data_type_select_ui')),
                       column(7),
-                      column(2,actionButton('upload_export','Export Dataset')),
+                      
 
                       column(12,
                               dataTableOutput('stat_data_table'),
@@ -314,16 +327,23 @@ shinyUI(fluidPage(
                                ),
                       
                     
-                    tabPanel('Timeseries',tabsetPanel(
-                          
+                    tabPanel('Final Results',
+                          column(7,selectInput('sql_update_select'
+                                         ,'Select SQL tables to Update ',
+                                         c('info','id','data','stat','sig_data','summary'),
+                                         c('info','id','data','stat','sig_data','summary'),
+                                         multiple = T)),
+                          column(3,radioButtons('refresh_db', 'overwrite',c(F,T),inline = T)),
+                          column(2,actionButton('upload_export','Update SQL')),
+                          #columns(12,tags$hr()),
+                          column(12,dataTableOutput('upload_df_info')),
+                          column(3,uiOutput('upload_result_expression_data_type_select_ui')),
+                          column(12,plotOutput('upload_result_expression_boxplot')),
+                          column(12,uiOutput('upload_result_mean_data_type_select_ui'))
+                        
                       
-                          tabPanel('Individual Plots',
-                                   uiOutput('timeseries_id_select_ui'),
-                                   plotOutput('timeseries_intensity_boxplot_single'),
-                                   plotOutput('timeseries_fer_boxplot_single')
-                                   
-                                   )
-                                                      ))
+                        
+                        )
                     
                     
                     
@@ -331,8 +351,43 @@ shinyUI(fluidPage(
                     )
                   
                     ),
-                
+                # SOURCE ####
                 tabPanel('Source', 
+                    tabsetPanel(
+                      tabPanel('Database',
+                          tabsetPanel(
+                            tabPanel('Info',
+                               textOutput('db_tables'),
+                               dataTableOutput('db_describe_info'),
+                               dataTableOutput('db_info')),
+                               
+                            tabPanel('Id',
+                               textOutput('db_id_experiments_text'),
+                               dataTableOutput('db_describe_id'),
+                               dataTableOutput('db_id')),
+                            tabPanel('Data',
+                               textOutput('db_data_experiments_text'),
+                               dataTableOutput('db_describe_data'),
+                               dataTableOutput('db_data')),
+                            
+                            tabPanel('Stat',
+                               textOutput('db_stat_experiments_text'),
+                               dataTableOutput('db_describe_stat'),
+                               dataTableOutput('db_stat')),
+                            tabPanel('Sig Data',
+                                     textOutput('db_sig_data_experiments_text'),
+                                     dataTableOutput('db_describe_sig_data'),
+                                     dataTableOutput('db_sig_data')),
+                            tabPanel('Summary',
+                               textOutput('db_summary_experiments_text'),
+                               dataTableOutput('db_describe_summary'),
+                               dataTableOutput('db_stat_summary'))
+                          )
+                              
+                               
+                               ),
+                      tabPanel('Old',
+                          
                          shinyDirButton('folder', 'Folder select', 'Please select a folder'),
                           #radioButtons('re_melt','re melt',c(F,T)),
                          #verbatimTextOutput('dir_text'),
@@ -341,7 +396,8 @@ shinyUI(fluidPage(
                          tableOutput('data_df_table')
                          
                          #actionButton('add_data','Add Data')
-                         ),
+                         )
+                      )),
                 
                 #### TABLES ####
                 tabPanel('Tables',
