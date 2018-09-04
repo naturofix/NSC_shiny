@@ -50,7 +50,7 @@ localuserpassword <- "crunch"
 db_type = 'MySQL'
 load_database = function(db_type){
   if(db_type == 'MySQL'){
-    db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='localhost')
+    db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='127.0.0.1')
   }
   if(db_type == 'SQLite'){
     db <- dbConnect(RSQLite::SQLite(), 'data/sqlite.db')
