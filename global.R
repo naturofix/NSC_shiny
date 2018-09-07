@@ -48,6 +48,20 @@ plan(multiprocess)
 library(RMySQL)
 localuserpassword <- "crunch"
 db_type = 'MySQL'
+killDbConnections <- function () {
+  
+  all_cons <- dbListConnections(MySQL())
+  
+  print(all_cons)
+  
+  for(con in all_cons)
+    +  dbDisconnect(con)
+  
+  print(paste(length(all_cons), " connections killed."))
+  
+} # if too many RMySQL connections are open
+#killDbConnections()
+
 load_database = function(db_type){
   if(db_type == 'MySQL'){
     db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='127.0.0.1')
@@ -77,7 +91,7 @@ if(install_packages == T){
                      'reshape2','venn','shinyFiles',
                      'DT','stringr','shinydashboard'))
   source("https://bioconductor.org/biocLite.R")
-  biocLite(c("topGO",'STRINGdb','Rgraphviz','biomaRt'))
+  biocLite(c("topGO",'STRINGdb','Rgraphviz','biomaRt',"UniProt.ws"))
   
 }
 
@@ -87,22 +101,25 @@ if(install_packages == T){
 #biocLite("topGO")
 library(STRINGdb)
 library(topGO)
+library(UniProt.ws)
 
 
-string_access = F
+string_access = T
 save_test = F
 autosave_datasets = F
 dataset_test = F
 
-base_path = "/mnt/MSD_128GB/"
-function_path = paste0(base_path,"Doctorate/programming/CRUNCH/00_functions/")
-source(paste(function_path,'os_functions.R',sep= '/'))
-source(paste(function_path,'Graphs_functions.R',sep= '/'))
+#base_path = "/mnt/MSD_128GB/"
+#function_path = paste0(base_path,"Doctorate/programming/CRUNCH/00_functions/")
+source('location.R')
+source('../00_functions/os_functions.R')
+source('../00_functions/Graphs_functions.R')
 source('functions.R')
-wd_path = paste0(base_path,"Doctorate/Thesis/Thesis_Data/Cleanup_Data/")
+wd_path = paste0(base_path,save_data_path)
 wd_path
 setwd(wd_path)
 
+create_dir_function('data/data_list')
 dataset_files = list.files('data/data_list')
 dataset_files
 uploaded_datasets = c('_',gsub('_data_list.rds','',dataset_files))
@@ -111,7 +128,8 @@ uploaded_datasets = c('_',gsub('_data_list.rds','',dataset_files))
 
 #uploaded_datasets = readRDS('data/uploaded_datasets.rds')
 #uploaded_datasets
-#data_root = '/Users/sgarnett/Documents/Doctorate/Thesis/Thesis_Data'
+data_root = '/Users/sgarnett/Documents/Doctorate/Thesis/Thesis_Data'
+data_root = wd_path
 enrichment_path = 'enrichment/'
 shiny_data_path = "shiny_data/"
 create_dir_function(shiny_data_path)

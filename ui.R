@@ -21,7 +21,7 @@ shinyUI(fluidPage(
            #verbatimTextOutput('path_list_print')
            #),
     column(12,textOutput('thesis_path_print')),
-    column(12,tabsetPanel(selected = 'Source',
+    column(12,tabsetPanel(selected = 'Upload',
                 tabPanel('Test',textOutput('result')),
                 
                 #### UPLOAD ####
@@ -32,8 +32,9 @@ shinyUI(fluidPage(
                          column(2,actionButton('save_dataset', "Save")),
                                 
                          column(12,dataTableOutput('dataset_table')),
-                    
-                    tabsetPanel(selected = '',
+                         textOutput('upload_show_text'),
+                          
+                    tabsetPanel(selected = '', id = 'upload',
                                 
                     #### _Upload ####
                     tabPanel('Upload',tabsetPanel(selected = 'Single',
@@ -142,7 +143,7 @@ shinyUI(fluidPage(
                          )),
                     ###_ID_mapping ####
                     tabPanel('ID mapping',
-                             tabsetPanel(
+                             tabsetPanel(selected = 'Add BioMart Columns',
                                
                                
                                tabPanel('Select id column',
@@ -151,38 +152,86 @@ shinyUI(fluidPage(
                                          dataTableOutput('select_id_df')
                                ),
                                
-                               tabPanel('Add BioMart Columns',
-                                              
-                               #column(5,selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1]),
-                               column(6,
-                                uiOutput('select_mart_host_ui'),
-                                      
-                               uiOutput('select_mart_ui'),
-                               uiOutput('list_mart_ui'),
-                               textOutput('ensembl_text'),
-                               uiOutput('mart_column_ui')),
-                               column(6,uiOutput('filter_ui'),
-                               uiOutput('attributes_ui'),
-                               textInput('mart_id_prefix','Mart ID prefix',''),
-                               numericInput('mart_id_length','Mart ID length',0),
-                               textInput('mart_id_split','Mart ID split','')),
-                               column(12,
-                               uiOutput('mart_slider'),
-                               tags$h5('Mapping is first done of a subset of ids to test the biomart assignments, click Run to do full mapping, it may take up to an hour'),
-                               
-                               actionButton('run_biomart','Run'),
-                              
-                               dataTableOutput('bm_df'))
-                              #)
-                              ),
+             
                             tabPanel("Separate ID's",
-                                             column(5,uiOutput('sep_id_ui')),
-                                             #column(5,textInput('col_sep','id separator','')),
-                                            column(5,uiOutput('col_sep_ui')),
-                                             column(2,actionButton('run_sep','Run')),
-                                             column(12,dataTableOutput('separate_columns'))
+                                            column(6,uiOutput('sep_id_ui'),
+                                                    textOutput('text_unique_column')),
+                                             
+                                            column(6,uiOutput('col_sep_ui'),
+                                                   uiOutput('col_sep_2_ui')),
+                                            column(12,actionButton('run_sep','Run')),
+                                            column(12,tags$hr()),
+  
+                                            column(12,dataTableOutput('likely_seps')),
+                            
+                                            column(12,dataTableOutput('mapping_sep_df'))
                                             
-                            )
+                            ),
+                            
+                            tabPanel('Add BioMart Columns',
+                                     
+                                     #column(5,selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1]),
+                                     column(12,textOutput('mart_variable_text')),
+                                     column(6,
+                                            
+                                            
+                                            uiOutput('select_mart_host_ui'),
+                                            
+                                            uiOutput('select_mart_ui'),
+                                            uiOutput('list_mart_ui'),
+                                            uiOutput('download_ensembl_ui'),
+                                            # actionButton('download_ensembl','Get ensemble'),
+                                            textOutput('ensembl_text')),
+                                     column(6,uiOutput('filter_ui'),
+                                            uiOutput('attributes_ui')),
+                                     column(12,tags$hr()),
+                                     column(4,uiOutput('mart_column_ui'),
+                                            column(6,uiOutput('test_mart_ui')),
+                                            column(6,uiOutput('run_mart_ui'))
+                                     ),
+                                     column(4,
+                                            uiOutput('mart_id_prefix_ui'),
+                                            uiOutput('mart_id_length_ui')),
+                                     column(4,
+                                            uiOutput('mart_id_split_ui'),
+                                            uiOutput('mart_id_split_2_ui')
+                                     ),
+                                     column(12,tags$hr()),
+                                     
+                                     column(12,
+                                            tags$h4('Mart numbers'),
+                                            dataTableOutput('mart_numbers_df'),
+                                            tags$hr(),
+                                            tags$h4('Mart Test'),
+                                            dataTableOutput('mart_test_df'),
+                                            tags$hr(),
+                                            tags$h4('expression_data'),
+                                            dataTableOutput('bm_df')
+                                     )
+                                     
+                            ),
+                            
+                            tabPanel('Uniprot Web Services',
+                                     uiOutput('mapping_uniprot_ws_key_column_ui'),
+                                     uiOutput('mapping_uniprot_ws_kt_ui'),
+                                     uiOutput('mapping_uniprot_ws_key_ui'),
+                                     actionButton('run_up_test','Run Test'),
+                              
+                                     actionButton('run_up','Run Full'),
+                                     dataTableOutput('up_number_df'),
+                                     dataTableOutput('up_df')
+                                     
+                                     ),
+                            tabPanel('STRING db mapping',
+                                     uiOutput('string_id_ui'),
+                                     actionButton('run_string_mapping_full','Run'),
+                                     dataTableOutput('string_mapping_df')
+                                     ),
+                            
+                            tabPanel('Select id columns',
+                                     uiOutput('upload_select_id_columns_ui'),
+                                     dataTableOutput('upload_select_id_df')
+                                     )
                                       
                                       
                              #)
@@ -190,7 +239,7 @@ shinyUI(fluidPage(
                     ),
                     ###_Numbers####     
                     tabPanel('Expression Data Long',
-                            
+                            actionButton('run_expression_long','Run'),
                              dataTableOutput('expression_data_l')
                              
                              ),
@@ -387,13 +436,14 @@ shinyUI(fluidPage(
                                
                                ),
                       tabPanel('Old',
-                          
-                         shinyDirButton('folder', 'Folder select', 'Please select a folder'),
+                          column(4,uiOutput('select_sample_ui')),
+                         
+                          column(12,shinyDirButton('folder', 'Folder select', 'Please select a folder'),
                           #radioButtons('re_melt','re melt',c(F,T)),
                          #verbatimTextOutput('dir_text'),
                          verbatimTextOutput('wd_path_print'),
                          #verbatimTextOutput('data_file_list'),
-                         tableOutput('data_df_table')
+                         tableOutput('data_df_table'))
                          
                          #actionButton('add_data','Add Data')
                          )

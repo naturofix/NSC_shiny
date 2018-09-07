@@ -22,6 +22,33 @@ shinyServer(function(input, output) {
   
   ####################################################################################################################
   ##### UPLOAD #####
+  
+  output$upload_show_text = renderText({
+    if(length(values$dataset_list) == 0){
+      hideTab(inputId = 'upload',target = 'ID mapping')
+      hideTab(inputId = 'upload',target = 'Expression Data Long')
+      hideTab(inputId = 'upload',target = 'Edit Samples')
+      hideTab(inputId = 'upload',target = 'Ratio')
+      hideTab(inputId = 'upload',target = 'Statistics')
+      hideTab(inputId = 'upload',target = 'Final Results')
+    }else{
+      showTab(inputId = 'upload',target = 'ID mapping')
+      showTab(inputId = 'upload',target = 'Expression Data Long')
+      showTab(inputId = 'upload',target = 'Edit Samples')
+      if(!is.null(values$dataset_list$data$df_id_l)){
+       showTab(inputId = 'upload',target = 'Ratio')
+      }
+      if(!is.null(values$dataset_list$data$df_ratio_l)){
+        
+        showTab(inputId = 'upload',target = 'Statistics')
+      }
+      if(!is.null(values$dataset_list$data$df_stat)){
+        
+        showTab(inputId = 'upload',target = 'Final Results')
+      }
+    }
+    print('')
+  })
   process_values = reactiveValues(file_upload = 0,
                                   save_upload = 0, 
                                   run_ratios = 0, 
@@ -41,6 +68,7 @@ shinyServer(function(input, output) {
   output$upload_dataset_ui = renderUI({
     datasets = values$upload_datasets
     selected = values$upload_dataset_selected
+    selected = 'SH_RA_Diff'
     selectInput('upload_dataset','Upload Dataset',datasets,selected)
   })
   
@@ -1018,8 +1046,33 @@ shinyServer(function(input, output) {
           mutate(row_id = as.factor(values$dataset_list$data$original_data[,1]), experiment = paste(input$experiment_code)) %>% 
           dplyr::select(row_id, everything())
         expression_data %>%  as.tbl
-        
         values$dataset_list$data$expression_data = expression_data
+        values$dataset_list$data$expression_data_full = expression_data
+        
+        if(values$dataset_list$input$proteome$maxquant == T){
+          
+          dim(expression_data)
+          CON = expression_data %>% filter(grepl('CON__',row_id))
+          CON$row_id
+          CON %>% as.tbl
+          dim(CON)
+          REV = expression_data %>% filter(grepl('REV__',row_id))
+          REV$row_id
+          REV %>% as.tbl
+          dim(REV)
+          expression_data_maxquant = expression_data %>% 
+            filter(!grepl('CON',row_id)) %>% 
+            filter(!grepl('REV',row_id))
+          dim(expression_data_maxquant)
+          print(dim(expression_data_maxquant)[1] + dim(CON)[1] + dim(REV)[1])
+          values$dataset_list$data$expression_data_CON = CON
+          values$dataset_list$data$expression_data_REV = REV
+          values$dataset_list$data$expression_data = expression_data_maxquant
+          
+          }
+        
+        #values$dataset_list$data$expression_data = expression_data
+        
         
         
         dim(values$dataset_list$data$expression_data)
@@ -1184,6 +1237,112 @@ shinyServer(function(input, output) {
     
   })
   
+  ### Uniprot Web Services ####
+  
+  # up = reactive({
+  #   print('uniprot_ws_load')
+  #   withProgress(message  = 'loading Uniprot Web Services',{
+  #     up <- UniProt.ws(taxId=9606)
+  #   })
+  #   up
+  #   
+  #   
+  # })
+  
+  output$mapping_uniprot_ws_key_column_ui = renderUI({
+    selected = colnames(values$dataset_list$data$expression_data)[1]
+    if(!is.null(values$dataset_list$id_mapping$mapping_uniprot_ws_key_column)){
+      selected = values$dataset_list$id_mapping$mapping_uniprot_ws_key_column
+    }
+    selectInput('mapping_uniprot_ws_key_column','Select ID Column',colnames(values$dataset_list$data$expression_data),selected)
+  })
+  
+  output$mapping_uniprot_ws_kt_ui = renderUI({
+    selected = c("UNIPROTKB")
+    if(is.null(values$dataset_list$id_mapping$up)){
+      withProgress(message  = 'loading Uniprot Web Services',{
+        values$dataset_list$id_mapping$up <- UniProt.ws(taxId=as.numeric(values$dataset_list$input$taxonomy))
+      })
+    }
+    if(!is.null(values$dataset_list$id_mapping$mapping_uniprot_ws_kt)){
+      selected = values$dataset_list$id_mapping$mapping_uniprot_ws_kt
+    }
+    selectInput('mapping_uniprot_ws_kt','Select ID Type',columns(values$dataset_list$id_mapping$up),selected)
+  })
+  
+  output$mapping_uniprot_ws_key_ui = renderUI({
+    selected = c("UNIPROTKB","GENES")
+    if(!is.null(values$dataset_list$id_mapping$mapping_uniprot_ws_key)){
+      selected = values$dataset_list$id_mapping$mapping_uniprot_ws_key
+    }
+    selectInput('mapping_uniprot_ws_key','Select Mapping Keys',columns(values$dataset_list$id_mapping$up),selected,multiple = T)
+  })
+  
+  
+  up_function = function(df,input){
+    values$dataset_list$id_mapping$mapping_uniprot_ws_key_column = input$mapping_uniprot_ws_key_column
+    values$dataset_list$id_mapping$mapping_uniprot_ws_kt = input$mapping_uniprot_ws_kt
+    values$dataset_list$id_mapping$mapping_uniprot_ws_key = input$mapping_uniprot_ws_key
+    
+    
+    keys <- as.factor(unique(unlist(df[input$mapping_uniprot_ws_key_column])))
+    print(keys)
+    kt = input$mapping_uniprot_ws_kt
+    print(kt)
+    columns = unique(c(input$mapping_uniprot_ws_kt,input$mapping_uniprot_ws_key))
+    print(columns)
+    
+    res <- tryCatch(select(values$dataset_list$id_mapping$up, keys, columns, kt), error = function(x) NULL)
+    if(!is.null(res)){
+      res %>%  as.tbl
+      #print(head(res))
+      
+      x = columns[1]
+      x
+      num = sapply(columns, function(x) length(res[,x][!is.na(res[,x])]))
+      num
+      percentage = num/length(unique(keys)) * 100
+      percentage
+      bm_id_df = data.frame(attributes = columns,n = num,percentage = percentage)
+      bm_id_df
+      values$dataset_list$id_mapping$df_up_number_mapped <- bm_id_df
+    }else{
+      print('ERROR IN UNIPROT WEB SERVICES')
+      values$dataset_list$id_mapping$df_up_number_mapped = NULL
+    }
+    return(res)
+
+  }
+  
+  observeEvent(input$run_up_test,{
+    df = values$dataset_list$data$expression_data[1:100,]
+    values$dataset_list$id_mapping$up_test = up_function(df,input)
+  })
+  
+  observeEvent(input$run_up,{
+    df = values$dataset_list$data$expression_data
+    df %>% as.tbl
+    cols = colnames(df)[!colnames(df) %in% input$mapping_uniprot_ws_key]
+    cols
+    df_j = left_join(df %>% dplyr::select(one_of(cols)),
+                     up_function(df,input) %>%   
+                       mutate(id = get(input$mapping_uniprot_ws_kt)) %>% 
+      rename(id = input$mapping_uniprot_ws_key_column))
+    df_j %>% as.tbl
+    values$dataset_list$data$expression_data = df_j
+    #values$dataset_list$data
+  })
+  
+  output$up_number_df = renderDataTable({
+    values$dataset_list$id_mapping$df_up_number_mapped
+    
+  })
+  
+  output$up_df = renderDataTable({
+    values$dataset_list$data$expression_data
+  })
+  
+  
   
   ###__biomart ####
   output$select_mart_host_ui = renderUI({
@@ -1199,8 +1358,8 @@ shinyServer(function(input, output) {
     }else{
       selected = values$dataset_list[['biomaRt']][['listEnsemblArchives_select']]
     }
-    #selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1])
-    selectInput('select_Mart_Archive',
+    #selectInput('listMarts_select','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1])
+    selectInput('listEnsemblArchives_select',
                 'Select Mart Archive',
                 c("",values$dataset_list[['biomaRt']][['listEnsemblArchives']]),
                 selected)
@@ -1208,153 +1367,266 @@ shinyServer(function(input, output) {
   })
   
   output$select_mart_ui = renderUI({
-    if(!is.null(input$select_Mart_Archive)){
-      if(input$select_Mart_Archive != ""){
-        values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] = input$select_Mart_Archive
+    if(!is.null(input$listEnsemblArchives_select)){
+      if(input$listEnsemblArchives_select != ""){
+        #values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] = input$listEnsemblArchives_select
         
         if(is.null(values$dataset_list[['biomaRt']][['listMarts_select']])){
           withProgress(message = 'Calculation biomaRt::listMarts', {
-            values$dataset_list[['biomaRt']][['listMarts']] = biomaRt::listMarts(host = input$select_Mart_Archive)$biomart
+            values$dataset_list[['biomaRt']][['listMarts']] = biomaRt::listMarts(host = input$listEnsemblArchives_select)$biomart
           })
           selected = values$dataset_list[['biomaRt']][['listMarts']][1]
+          selected = ''
         }else{
-          if(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] != input$select_Mart_Archive){
-            withProgress(message = 'Calculation biomaRt::listMarts', {
-              values$dataset_list[['biomaRt']][['listMarts']] = biomaRt::listMarts(host = input$select_Mart_Archive)$biomart
-              selected = values$dataset_list[['biomaRt']][['listMarts']][1]
-              
-              values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] = input$select_Mart_Archive
-            })
-          }else{
+          # if(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] != input$listEnsemblArchives_select){
+          #   withProgress(message = 'Calculation biomaRt::listMarts', {
+          #     values$dataset_list[['biomaRt']][['listMarts']] = biomaRt::listMarts(host = input$listEnsemblArchives_select)$biomart
+          #     selected = values$dataset_list[['biomaRt']][['listMarts']][1]
+          #     selected = ''
+          #     #values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] = input$listEnsemblArchives_select
+          #   })
+          # }else{
             selected = values$dataset_list[['biomaRt']][['listMarts_select']]
-          }
+         # }
         }
-        #selectInput('selectMart','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1])
-        selectInput('selectMart',
+        #selectInput('listMarts_select','Select Mart',biomaRt::listMarts()$biomart,biomaRt::listMarts()$biomart[1])
+        selectInput('listMarts_select',
                     'Select Mart',
-                    values$dataset_list[['biomaRt']][['listMarts']],
+                    c('',values$dataset_list[['biomaRt']][['listMarts']]),
                     selected)
+      }else{
+        values$dataset_list[['biomaRt']][['listMarts_select']] = NULL
       }
     }
     
   })
   
   output$list_mart_ui = renderUI({
-    if(!is.null(input$selectMart)){
-      run = 1
-      withProgress(message = 'Calculation biomaRt::listDataset', {
-        if(!is.null(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']]) &
-           !is.null(values$dataset_list[['biomaRt']][['listMarts_select']]) &
-           !is.null(values$dataset_list[['biomaRt']][['listDatasets']])){
-          if(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] == input$select_Mart_Archive &
-             values$dataset_list[['biomaRt']][['listMarts_select']] == input$selectMart
-          ){
-            run = 0
-          }
-        }
-        if(run == 1){
-          values$dataset_list[['biomaRt']][['listMarts_select']] != input$selectMart
-          ensembl = biomaRt::useMart(biomart = input$selectMart, host = input$select_Mart_Archive)
-          datasets = biomaRt::listDatasets(ensembl)
-          datasets
-          mart_list = datasets$dataset
-          names(mart_list) = datasets$description
-          mart_list
-          values$dataset_list[['biomaRt']][['listDatasets']] = mart_list
-        }
+    if(!is.null(input$listMarts_select)){
+      if(input$listMarts_select != ''){
         if(is.null(values$dataset_list[['biomaRt']][['listDatasets_select']])){
-          selected  = "hsapiens_gene_ensembl"
+          withProgress(message = 'Calculation biomaRt::listDataset', {
+              
+            ensembl = biomaRt::useMart(biomart = input$listMarts_select, host = input$listEnsemblArchives_select)
+            datasets = biomaRt::listDatasets(ensembl)
+            datasets
+            mart_list = datasets$dataset
+            names(mart_list) = datasets$description
+            mart_list
+            values$dataset_list[['biomaRt']][['listDatasets']] = mart_list
+          })
+          selected = ''
+          if("hsapiens_gene_ensembl" %in% mart_list){
+            selected  = "hsapiens_gene_ensembl"
+          }
+          
         }else{
           selected = values$dataset_list[['biomaRt']][['listDatasets_select']]
         }
-        selectInput('mart_list_datasets','Select Mart Dataset',values$dataset_list[['biomaRt']][['listDatasets']],selected)
-      })
+        selectInput('listDatasets_select','Select Mart Dataset',c('',values$dataset_list[['biomaRt']][['listDatasets']]),selected)
+        
+      # run = 1
+      # 
+      # withProgress(message = 'Calculation biomaRt::listDataset', {
+      #   if(!is.null(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']]) &
+      #      !is.null(values$dataset_list[['biomaRt']][['listMarts_select']]) &
+      #      !is.null(values$dataset_list[['biomaRt']][['listDatasets']])){
+      #     if(values$dataset_list[['biomaRt']][['listEnsemblArchives_select']] == input$listEnsemblArchives_select &
+      #        values$dataset_list[['biomaRt']][['listMarts_select']] == input$listMarts_select
+      #     ){
+      #       run = 0
+      #     }
+      #   }
+      #   if(run == 1){
+      #     values$dataset_list[['biomaRt']][['listMarts_select']] != input$listMarts_select
+      #     ensembl = biomaRt::useMart(biomart = input$listMarts_select, host = input$listEnsemblArchives_select)
+      #     datasets = biomaRt::listDatasets(ensembl)
+      #     datasets
+      #     mart_list = datasets$dataset
+      #     names(mart_list) = datasets$description
+      #     mart_list
+      #     values$dataset_list[['biomaRt']][['listDatasets']] = mart_list
+      #   }
+      #   if(is.null(values$dataset_list[['biomaRt']][['listDatasets_select']])){
+      #     selected  = "hsapiens_gene_ensembl"
+      #   }else{
+      #     selected = values$dataset_list[['biomaRt']][['listDatasets_select']]
+      #   }
+      #   selectInput('listDatasets_select','Select Mart Dataset',values$dataset_list[['biomaRt']][['listDatasets']],selected)
+      # })
+      }else{
+        selected = values$dataset_list[['biomaRt']][['listDatasets_select']] = NULL
+      }
     }
     
   })
   
-  output$ensembl_text = renderText({
-    ensembl = NULL
-    if(!is.null(input$mart_filters)){
-      values$dataset_list[['biomaRt']][['listFilters_select']] = input$mart_filters
+  output$download_ensembl_ui = renderUI({
+    if(!is.null(input$listMarts_select) & !is.null(input$listDatasets_select) & !is.null(input$listEnsemblArchives_select)){
+      actionButton('download_ensembl_by_ui','Get ensemble')
     }
-    if(!is.null(input$mart_attributes)){
-      values$dataset_list[['biomaRt']][['listAttributes_select']] = input$mart_attributes
-    }
-    if(!is.null(input$mart_list_datasets)){
-      run = 1
-      if(!is.null(values$dataset_list[['biomaRt']][['listDatasets_select']]) & !is.null(values$dataset_list[['biomaRt']][['listMarts_select']])){
-        if(values$dataset_list[['biomaRt']][['listMarts_select']] == input$selectMart & 
-           values$dataset_list[['biomaRt']][['listDatasets_select']] == input$mart_list_datasets){
-          if(!is.null(values$dataset_list[['biomaRt']][['ensembl']])){
-            run = 0
-            ensembl = values$dataset_list[['biomaRt']][['ensembl']]
-          }
-        }
-      }
-      if(run == 1){
-        values$dataset_list[['biomaRt']][['listDatasets_select']] = input$mart_list_datasets
-        withProgress(message = 'Calculation biomaRt::useMart - ensembl', {
-          
-          ensembl = biomaRt::useMart(input$selectMart,dataset=input$mart_list_datasets,host = input$select_Mart_Archive)
-          values$dataset_list[['biomaRt']][['ensembl']] = ensembl
-        })
-      }
-    }
-    paste(ensembl)
+    
   })
+  
+  observeEvent(input$download_ensembl_by_ui,{       
+    withProgress(message = 'Calculation biomaRt::useMart - ensembl', {
+      #if(!is.null(input$listDatasets_select) & !is.null(input$listEnsemblArchives_select)){
+        values$dataset_list[['biomaRt']][['ensembl']] = biomaRt::useMart(input$listMarts_select,dataset=input$listDatasets_select,host = input$listEnsemblArchives_select)
+        values$dataset_list[['biomaRt']][['listFilters']] = NULL
+        values$dataset_list[['biomaRt']][['listAttributes']] = NULL
+      #}
+    })
+  })
+  
+  # output$ensembl_text = renderText({
+  #   ensembl = NULL
+  #   # if(!is.null(input$listFilters_select)){
+  #   #   values$dataset_list[['biomaRt']][['listFilters_select']] = input$listFilters_select
+  #   # }
+  #   # if(!is.null(input$listAttributes_select)){
+  #   #   values$dataset_list[['biomaRt']][['listAttributes_select']] = input$listAttributes_select
+  #   # }
+  #   if(!is.null(input$listDatasets_select)){
+  #     run = 1
+  #     if(!is.null(values$dataset_list[['biomaRt']][['listDatasets_select']]) & !is.null(values$dataset_list[['biomaRt']][['listMarts_select']])){
+  #       if(values$dataset_list[['biomaRt']][['listMarts_select']] == input$listDatasets_select & 
+  #          values$dataset_list[['biomaRt']][['listDatasets_select']] == input$listDatasets_select){
+  #         if(!is.null(values$dataset_list[['biomaRt']][['ensembl']])){
+  #           run = 0
+  #           ensembl = values$dataset_list[['biomaRt']][['ensembl']]
+  #         }
+  #       }
+  #     }
+  #     if(run == 1){
+  #       #values$dataset_list[['biomaRt']][['listDatasets_select']] = input$listDatasets_select
+  #       withProgress(message = 'Calculation biomaRt::useMart - ensembl', {
+  #         
+  #         ensembl = biomaRt::useMart(input$listMarts_select,dataset=input$listDatasets_select,host = input$listEnsemblArchives_select)
+  #         values$dataset_list[['biomaRt']][['ensembl']] = ensembl
+  #       })
+  #     }
+  #   }
+  #   paste(ensembl)
+  # })
   
   output$filter_ui = renderUI({
     if(!is.null(values$dataset_list[['biomaRt']][['ensembl']])){
-      run = 1
-      #ensembl = ensembl()
-      ensembl = values$dataset_list[['biomaRt']][['ensembl']]
-      
-      filters = biomaRt::listFilters(ensembl)
-      
-      values$dataset_list[['biomaRt']][['listFilters']] = filters
-      filters_list = filters$name
-      names(filters_list) = filters$description
-      filters_list
-      
+      if(is.null(values$dataset_list[['biomaRt']][['listFilters']])){
+        ensembl = values$dataset_list[['biomaRt']][['ensembl']]
+        filters = biomaRt::listFilters(ensembl)
+        #values$dataset_list[['biomaRt']][['listFilters']] = filters
+        filters_list = filters$name
+        names(filters_list) = filters$description
+        filters_list
+        values$dataset_list[['biomaRt']][['listFilters']] = filters_list
+      }
+      filters_list = c('',values$dataset_list[['biomaRt']][['listFilters']])
+        
       if(is.null(values$dataset_list[['biomaRt']][['listFilters_select']])){
         selected = 'affy_hg_u133_plus_2'
+        selected = ''
       }else{
         selected = values$dataset_list[['biomaRt']][['listFilters_select']]
       }
-      selectInput('mart_filters','Select Filters',filters_list,selected, width = 800)
+      selectInput('listFilters_select','Select Filters',filters_list,selected, width = 800)
     }
   })
-  
+
   output$attributes_ui = renderUI({
     if(!is.null(values$dataset_list[['biomaRt']][['ensembl']])){
-      ensembl = values$dataset_list[['biomaRt']][['ensembl']]
-      attributes = biomaRt::listAttributes(ensembl)
-      attributes
-      attributes_list =  attributes$name
-      attributes_list
-      names(attributes_list) = attributes$description
-      values$dataset_list[['biomaRt']][['listAttributes']] = attributes
+      
+      if(is.null(values$dataset_list[['biomaRt']][['listAttributes']])){
+        
+        ensembl = values$dataset_list[['biomaRt']][['ensembl']]
+        attributes = biomaRt::listAttributes(ensembl)
+        attributes
+        attributes_list =  attributes$name
+        attributes_list
+        names(attributes_list) = attributes$description
+        values$dataset_list[['biomaRt']][['listAttributes']] = attributes_list
+      }
+      attributes_list = c('',values$dataset_list[['biomaRt']][['listAttributes']])
+      
       if(is.null(values$dataset_list[['biomaRt']][['listAttributes_select']])){
         selected = c('hgnc_symbol','wikigene_description')
       }else{
+        #Sys.sleep(1)
+        
         selected = values$dataset_list[['biomaRt']][['listAttributes_select']]
       }
-      selectInput('mart_attributes','Select Attributes',attributes_list,c('hgnc_symbol','wikigene_description'), multiple = T)
-    }
+      selectInput('listAttributes_select','Select Attributes',attributes_list,selected, multiple = T)
+      
+      }
   })
   
   output$mart_column_ui = renderUI({
-    #if(!is.null(input$mart_attributes)){
-    
-    #if(is.null(values$dataset_list$id_mapping[['mart_column']])){
-    #  selected = '_'
-    #}else{
-    #  selected = values$dataset_list$id_mapping[['mart_column']]
-    #}
-    selectInput('mart_column','Select id column',c('_', colnames(values$dataset_list$data$expression_data)),'_')
-    #}
+    if(!is.null(input$listAttributes_select)){
+      if(is.null(values$dataset_list$biomaRt[['mart_column']])){
+        selected = '_'
+      }else{
+        selected = values$dataset_list$biomaRt[['mart_column']]
+      }
+      selectInput('mart_column','Select id column',c('_', colnames(values$dataset_list$data$expression_data)),selected)
+    }
   })
+  
+  output$mart_id_prefix_ui = renderUI({
+    if(!is.null(input$mart_column)){
+      if(is.null(values$dataset_list$biomaRt[['mart_id_prefix']])){
+        selected = ''
+      }else{
+        selected = values$dataset_list$biomaRt[['mart_id_prefix']]
+      }
+      textInput('mart_id_prefix','Mart ID prefix',selected)
+    }
+  })
+  output$mart_id_length_ui = renderUI({
+    if(is.null(values$dataset_list$biomaRt[['mart_id_length']])){
+      selected = 0
+    }else{
+      selected = values$dataset_list$biomaRt[['mart_id_length']]
+    }
+    if(!is.null(input$mart_column)){
+      numericInput('mart_id_length','Mart ID length',selected)
+    }
+  })
+  output$mart_id_split_ui = renderUI({
+    if(is.null(values$dataset_list$biomaRt[['mart_id_split']])){
+      selected = ''
+    }else{
+      selected = values$dataset_list$biomaRt[['mart_id_split']]
+    }
+    if(!is.null(input$mart_column)){
+      textInput('mart_id_split','Mart ID split',selected)
+    }
+  })
+  output$mart_id_split_2_ui = renderUI({
+    if(is.null(values$dataset_list$biomaRt[['mart_id_split_2']])){
+      selected = ''
+    }else{
+      selected = values$dataset_list$biomaRt[['mart_id_split_2']]
+    }
+    if(!is.null(input$mart_column)){
+      textInput('mart_id_split_2','Mart ID split 2',selected)
+    }
+  })
+  output$test_mart_ui = renderUI({
+    if(!is.null(input$mart_column)){
+      actionButton('test_mart','Test Mart')
+    }
+  })
+  
+  output$run_mart_ui = renderUI({
+    if(!is.null(input$mart_column)){
+      actionButton('run_mart','Run Mart')
+    }
+  })
+  
+  output$bm_df = renderDataTable({
+    values$dataset_list$data$expression_data
+  })
+  
+  
   
   
   output$mart_slider = renderUI({
@@ -1362,10 +1634,28 @@ shinyServer(function(input, output) {
     sliderInput('mart_slider','Select IDs to test',min = 1,max = dim(df)[1],value = c(1,100), step = 1, width = 1200)
   })
   
+  output$mart_variable_text = renderText({
+    #Sys.sleep(5)
+
+    variables_list = c('listEnsemblArchives_select', 'listMarts_select','listDatasets_select','listFilters_select','listAttributes_select',
+                       'mart_column','mart_id_prefix','mart_id_length','mart_id_split')
+    variables_list = c('listEnsemblArchives_select', 'listMarts_select','listDatasets_select','listFilters_select',
+                       'mart_column','mart_id_prefix','mart_id_length','mart_id_split','mart_id_split_2')
+    entry_list = c()
+    for(entry in variables_list){
+      if(!is.null(input[[entry]])){
+        values$dataset_list[['biomaRt']][[entry]] = input[[entry]]
+        entry_list = c(entry_list,input[[entry]])
+      }
+    }
+    print(paste(entry_list,collapse = '   :   '))
+
+
+  })
+  
   mart_df = reactive({
     #df = values$dataset_list[["expression_data"]][c(input$mart_slider[1],input$mart_slider[2]),]
-    values$dataset_list[['biomaRt']][['listFilters_select']] = input$mart_filters
-    values$dataset_list[['biomaRt']][['listAttributes_select']] = input$mart_attributes
+ 
     #values$dataset_list[['mart_column']] = input$mart_column
     if(input$run_biomart[1] > process_values$save_mart){
       df = values$dataset_list$data[["expression_data"]]
@@ -1384,169 +1674,152 @@ shinyServer(function(input, output) {
   
   
   
+ 
   
-  output$bm_df = renderDataTable({
-    values$dataset_list[['biomaRt']][['listFilters_select']] = input$mart_filters
-    values$dataset_list[['biomaRt']][['listAttributes_select']] = input$mart_attributes
-    
-    if(!is.null(input$mart_column)){
-      
-      if(input$mart_column != '_'){
-        
-        print('id_mapping')
-        
-        print('   running ....')
-        
-        values$dataset_list[['id_mapping']][['mart_column']] = input$mart_column
-        values$dataset_list[['biomaRt']][['id']] = input$mart_column
-        
-        #https://bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html
-        
-        df = mart_df() %>% mutate(id = as.factor(id))
-        df %>% as.tbl
-        colnames(df)
-        values$dataset_list$data$expression_data$ACCESSION
-        
-        mart_id = colnames(df)[4]
-        mart_id = input$mart_column
-        mart_id
-        df %>%  as.tbl
-        id = unlist(df[,mart_id])
-        id
-        if(input$mart_id_length == 0){
-          if(input$mart_id_prefix != ''){
-            id = paste0(input$mart_id_prefix,id)
-          }
-        }else{
-          if(input$mart_id_prefix != ''){
-            #x = id[1]
-            #x
-            #input$mart_id_length
-            id = sapply(id, function(x) paste0(paste0(rep(input$mart_id_prefix,input$mart_id_length - nchar(as.character(x))),collapse = ''),x,collapse = ""))
-          }
+  
+  
+  
+  bm_function = function(df,input){
+      print('bm_function')
+      variables_list = c('listEnsemblArchives_select', 'listMarts_select','listDatasets_select','listFilters_select','listAttributes_select',
+                         'mart_column','mart_id_prefix','mart_id_length','mart_id_split','mart_id_split_2')
+      entry_list = c()
+      for(entry in variables_list){
+        if(!is.null(input[[entry]])){
+          values$dataset_list[['biomaRt']][[entry]] = input[[entry]]
+          entry_list = c(entry_list,input[[entry]])
         }
-        
-        if(input$mart_id_split != ''){
-          x = id[1]
-          x
-          sep = input$mart_id_split
-          if(sep == '.'){
-            sep = '\\.'
-            
-          }
-          sep
-          id = sapply(id, function(x) unlist(strsplit(as.character(x),sep))[1])
-        }
-        id
-        df$bm_id = as.factor(id) 
-        df %>% as.tbl
-        id = unique(id)
-        print(length(id))
-        withProgress(message = 'BioMart Calculation in progress', {
-          print('running getBM ....')
-          bm_df = biomaRt::getBM(attributes=c(input$mart_attributes,input$mart_filters),
-                                 filters = input$mart_filters,
-                                 values = id, 
-                                 mart = values$dataset_list[['biomaRt']][['ensembl']]
-          )
-          bm_df %>% as.tbl
-        })
-        test = F
-        if(test == T){
-          df = values$dataset_list$data$expression_data
-          dim(df)
-          id = df$id[1:50]
-          id
-          names(values$dataset_list$biomaRt)
-          attributes = values$dataset_list$biomaRt$listAttributes
-          attributes
-          
-          bm_attribute = input$mart_attributes
-          bm_attribute
-          filters = values$dataset_list$biomaRt$listFilters
-          filters
-          View(filters)
-          bm_filter = input$mart_filters
-          bm_filter
-          filters$name
-          bm_filter = filters[191,]$name
-          
-          bm_filter = 'entrezgene'
-          bm_filter
-          str(id)
-          id = as.factor(id)
-          id = paste0('ILMN_',id)
-          id
-          str(id)
-          mart = values$dataset_list[['biomaRt']][['ensembl']]
-          mart
-          bm_df = biomaRt::getBM(attributes=c(bm_attribute,bm_filter),
-                                 filters = bm_filter,
-                                 values = id, 
-                                 mart = mart
-          )
-          bm_df
-        }
-        
-        if(dim(bm_df)[1] > 0){
-          filter <- rlang::parse_quosures(paste(input$mart_filters))[[1]]
-          filter
-          id_column = rlang::parse_quosures(paste(input$mart_column))[[1]]
-          id_column
-          bm_cols = colnames(bm_df)
-          bm_cols
-          #bm_df$bm_id = id
-          bm_df_collapse = bm_df %>% 
-            mutate(bm_id = as.factor(!!filter)) %>% 
-            na_if(., "") %>% 
-            group_by(bm_id) %>% 
-            mutate_at(.funs = funs(paste(unique(na.omit(.)),collapse = ', ')), .vars = bm_cols) %>% 
-            ungroup() %>% 
-            filter(!duplicated(bm_id))
-          bm_df_collapse
-          if(input$mart_id_prefix != '' & input$mart_id_length > 0){
-            #x = bm_df_collapse$bm_id[1]
-            #nchar(x)
-            bm_df_collapse$bm_id = sapply(bm_df_collapse$bm_id, function(x) paste0(paste0(rep(input$mart_id_prefix,input$mart_id_length - nchar(as.character(x))),collapse = ''),x,collapse = ""))
-          }
-          
-          bm_df_collapse
-          id_mapping_w = full_join(
-            
-            bm_df_collapse,
-            df %>% 
-              dplyr::select(-one_of(colnames(bm_df)[colnames(bm_df) != 'bm_id'])), #%>%
-            #mutate(bm_id = df$bm_id),
-            #mutate(bm_id = as.factor(!!id_column)), 
-            by = 'bm_id') 
-          id_mapping_w
-          #df %>% as.tbl
-          if(process_values$save_mart_full == 1){
-            
-            values$dataset_list$data[['expression_data']] = id_mapping_w
-            
-            
-            if(autosave_datasets == T){
-              
-              rds_path = values$dataset_list[['rds_path']]
-              print(paste('saveRDS : ',rds_path))
-              saveRDS(values$dataset_list,rds_path)
-            }
-            process_values$save_mart_full = 0
-          }
-          
-          
-          print('   done : id mapping')
-          id_mapping_w
-        }else{
-          df$bm_id = id 
-          df %>% 
-            dplyr::select(bm_id, everything())
-        }
-        
+      }
+      #print(paste(entry_list,collapse = '   :   '))
+     
+    id_mapping_w = NULL
+    mart_id = input$mart_column
+    mart_id
+    id = unlist(df[,mart_id])
+    if(input$mart_id_length == 0){
+      if(input$mart_id_prefix != ''){
+        id = paste0(input$mart_id_prefix,id)
+      }
+    }else{
+      if(input$mart_id_prefix != ''){
+        #x = id[1]
+        #x
+        #input$mart_id_length
+        id = sapply(id, function(x) paste0(paste0(rep(input$mart_id_prefix,input$mart_id_length - nchar(as.character(x))),collapse = ''),x,collapse = ""))
       }
     }
-    
+    id
+    if(input$mart_id_split != ''){
+      x = id[1]
+      x
+      sep = input$mart_id_split
+      if(sep == '.'){
+        sep = '\\.'
+      }
+      sep
+      id = sapply(id, function(x) unlist(strsplit(as.character(x),sep))[1])
+      id
+      if(input$mart_id_split_2 != ''){
+        sep_2 = input$mart_id_split_2
+        if(sep_2 == '.'){
+          sep_2 = '\\.'
+        }
+        sep_2
+        id = sapply(id, function(x) unlist(strsplit(as.character(x),sep_2))[1])
+        paste(id)
+      }
+    }
+    id
+    df$bm_id = as.factor(paste(id)) 
+    df %>% as.tbl
+    id = unique(id)
+    id
+    print(length(id))
+    withProgress(message = 'BioMart Calculation in progress', {
+      print('running getBM ....')
+      bm_df = tryCatch({biomaRt::getBM(attributes=c(input$listAttributes_select,input$listFilters_select),
+                                       filters = input$listFilters_select,
+                                       values = id, 
+                                       mart = values$dataset_list[['biomaRt']][['ensembl']])},error = function(e) {data.frame(NULL)})
+      print('   getBM done')
+      bm_df %>% as.tbl
+    })
+    print(dim(bm_df))
+    if(dim(bm_df)[1] > 0){
+      filter <- rlang::parse_quosures(paste(input$listFilters_select))[[1]]
+      filter
+      id_column = rlang::parse_quosures(paste(input$mart_column))[[1]]
+      id_column
+      bm_cols = colnames(bm_df)
+      bm_cols
+      #bm_df$bm_id = id
+      bm_df_collapse = bm_df %>% 
+        mutate(bm_id = as.factor(!!filter)) %>% 
+        na_if(., "") %>% 
+        group_by(bm_id) %>% 
+        mutate_at(.funs = funs(paste(unique(na.omit(.)),collapse = ', ')), .vars = bm_cols) %>% 
+        ungroup() %>% 
+        filter(!duplicated(bm_id))
+      bm_df_collapse
+      if(input$mart_id_prefix != '' & input$mart_id_length > 0){
+        #x = bm_df_collapse$bm_id[1]
+        #nchar(x)
+        bm_df_collapse$bm_id = sapply(bm_df_collapse$bm_id, function(x) paste0(paste0(rep(input$mart_id_prefix,input$mart_id_length - nchar(as.character(x))),collapse = ''),x,collapse = ""))
+      }
+      
+      bm_df_collapse
+      id_mapping_w = full_join(
+        
+        bm_df_collapse,
+        df %>% 
+          dplyr::select(-one_of(colnames(bm_df)[colnames(bm_df) != 'bm_id'])) %>% 
+          as.tbl %>% 
+          mutate(bm_id = !!id_column),
+        by = 'bm_id') 
+      id_mapping_w
+      colnames(id_mapping_w)
+      
+      print('   done : id mapping')
+      
+      id_mapping_w = as.data.frame(id_mapping_w)
+      
+      attributes=c(input$listAttributes_select,input$listFilters_select)
+      n = sapply(attributes, function(x) length(id_mapping_w[,x][!is.na(id_mapping_w[,x])]))
+      percentage = n/length(unique(id)) * 100
+      bm_id_df = data.frame(attributes = attributes,n = n,percentage = percentage)
+      bm_id_df
+      values$dataset_list$biomaRt$df_number_mapped <- bm_id_df
+      }
+    return(id_mapping_w)
+  }
+  
+  observeEvent(input$test_mart,{
+        #https://bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html
+        values$dataset_list$biomaRt$test = NULL
+        df = values$dataset_list$data$expression_data[1:100,] %>% mutate(id = as.factor(id))
+        df %>%  as.tbl
+        values$dataset_list$biomaRt$test = bm_function(df,input)
+  })
+  
+  
+  
+  observeEvent(input$run_mart,{
+    #https://bioconductor.org/packages/devel/bioc/vignettes/biomaRt/inst/doc/biomaRt.html
+    values$dataset_list$biomaRt$test = NULL
+    df = values$dataset_list$data$expression_data %>% mutate(id = as.factor(id))
+    id_mapping = bm_function(df,input)
+    id_mapping
+    if(!is.null(id_mapping)){
+      values$dataset_list$data$expression_data = id_mapping
+    }
+  })
+  
+  output$mart_test_df = renderDataTable({
+    values$dataset_list$biomaRt$test
+  })
+  
+  output$mart_numbers_df = renderDataTable({
+    values$dataset_list$biomaRt$df_number_mapped
   })
   
   ###__separate_column_id ####
@@ -1572,26 +1845,26 @@ shinyServer(function(input, output) {
     }
     textInput('col_sep','id separator',selected)
   })
+  output$col_sep_2_ui = renderUI({
+    if(is.null(values$dataset_list[['id_mapping']][['col_sep_2']])){
+      selected = ''
+    }else{
+      selected = values$dataset_list[['id_mapping']][['col_sep_2']]
+    }
+    textInput('col_sep_2','id separator',selected)
+  })
   
   
-  output$separate_columns = renderDataTable({
+  separate_columns = function(id_mapping_w,input){
     print('separate_columns')
-    df = values$dataset_list$data[['expression_data']]
-    
-    if(!is.null(input$sep_id)){
-      if(input$col_sep != ''){
+      values$dataset_list[['id_mapping']][['sep_id']] = input$sep_id
+      values$dataset_list[['id_mapping']][['col_sep']] = input$col_sep
+      values$dataset_list[['id_mapping']][['col_sep_2']] = input$col_sep_2
+      
+        #id_mapping_w = values$dataset_list$data[["expression_data"]]
         
-        print('   running ...')
-        
-        #input$dataset_select
-        values$dataset_list[['id_mapping']][['sep_id']] = input$sep_id
-        values$dataset_list[['id_mapping']][['col_sep']] = input$col_sep
-        
-        
-        id_mapping_w = values$dataset_list$data[["expression_data"]]
-        
-        id_mapping_w %>% as.tbl
-        
+        #id_mapping_w %>% as.tbl
+        id_mapping_w$id
         var <- rlang::parse_quosures(paste(input$sep_id))[[1]]
         var
         df = id_mapping_w %>% 
@@ -1600,61 +1873,172 @@ shinyServer(function(input, output) {
         
         print('     id sep wide')
         withProgress(message = 'Separating Column', {
-          df$id_list = sapply(df$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))))
+          df[[paste0(input$sep_id,'_list')]] = sapply(df$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))))
         })
-        df$id_list[1:5]
-        df$id_list[[3]][1]
-        df$id_list_first = sapply(df$id_list, function(x) x[1])
-        df$id_list_first
-        #View(df)
-        
-        #df$id_1 = sapply(df$id, function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep)))[1]))
-        df = df %>% dplyr::select(id_list_first,everything()) %>% 
-          dplyr::select(-id_list)
-        
-        
-        df %>% as.tbl
-        
-        
-        values$dataset_list$data[['expression_data']] = df
-        
-        if(autosave_datasets == T){
-          rds_path = values$dataset_list[['rds_path']]
-          print(paste('saveRDS : ',rds_path))
-          saveRDS(dataset_list,rds_path)
+        new_colname = paste0(input$sep_id,'_1')
+        df[[new_colname]] = sapply(df[[paste0(input$sep_id,'_list')]], function(x) x[1])
+        if(input$col_sep_2 != ''){
+          df[[paste0(input$sep_id,'_2')]] = sapply(df[[new_colname]], function(x) trimws(unlist(strsplit(as.character(x), paste(input$col_sep_2))))[1])
         }
+        df[[paste0(input$sep_id,'_list')]] = sapply(df[[paste0(input$sep_id,'_list')]], function(x) paste(x,collapse = ', '))
         
-      }
+    df %>% as.tbl
+    return(df)
+  }
+  
+
+  
+  output$likely_seps = renderDataTable({
+    column = values$dataset_list$data[['expression_data']][[input$sep_id]]
+    column
+    output$text_unique_column = renderText({
+      print(paste(length(unique(column)),'unique of',length(column)))
+    })
+    df = data.frame(separator = character(0),n = numeric(0), unique = numeric(0))
+    df
+    sep_list = c(' ',',',';',':','\\.','-','\\|')
+    for(entry in sep_list){
+      print(entry)
+      result = grep(entry,column,value = T)
+      print(result)
+      length(result)
       
-      #values$dataset_list[['expression_data']]
+      df = rbind(df,data.frame(separator = entry, n = length(result),example = result[1]))
     }
     df
-    
   })
   
   
+  observeEvent(input$run_sep_test,{
+    print('separate_columns')
+    #values$dataset_list[['id_mapping']][['sep_id']] = input$sep_id
+    #values$dataset_list[['id_mapping']][['col_sep']] = input$col_sep
+    id_mapping_w = values$dataset_list$data[['expression_data']]
+    if(!is.null(input$col_sep)){
+      df = separate_columns(id_mapping_w,input)
+      values$dataset_list$id_mapping$sep_test = df
+    }
+  })
+  
+  observeEvent(input$run_sep,{
+    print('separate_columns')
+    #values$dataset_list[['id_mapping']][['sep_id']] = input$sep_id
+    #values$dataset_list[['id_mapping']][['col_sep']] = input$col_sep
+    id_mapping_w = values$dataset_list$data[['expression_data']]
+    if(!is.null(input$col_sep)){
+      df = separate_columns(id_mapping_w,input)
+      values$dataset_list$data$expression_data = df
+    }
+  })
+  
+  output$mapping_sep_test = renderDataTable(values$dataset_list$id_mapping$sep_test)
+  output$mapping_sep_df = renderDataTable(values$dataset_list$data$expression_data)
   
   
+  #### STRING db #####
+  output$string_id_ui = renderUI({
+    print('sring_id_ui')
+    if(is.null(values$dataset_list[['id_mapping']][['string_id']])){
+      selected = 'id'
+    }else{
+      selected = values$dataset_list[['id_mapping']][['string_id']]
+    }
+    selectInput('upload_string_id',
+                'Select id column',
+                colnames(values$dataset_list$data$expression_data),
+                selected)
+  })
   
+  output$string_mapping_df = renderDataTable({
+    values$dataset_list$data$expression_data
+  })
   
+  observeEvent(input$run_string_mapping_full,{
+    print('run_stingg_mapping_full')
+    print(input$upload_string_id)
+    values$dataset_list[['id_mapping']][['string_id']] = input$upload_string_id
+    withProgress(message = 'string_db$map full',{
+      string_db = STRINGdb$new(version="10", score_threshold=400, species = 9606, input_directory = getwd())
+      df = values$dataset_list$data$expression_data
+      df %>% as.tbl
+      if('STRING_id' %in% colnames(df)){
+        df = df %>% dplyr::select(-one_of('STRING_id'))
+      }
+      values$dataset_list$data$expression_data = string_db$map(as.data.frame(df), input$upload_string_id, removeUnmappedRows = F)
+      missing_string_id = (length(unique(values$dataset_list$data$expression_data$id)) - length(unique(values$dataset_list$data$expression_data$STRING_id))) / length(unique(values$dataset_list$data$expression_data$id)) * 100
+      print(missing_string_id)
+      values$dataset_list[['id_mapping']][['missing_string_id']] = missing_string_id
+      
+      })
+  })
   
+  #### Select ID columsn ########
+  
+  output$upload_select_id_columns_ui = renderUI({
+    selectInput('upload_select_id_columns',
+                'Select IDs',
+                colnames(values$dataset_list$data$expression_data),
+                colnames(values$dataset_list$data$expression_data_reduced),
+                multiple = T)
+  })
+  
+  output$upload_select_id_df = renderDataTable({
+    values$dataset_list$data$expression_data_reduced = values$dataset_list$data$expression_data %>% dplyr::select(one_of(input$upload_select_id_columns))
+  })
   
   #### _Expression Data Long ####
   output$expression_data_l = renderDataTable({
+    values$dataset_list$data$expression_data_l_select
+  })
+  observeEvent(input$run_expression_long,{
     print('expression_data_l')
     #print('running')
+    
+    
+    colnames(values$dataset_list$data$expression_data)
+    values$dataset_list$input$expression_columns
+    #if(!'original_experiment' %in% colnames(values$dataset_list$data$expression_data)){
+    #  values$dataset_list$data$expression_data$original_experiment = 'NA'
+    #}
+    
+    if(is.null(values$dataset_list$data$expression_data_reduced)){
+      id_df = values$dataset_list$data$expression_data
+    }else{
+      id_df = values$dataset_list$data$expression_data_reduced
+    }
+    if(!'original_experiment' %in% id_df){
+      id_df$original_experiment = 'NA'
+    }
+    if(!'experiment' %in% id_df){
+      id_df$experiment = values$dataset_list$data$expression_data$experiment
+    }
+    
+    rm_cols = colnames(id_df)[colnames(id_df) %in% values$dataset_list$input$expression_columns]
+    id_df = id_df %>% 
+      as.tbl %>% 
+      dplyr::select(-one_of(rm_cols)) %>% 
+      group_by(row_id,experiment,original_experiment) %>% 
+      filter(row_number(row_id) == 1) %>% 
+      ungroup() %>% 
+      gather(key = name, values = colnames(.)[!colnames(.) %in% c('row_id','experiment','original_experiment')]) %>% 
+      #mutate(key = paste(experiment,row_id,name)) %>% 
+      dplyr::select(experiment,original_experiment,row_id,name,everything())
+    id_df %>% as.tbl
+    values$dataset_list$data$df_id_l = id_df
+    
     withProgress(message = 'gathering expression data', {
       
       df = values$dataset_list$data[['expression_data']]
       df %>%  as.tbl
       #colnames(df)
-      if(!is.null(values$dataset_list$input$intensity_columns)){
-        df = df %>%  dplyr::select(-one_of(values$dataset_list$input$intensity_columns))
-      }  
+      #if(!is.null(values$dataset_list$input$intensity_columns)){
+      #  df = df %>%  dplyr::select(-one_of(values$dataset_list$input$intensity_columns))
+      #}  
       
       df %>%  as.tbl
       
-      df_l = gather(df,
+      df_l = df %>% dplyr::select(c('id','row_id',values$dataset_list$input$expression_columns)) %>% 
+        gather(.,
                     key = full_sample_name, 
                     values = values$dataset_list$input$expression_columns) %>% 
         mutate(data_type = values$dataset_list$input$data_type)
@@ -1674,7 +2058,7 @@ shinyServer(function(input, output) {
       }
       
       
-      df_l = df_l %>% mutate(sample = NA) 
+      df_l = df_l %>% mutate(condition = NA) 
       df_l %>% as.tbl
       
       intensity_replace = 'Intensity.'
@@ -1685,19 +2069,23 @@ shinyServer(function(input, output) {
           intensity_replace = 'Intensity'
         }
         intensity_replace
-        df_i = gather(values$dataset_list$data[['expression_data']],
-                      key = full_intensity_name,
+        df_i = df %>% dplyr::select(one_of(c('id','row_id',values$dataset_list$input$intensity_columns))) %>% as.tbl %>% 
+          gather(.,
+                      key = full_sample_name,
                       intensity = values$dataset_list$input$intensity_columns) %>%
-          mutate(sample_name = sapply(full_intensity_name, function(x) 
-            str_replace(x,intensity_replace,values$dataset_list$input$sample_name_prefix_replace))) %>% 
-          dplyr::select(one_of(c('id','sample_name','value'))) %>% 
-          rename(value = 'intensity')
-        df_i %>% as.tbl
-        levels(unique(df_i$sample_name))
-        levels(unique(df_l$sample_name))             
+          mutate(sample_name = sapply(full_sample_name, function(x) 
+            str_replace(x,intensity_replace,values$dataset_list$input$sample_name_prefix_replace)),
+            data_type = 'Intensity',
+            condition = NA
+            ) 
+          #dplyr::select(one_of(c('id','sample_name','value'))) %>% 
+          #rename(value = 'intensity')
+        #df_i %>% as.tbl
+        #levels(unique(df_i$sample_name))
+        #levels(unique(df_l$sample_name))             
         df_i %>% as.tbl
         df_l %>% as.tbl
-        df_j = full_join(df_l, df_i)
+        df_j = rbind(df_l, df_i)
         unique(df_j$sample_name)
         df_j %>%  as.tbl
         df_l = df_j
@@ -1706,7 +2094,7 @@ shinyServer(function(input, output) {
       unique(df_l$sample_name)
       for(condition in names(values$dataset_list$input$condition)){
         print(condition)
-        df_l$sample[df_l$full_sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
+        df_l$condition[df_l$full_sample_name %in% values$dataset_list$input$condition[[condition]][['columns']]] = 
           values$dataset_list$input$condition[[condition]][['name']]
       }
       df_l %>% as.tbl
@@ -1720,11 +2108,11 @@ shinyServer(function(input, output) {
           df_l %>%  as.tbl
         }
       }
-      if(values$dataset_list$input$data_type == 'Timecourse'){
-        df_l$timepoint = as.numeric(df_l$sample)
-      }
+      #if(values$dataset_list$input$data_type == 'Timecourse'){
+      #  df_l$timepoint = as.numeric(df_l$condition)
+      #}
       if(!is.null(values$dataset_list$input$condition_order)){
-        df_l$sample = factor(df_l$sample,levels = values$dataset_list$input$condition_order)
+        df_l$condition = factor(df_l$condition,levels = values$dataset_list$input$condition_order)
       }
       df_l %>% as.tbl
       
@@ -1806,7 +2194,7 @@ shinyServer(function(input, output) {
   
   output$rename_expression_data = renderDataTable(values$dataset_list$data$expression_data_l)
   
-  
+
   
   
   #####_Sample Numbers #####
@@ -1907,19 +2295,34 @@ shinyServer(function(input, output) {
     unique(df_l$sample_name)
     #dim(df_l)
     
+    df_mean = values$dataset_list$data$expression_data_l_select %>% 
+      group_by(id,data_type,sample_name,condition) %>% 
+        summarise(mean = mean(value,na.rm = T)) %>% 
+      ungroup()
+    df_mean
+    values$dataset_list$data$expression_mean = df_mean
+    run_mean = F
+    if(run_mean == T){
+      df_l = values$dataset_list$data$expression_mean
+      id_select = 'row_id'
+    }else{
+      df_l = values$dataset_list$data$expression_data_l_select
+      id_select = 'id'
+    }
     print(values$dataset_list$input$data_type)
     df_ratio_l = df_l
     if(values$dataset_list$input$data_type == 'Expression'){
       values$dataset_list$ratio$type = 'log2(Expression Ratio)'
-      sample_df = df_l %>% 
+      sample_df = values$dataset_list$data$expression_data_l_select %>% 
         dplyr::select(full_sample_name,sample_name) %>% 
         filter(!duplicated(full_sample_name))
       sample_df
       rename_list = sample_df$sample_name
       names(rename_list) = sample_df$full_sample_name
       rename_list
-      
+ 
       df = values$dataset_list$data[['expression_data']]
+
       df %>%  as.tbl
       dim(df)
       withProgress(message = 'Calculating Ratios', {
@@ -1940,10 +2343,10 @@ shinyServer(function(input, output) {
             
             
             right_join(., 
-                       dplyr::select(df_l, -c('value','sample','full_sample_name', 'sample_name','data_type')), 
-                       by = 'row_id') %>% 
+                       dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), 
+                       by = 'id') %>% 
             
-            mutate(sample = condition_name) %>% 
+            mutate(condition = condition_name) %>% 
             mutate(data_type = 'replicate_ratio') %>% 
             filter(is.finite(value)) %>%  
             na.omit(value) %>% 
@@ -1966,8 +2369,8 @@ shinyServer(function(input, output) {
           
           
           
-          right_join(., dplyr::select(df_l, -c('value','sample','full_sample_name', 'sample_name','data_type')), by = 'row_id') %>% 
-          mutate(sample = paste0(values$dataset_list$input$condition[['2']][['name']],' / ',values$dataset_list$input$condition[['1']][['name']])) %>% 
+          right_join(., dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), by = 'row_id') %>% 
+          mutate(condition = paste0(values$dataset_list$input$condition[['2']][['name']],' / ',values$dataset_list$input$condition[['1']][['name']])) %>% 
           mutate(data_type = 'comparison_ratio') %>% 
           filter(is.finite(value)) %>%
           na.omit(value) %>% 
@@ -1994,26 +2397,26 @@ shinyServer(function(input, output) {
       values$dataset_list$ratio$type = 'log2(Ratio)'
       values$dataset_list$data$expression_data_l_select %>% as.tbl
       unique(values$dataset_list$data$expression_data_l_select$data_type)
-      unique(values$dataset_list$data$expression_data_l_select$sample)
+      unique(values$dataset_list$data$expression_data_l_select$condition)
       unique(values$dataset_list$data$expression_data_l_select$sample_name)
       
       df_ratio_l = rbind(values$dataset_list$data$expression_data_l_select,
                          values$dataset_list$data$expression_data_l_select %>%  
                            as.tbl %>% 
-                           filter(sample == 'comparison_ratio') %>% 
+                           filter(condition == 'comparison_ratio') %>% 
                            mutate(value = log2(value)) %>% 
                            mutate(data_type = 'comparison_ratio'),
                          values$dataset_list$data$expression_data_l_select %>% 
                            as.tbl %>% 
-                           filter(sample == 'rev_comparison_ratio') %>% 
+                           filter(condition == 'rev_comparison_ratio') %>% 
                            mutate(value = log2(value)*-1) %>% 
                            mutate(data_type = 'comparison_ratio'),
                          values$dataset_list$data$expression_data_l_select %>%  
-                           filter(sample == 'replicate_ratio') %>% 
+                           filter(condition == 'replicate_ratio') %>% 
                            mutate(value = log2(value)) %>% 
                            mutate(data_type = 'replicate_ratio'),
                          values$dataset_list$data$expression_data_l_select %>% 
-                           filter(sample == 'rev_replicate_ratio') %>% 
+                           filter(condition == 'rev_replicate_ratio') %>% 
                            mutate(value = log2(value) * -1) %>% 
                            mutate(value = value * -1, data_type = 'replicate_ratio')
       )
@@ -2030,10 +2433,10 @@ shinyServer(function(input, output) {
       unique(values$dataset_list$data$expression_data_l$data_type)
       
       df_mean = values$dataset_list$data$expression_data_l_select %>% as.tbl %>% 
-        group_by(id,sample,experiment) %>% 
+        group_by(id,condition,experiment) %>% 
           summarise(mean = mean(value,na.rm = T)) %>% 
           group_by(id) %>%
-            arrange(factor(sample, levels = values$dataset_list$input$condition_order)) %>% 
+            arrange(factor(condition, levels = values$dataset_list$input$condition_order)) %>% 
             filter(row_number() == 1L) %>% 
           ungroup() %>% 
         ungroup()
@@ -2081,11 +2484,11 @@ shinyServer(function(input, output) {
           mutate(data_type = 'ratio_of_mean_intensity',
                  experiment = values$dataset_list$input$experiment_code,
                  original_experiment = NA,
-                 sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                 condition = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value') %>% 
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','condition','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2117,14 +2520,14 @@ shinyServer(function(input, output) {
           rename(slope = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','original_experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','condition','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
             by = 'id') %>% 
           mutate(full_sample_name = NA,
                  sample_name = NA,
-                 sample = NA,
+                 condition = NA,
                  timepoint = NA)
         df_ratio_l_slope  %>%  as.tbl
         
@@ -2143,14 +2546,14 @@ shinyServer(function(input, output) {
           rename(slope_ratio = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','condition','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
             by = 'id') %>% 
           mutate(full_sample_name = NA,
                  sample_name = NA,
-                 sample = NA,
+                 condition = NA,
                  timepoint = NA) %>% 
           filter(!is.na(value))
         df_ratio_l_slope  %>%  as.tbl
@@ -2159,7 +2562,7 @@ shinyServer(function(input, output) {
         
         df_ratio_l_irm = values$dataset_list$data$expression_data_l_select  %>%
           filter(data_type == 'Timecourse') %>% 
-          group_by(id,sample,timepoint) %>% 
+          group_by(id,condition,timepoint) %>% 
           summarise(
             n = n(),
             mean = log2(mean(value[original_experiment == experiments[1]],na.rm = T)/mean(value[original_experiment == experiments[2]],na.rm = T))
@@ -2168,11 +2571,11 @@ shinyServer(function(input, output) {
           mutate(data_type = 'ratio_of_mean_timepoint_intensity',
                  experiment = values$dataset_list$input$experiment_code,
                  original_experiment = NA,
-                 sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                 condition = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value') %>%
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','condition','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2195,11 +2598,11 @@ shinyServer(function(input, output) {
           mutate(data_type = 'mean_ratio_of_mean_timepoint_intensity',
                  experiment = values$dataset_list$input$experiment_code,
                  original_experiment = NA,
-                 sample = paste(experiments[1],experiments[2],sep =' / ')) %>% 
+                 condition = paste(experiments[1],experiments[2],sep =' / ')) %>% 
           rename(mean = 'value')  %>%  
           left_join(
             values$dataset_list$data$expression_data_l_select  %>% 
-              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','sample','sample_name','full_sample_name','timepoint'))) %>% 
+              dplyr::select(-one_of(c('value','data_type','original_experiment','experiment','condition','sample_name','full_sample_name','timepoint'))) %>% 
               as.tbl %>% 
               filter(!duplicated(id)),
             .,
@@ -2241,7 +2644,7 @@ shinyServer(function(input, output) {
     
     df_ratio_l %>%  as.tbl
     summary = values$dataset_list$data$df_ratio_l %>% 
-      group_by(data_type,sample,sample_name) %>% 
+      group_by(data_type,condition,sample_name) %>% 
       summarise(mean = mean(value,na.rm = T),
                 sd = sd(value, na.rm = T)) %>% 
       ungroup()
@@ -2267,7 +2670,7 @@ shinyServer(function(input, output) {
     df_ratio_l %>% as.tbl
     unique(df_ratio_l$data_type)
     unique(df_ratio_l$data_type)
-    unique(df_ratio_l$sample)
+    unique(df_ratio_l$condition)
     unique(df_ratio_l$sample_name)
     withProgress(message = 'Summarising Data', {
       
@@ -2279,7 +2682,7 @@ shinyServer(function(input, output) {
       
       summary_id_data_type_sample <- values$dataset_list$data$df_ratio_l %>% 
         filter(id != '' & !is.na(id)) %>% 
-        group_by(id, data_type, sample) %>% 
+        group_by(id, data_type, condition) %>% 
         summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
       summary_id_data_type_sample
       values$dataset_list$data$summary_id_data_type_sample = summary_id_data_type_sample
@@ -2294,7 +2697,7 @@ shinyServer(function(input, output) {
       #df_sample_name_summary
       summary_data_type_sample_name_sample = values$dataset_list$data$df_ratio_l %>%
         filter(id != '' & !is.na(id)) %>% 
-        group_by(data_type, sample_name,sample) %>% 
+        group_by(data_type, sample_name,condition) %>% 
         summarise(mean = mean(value,na.rm = T), sd = sd(value,na.rm = T))
       summary_data_type_sample_name_sample
       values$dataset_list$data$summary_data_type_sample_name_sample = summary_data_type_sample_name_sample
@@ -2302,7 +2705,7 @@ shinyServer(function(input, output) {
       #df_sd_sample
       sd_data_type_sample = summary_data_type_sample_name_sample %>% 
         filter(data_type != values$dataset_list$input$data_type) %>% 
-        group_by(data_type, sample) %>% 
+        group_by(data_type, condition) %>% 
         summarise(max_sd = max(sd,na.rm = T), mean_sd = max(mean,na.rm = T)) %>% 
         ungroup()
       sd_data_type_sample
@@ -2312,16 +2715,16 @@ shinyServer(function(input, output) {
         group_by(data_type) %>% 
         summarise(max_sd = max(sd,na.rm = T), mean_sd = mean(sd,na.rm = T)) %>% 
         ungroup() %>% 
-        mutate(sample = 'All') %>% 
+        mutate(condition = 'All') %>% 
         dplyr::select(colnames(sd_data_type_sample))
       sd_data_type
       
       sd_df = rbind(sd_data_type_sample,sd_data_type)
       sd_df
       values$dataset_list$data$sd_df = sd_df
-      values$dataset_list$ratio$sd_rep = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'replicate_ratio', sample == 'All') %>%  pull(max_sd)
+      values$dataset_list$ratio$sd_rep = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'replicate_ratio', condition == 'All') %>%  pull(max_sd)
       values$dataset_list$ratio$sd_rep
-      values$dataset_list$ratio$sd_comp = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'comparison_ratio', sample == 'All') %>%  pull(max_sd)
+      values$dataset_list$ratio$sd_comp = values$dataset_list$data[['sd_df']] %>% filter(data_type == 'comparison_ratio', condition == 'All') %>%  pull(max_sd)
       values$dataset_list$ratio$sd_comp
       
       values$dataset_list$ratio$mean_comp = values$dataset_list$data[["summary_id_data_type_sample_name"]] %>%
@@ -2391,7 +2794,7 @@ shinyServer(function(input, output) {
   output$upload_ratio_boxplot_x_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
     
-    selectInput('upload_ratio_boxplot_x','x',columns,'sample')
+    selectInput('upload_ratio_boxplot_x','x',columns,'condition')
   })
   output$upload_ratio_boxplot_y_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
@@ -2400,7 +2803,7 @@ shinyServer(function(input, output) {
   })
   output$upload_ratio_boxplot_col_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
-    #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+    #column_selection = columns[columns %in% c('data_type','condition','sample_name')]
     selectInput('upload_ratio_boxplot_col','Colour ',columns,'sample_name')
   })
   output$upload_ratio_boxplot_fill_ui = renderUI({
@@ -2443,8 +2846,8 @@ shinyServer(function(input, output) {
   
   output$density_data_col_select_ui = renderUI({
     columns = colnames(values$dataset_list$data[[input$ratio_plot_data]])
-    column_selection = columns[columns %in% c('data_type','sample','sample_name')]
-    selectInput('ratio_plot_col','Colour by',column_selection,'sample')
+    column_selection = columns[columns %in% c('data_type','condition','sample_name')]
+    selectInput('ratio_plot_col','Colour by',column_selection,'condition')
   })
   
   
@@ -2454,23 +2857,23 @@ shinyServer(function(input, output) {
   })
   output$sd_boxplot_x_select_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
-    #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
-    selectInput('sd_boxplot_plot_x','x',columns,'sample')
+    #column_selection = columns[columns %in% c('data_type','condition','sample_name')]
+    selectInput('sd_boxplot_plot_x','x',columns,'condition')
   })
   output$sd_boxplot_y_select_ui = renderUI({
     columns = c('mean','sd')
-    #column_selection = columns[columns %in% c('data_type','sample','sample_name')]
+    #column_selection = columns[columns %in% c('data_type','condition','sample_name')]
     selectInput('sd_boxplot_plot_y','y',columns,'sd')
   })
   output$sd_boxplot_box_col_select_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
-    column_selection = columns[columns %in% c('data_type','sample','sample_name')]
-    selectInput('sd_boxplot_box_col','Box Colour ',column_selection,'sample')
+    column_selection = columns[columns %in% c('data_type','condition','sample_name')]
+    selectInput('sd_boxplot_box_col','Box Colour ',column_selection,'condition')
   })
   output$sd_boxplot_point_col_select_ui = renderUI({
     columns = colnames(values$dataset_list$data$df_ratio_l)
-    column_selection = columns[columns %in% c('data_type','sample','sample_name')]
-    selectInput('sd_boxplot_point_col','Point Colour ',column_selection,'sample')
+    column_selection = columns[columns %in% c('data_type','condition','sample_name')]
+    selectInput('sd_boxplot_point_col','Point Colour ',column_selection,'condition')
   })
   
   #observeEvent(input$show_ratio_plots,{
@@ -2556,7 +2959,7 @@ shinyServer(function(input, output) {
     df_ratio = values$dataset_list$data$df_ratio_l
     colnames(df_ratio)
     summary = df_ratio %>% 
-      group_by(data_type,sample,sample_name) %>% 
+      group_by(data_type,condition,sample_name) %>% 
       summarise(mean = mean(value,na.rm = T),
                 sd = sd(value, na.rm = T)) %>% 
       ungroup()
@@ -2569,10 +2972,10 @@ shinyServer(function(input, output) {
     
     
     df_mean = values$dataset_list$data$expression_data_l %>% as.tbl %>% 
-      group_by(id,sample) %>% 
+      group_by(id,condition) %>% 
       summarise(mean = mean(value,na.rm = T)) %>% 
       group_by(id) %>%
-      arrange(factor(sample, levels = values$dataset_list$input$condition_order)) %>% 
+      arrange(factor(condition, levels = values$dataset_list$input$condition_order)) %>% 
       filter(row_number() == 1L) %>% 
       ungroup() %>% 
       ungroup()
@@ -2602,12 +3005,12 @@ shinyServer(function(input, output) {
   
   output$timeseries_intensity_boxplot = renderPlot({
     ggplot(values$dataset_list$data$df_ratio_l %>% filter(data_type == 'Timecourse')) +
-      geom_boxplot(aes(x = sample, y = value, col = sample)) +
+      geom_boxplot(aes(x = condition, y = value, col = condition)) +
       ggtitle('Timecourse Intensity values')
   })
   output$timeseries_fer_boxplot = renderPlot({
     ggplot(values$dataset_list$data$df_ratio_l %>% filter(data_type == 'First Element Ratio')) +
-      geom_boxplot(aes(x = sample, y = value, col = sample)) +
+      geom_boxplot(aes(x = condition, y = value, col = condition)) +
       ggtitle('First Element Ration values')
     
   })
@@ -2623,18 +3026,18 @@ shinyServer(function(input, output) {
     df_l = values$dataset_list$data$df_ratio_l %>% 
       filter(data_type == 'Timecourse' & id %in% selected_id)
     
-    #df_l$sample
+    #df_l$condition
     df_mean = df_l %>% 
-      group_by(sample,id) %>% 
+      group_by(condition,id) %>% 
       summarise(mean = mean(value))
     df_mean                                                    
     
     ggplot(df_l,
-           aes(x = sample, y = value, col = id)) +
+           aes(x = condition, y = value, col = id)) +
       #geom_boxplot() +
       geom_point()+
-      geom_point(data = df_mean,aes(x = sample,y = mean, col = id),size = 4) + 
-      geom_line(data = df_mean,aes(x = sample,y = mean, group = id, col = id),lwd = 2) +
+      geom_point(data = df_mean,aes(x = condition,y = mean, col = id),size = 4) + 
+      geom_line(data = df_mean,aes(x = condition,y = mean, group = id, col = id),lwd = 2) +
       ggtitle('Timecourse Intensity values')
   }) 
   
@@ -2644,16 +3047,16 @@ shinyServer(function(input, output) {
     
     df_l = values$dataset_list$data$df_ratio_l %>% filter(data_type == 'First Element Ratio' & id %in% selected_id)
     df_mean = df_l %>% 
-      group_by(sample,id) %>% 
+      group_by(condition,id) %>% 
       summarise(mean = mean(value))
     df_mean                                                    
     
     ggplot(df_l,
-           aes(x = sample, y = value, col = id)) +
+           aes(x = condition, y = value, col = id)) +
       geom_boxplot() +
       #geom_point(size = 2)+
-      geom_point(data = df_mean,aes(x = sample,y = mean),size = 4) + 
-      geom_line(data = df_mean,aes(x = sample,y = mean, group = id,),lwd = 2) +
+      geom_point(data = df_mean,aes(x = condition,y = mean),size = 4) + 
+      geom_line(data = df_mean,aes(x = condition,y = mean, group = id,),lwd = 2) +
       ggtitle('Timecourse Intensity values')
   }) 
   
@@ -2664,8 +3067,8 @@ shinyServer(function(input, output) {
     
     
     ggplot(values$dataset_list$data$df_ratio_l %>% filter(data_type %in% input$ratio_data_type_select)) +
-      geom_point(aes(x = value, y = log2(intensity), col = sample), alpha = 0.5) +
-      ggtitle('MA plot by sample')
+      geom_point(aes(x = value, y = log2(intensity), col = condition), alpha = 0.5) +
+      ggtitle('MA plot by condition')
   })
   
   output$MA_plot_sample_name_comp = renderPlot({
@@ -2753,7 +3156,7 @@ shinyServer(function(input, output) {
       df_ratio_l %>% as.tbl
       
       unique(df_ratio_l$data_type)
-      unique(df_ratio_l$sample)
+      unique(df_ratio_l$condition)
       unique(df_ratio_l$experiment)
       if(input$select_stat_test == 't_test'){
         
@@ -2773,25 +3176,41 @@ shinyServer(function(input, output) {
           df_count %>% as.tbl
           df_mean = inner_join(df_mean,df_count)
           df_mean %>%  as.tbl
-          sample_names = unique(df_ratio_l %>% filter(data_type == 'Expression') %>%  pull(sample))
+          sample_names = unique(df_ratio_l %>% filter(data_type == 'Expression') %>%  pull(condition))
           #sample_names
           #var1 = rlang::parse_quosures(paste(sample_names[1]))[[1]]
           #var1
           #var2 = rlang::parse_quosures(paste(sample_names[2]))[[1]]
           #var2
           
+          # df_t_test <-
+          #   df_ratio_l %>% as.tbl() %>%
+          #   filter(data_type == 'Expression') %>% 
+          #   spread(sample,value) %>% 
+          #   group_by(id,experiment) %>% 
+          #   #summarise(p_value = tryCatch(t.test(as.numeric(unlist(!!var1)),as.numeric(unlist(!!var2)))$p.value, error = function(e) NA)) %>% 
+          #   summarise(p_value = tryCatch(t.test(as.numeric(unlist(get(sample_names[1]))),as.numeric(unlist(get(sample_names[2]))))$p.value, error = function(e) NA)) %>% 
+          #   
+          #   ungroup() %>% 
+          #   mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select))
+          # 
+          
           df_t_test <-
             df_ratio_l %>% as.tbl() %>%
             filter(data_type == 'Expression') %>% 
-            spread(sample,value) %>% 
+            #spread(sample,value) %>% 
             group_by(id,experiment) %>% 
-            #summarise(p_value = tryCatch(t.test(as.numeric(unlist(!!var1)),as.numeric(unlist(!!var2)))$p.value, error = function(e) NA)) %>% 
-            summarise(p_value = tryCatch(t.test(as.numeric(unlist(get(sample_names[1]))),as.numeric(unlist(get(sample_names[2]))))$p.value, error = function(e) NA)) %>% 
             
-            ungroup() %>% 
-            mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select))
-          
-          
+            summarise(
+              
+              p_value = tryCatch(t.test(as.numeric(unlist(value[condition == sample_names[1]])),as.numeric(unlist(value[condition == sample_names[2]])))$p.value, error = function(e) NA)) %>% 
+            #summarise(p_value = tryCatch(t.test(as.numeric(unlist(!!var1)),as.numeric(unlist(!!var2)))$p.value, error = function(e) NA)) %>% 
+            #summarise(p_value = tryCatch(t.test(as.numeric(unlist(get(sample_names[1]))),as.numeric(unlist(get(sample_names[2]))))$p.value, error = function(e) NA)) %>% 
+            
+            ungroup() %>%
+            group_by(experiment) %>% 
+            mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select)) %>% 
+            ungroup()
           
           
           df_t_test %>% as.tbl
@@ -3444,7 +3863,7 @@ shinyServer(function(input, output) {
         
           id_df = values$dataset_list$data$expression_data_l_select %>% 
             as.tbl %>% 
-            dplyr::select(-one_of(c('full_sample_name','value','data_type','sample_name','sample'))) %>% 
+            dplyr::select(-one_of(c('full_sample_name','value','data_type','sample_name','condition'))) %>% 
             group_by(row_id,experiment,original_experiment) %>% 
               filter(row_number(row_id) == 1) %>% 
             ungroup() %>% 
@@ -3514,7 +3933,7 @@ shinyServer(function(input, output) {
             print('   write : overwrite')
             dbWriteTable(mydb, table_name, export_table[NULL,],overwrite = T,row.names = F)
             add_key(mydb,table_name,'key','1024')
-            add_index_list(mydb,table_name,c('experiment','original_experiment', 'id','data_type','sample','sample_name'),'512')
+            add_index_list(mydb,table_name,c('experiment','original_experiment', 'id','data_type','condition','sample_name'),'512')
             add_index_list(mydb,table_name,c('row_id'),'1024')
             alter_column_varchar_list(mydb,table_name,c('full_sample_name'),1024)
 
@@ -3885,12 +4304,14 @@ shinyServer(function(input, output) {
   
   wd_path_select = reactive({
     print('wd_path_select')
-    if(!is.null(input$folder)){
-      wd_path = paste(c(data_root,paste(paste(input$folder$path),collapse='/')),collapse= '/')
-      setwd(wd_path_select)
-    }else{
-      wd_path_select = wd_path
-    }
+    # if(!is.null(input$folder)){
+    #   wd_path = paste(c(data_root,paste(paste(input$folder$path),collapse='/')),collapse= '/')
+    #   setwd(wd_path_select)
+    # }else{
+    #   wd_path_select = wd_path
+    # }
+    wd_path_select = wd_path
+    
     setwd(wd_path_select)
     print('   wd_path_select : done')
     
@@ -3914,7 +4335,9 @@ shinyServer(function(input, output) {
   load_data = reactive({
     print('load_data')
     file_path = paste0(shiny_data_path,'data_df.rds')
+    file_path
     data_df = readRDS(file_path)
+    data_df
     ts_file_path = paste0(shiny_data_path,'timeseries_list.rds')
     if(file.exists(ts_file_path)){
       timeseries_list = readRDS(ts_file_path)
@@ -3933,6 +4356,7 @@ shinyServer(function(input, output) {
     print('data_df')
     #print('shiny_data/data_df.rds')
     file_path = paste0(shiny_data_path,'data_df.rds')
+    file_path
     #print(file_path)
     data_df = readRDS(file_path)
     
@@ -3961,7 +4385,9 @@ shinyServer(function(input, output) {
   data_name_list = reactive({
     print('data_name_list')
     data_df = data_df()
-    dl = data_df$data_lists
+    data_df
+    dl = data_df$data_list
+    dl
     names(dl) = rownames(data_df)
     print('   data_name_list : done')
     
@@ -4048,8 +4474,9 @@ shinyServer(function(input, output) {
     #print('data_df_list')
     plates.data <- list()
     #plates.data$Plate.1 <- list(subj.ids = sample_names())
-    
+    entry = input$data[1]
     for(entry in input$data) {
+      entry
       #print(getwd())
       #print("data/string_mapped/all_mapped.df_Huang2016_txt_edited_log2_ratio_different_mart_all_MCT_all_t_test.rds")
       cmd = paste0("data = readRDS('",mapped_data_path,"all_mapped.",unlist(data_name_list()[entry]),".rds')")
@@ -8341,3 +8768,4 @@ shinyServer(function(input, output) {
 
 
 })
+      
