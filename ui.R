@@ -227,9 +227,17 @@ shinyUI(fluidPage(
                                      actionButton('run_string_mapping_full','Run'),
                                      dataTableOutput('string_mapping_df')
                                      ),
-                            
+                            tabPanel('Compare Columns',
+                                     column(4,uiOutput('comp_dataset_select')),
+                                     column(8),
+                                     column(4,uiOutput('col_diff_1')),
+                                     column(4,uiOutput('col_diff_2')),
+                                     column(12,dataTableOutput('column_diff_table'))
+                                     
+                                     ),
                             tabPanel('Select id columns',
                                      uiOutput('upload_select_id_columns_ui'),
+                                     dataTableOutput('id_missing_values'),
                                      dataTableOutput('upload_select_id_df')
                                      )
                                       
@@ -269,11 +277,12 @@ shinyUI(fluidPage(
                       )),
                     ###_Ratio####
                     tabPanel('Ratio',
-                             actionButton("run_ratios", "Run Ratios"),
+                            column(6,actionButton("upload_run_ratios", "Run Ratios")),
                              
                         #radioButtons('select_ratio_type','Select Ratio Type',
                         #             list('P'))
-                            uiOutput('ratio_data_type_select_ui'),
+                            column(6,uiOutput('upload_ratio_mean_ui')),
+                            column(12,uiOutput('ratio_data_type_select_ui')),
                             #actionButton('show_ratio_plost','Show Plots'),
                              #tabsetPanel(
                       
@@ -330,29 +339,45 @@ shinyUI(fluidPage(
                     
                     ###_Stat####
                     tabPanel('Statistics', 
-                      column(7,uiOutput('upload_select_stat_test_ui')),
-
-                      column(4,uiOutput('upload_p_adjust_select_ui')),
-
-                      column(1,actionButton('run_stat','Run')),
-                      column(12,radioButtons('run_stat_plot','Run Plots',c(F,T),selected = F,inline = F)),
-
+                      column(10),
+                      tags$head(
+                        tags$style(HTML('#run_stat{background-color:orange}'))
+                      ),
+                      column(2,actionButton('run_stat','Run Stats')),
+                      # tags$head(
+                      #   tags$style(HTML('#stat_defaults_save{background-color:lightgreen}'))
+                      # ),
+                      # column(2,actionButton('stat_defaults_save','Save Defaults')),
                       column(12,tags$hr()),
                       
+                      column(7,uiOutput('upload_select_stat_test_ui')),
+
+                      column(3,uiOutput('upload_p_adjust_select_ui')),
+                      #column(3),
+                      #column(2,actionButton('run_stat','Run')),
                       
+                      column(12,tags$hr()),
+                      column(3,textOutput('expression_data_type_text')),
                       column(3,uiOutput('stat_mean_data_type_select_ui')),
-                      column(7),
+                      #column(0),
+                      column(4,radioButtons('run_stat_plot','Show Plots',c(F,T),selected = T,inline = T)),
+                      #column(2),
+                      column(12,tags$hr()),
+                      
+                 
                       
 
                       column(12,
                               dataTableOutput('stat_data_table'),
-                              plotOutput('stat_num_plot')
+                              uiOutput('stat_num_plot_ui')
+                              #plotOutput('stat_num_plot')
                              ),
                               column(6,uiOutput('upload_p_value_threshold_ui')),
 
                               column(6,selectInput('upload_df_p_select','Select p value',c('p_value','p_adjust'),'p_value')),
                       column(12,
-                              plotOutput('fdr_plot'),
+                              uiOutput('fdr_plot_ui'),
+                              #plotOutput('fdr_plot'),
 
 
                               dataTableOutput('df_stat_summary_data_type'),
@@ -375,7 +400,7 @@ shinyUI(fluidPage(
                                
                                ),
                       
-                    
+                    # _Final Results #####
                     tabPanel('Final Results',
                           column(7,selectInput('sql_update_select'
                                          ,'Select SQL tables to Update ',
@@ -383,7 +408,7 @@ shinyUI(fluidPage(
                                          c('info','id','data','stat','sig_data','summary'),
                                          multiple = T)),
                           column(3,radioButtons('refresh_db', 'overwrite',c(F,T),inline = T)),
-                          column(2,actionButton('upload_export','Update SQL')),
+                          column(2,actionButton('','Update SQL')),
                           #columns(12,tags$hr()),
                           column(12,dataTableOutput('upload_df_info')),
                           column(3,uiOutput('upload_result_expression_data_type_select_ui')),

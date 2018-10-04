@@ -65,12 +65,20 @@ killDbConnections <- function () {
 load_database = function(db_type){
   if(db_type == 'MySQL'){
     db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='127.0.0.1')
-  }
+    #db = storiesDb <- dbConnect(MySQL(), user='crunch', password=localuserpassword, dbname='crunch', host='shauns-macbook-air.local')
+    
+    }
   if(db_type == 'SQLite'){
     db <- dbConnect(RSQLite::SQLite(), 'data/sqlite.db')
   }
   return(db)
 }
+mydb = tryCatch({load_database(db_type)},
+                error = function(e){
+                  system('/usr/local/mysql/support-files/mysql.server start')
+                })
+killDbConnections()
+
 mydb = load_database(db_type)
 db_table_list = dbListTables(mydb)
 db_table_list

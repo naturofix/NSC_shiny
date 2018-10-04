@@ -108,7 +108,7 @@ shinyServer(function(input, output) {
         
         dataset_list = values$dataset_list
       }
-      View(values$dataset_list)
+      #View(values$dataset_list)
       #names(dataset_list)
       data_list = names(values$dataset_list$data)
       if(!is.null(values$dataset_list$maxquant)){
@@ -875,9 +875,6 @@ shinyServer(function(input, output) {
     
     #future({
     withProgress(message = 'Saving', {
-      #print(paste0('Saving : ',rds_path)
-      #print(names(values$dataset_list))
-      
       print(paste('saveRDS : ',rds_path))
       saveRDS(values$dataset_list,rds_path)
     })
@@ -1189,6 +1186,11 @@ shinyServer(function(input, output) {
                 colnames(values$dataset_list$data[['expression_data']]),
                 selected)
   })
+  
+  output$id_missing_values = renderDataTable({
+    id_mapping_w = values$dataset_list$data[['expression_data']]
+    as.data.frame(apply(id_mapping_w,2,function(x) length(x[is.na(x)])))
+  })
   output$select_id_df = renderDataTable({
     print('select_id_df')
     if(!is.null(input$select_id)){
@@ -1237,6 +1239,37 @@ shinyServer(function(input, output) {
     
   })
   
+  output$comp_dataset_select = renderUI({
+    data_list = names(values$dataset_list$data)
+    selectInput('comp_dataset_select','Select Dataset',data_list)
+  })
+  
+  output$col_diff_1 = renderUI({
+    #id_mapping_w = values$dataset_list$data[['comp_dataset_select']]
+    
+    selectInput('col_diff_1','Column_1',colnames(values$dataset_list$data[[input$comp_dataset_select]]))
+  })
+  output$col_diff_2 = renderUI({
+    #id_mapping_w = values$dataset_list$data[['comp_dataset_select']]
+    
+    selectInput('col_diff_2','Column_2',colnames(values$dataset_list$data[[input$comp_dataset_select]]))
+  })
+  
+  output$column_diff_table = renderDataTable({
+    id_mapping_w = values$dataset_list$data[[input$comp_dataset_select]]
+    #View(id_mapping_w)
+    id_mapping_w[is.na(id_mapping_w)] = ''
+    id_mapping_w = id_mapping_w[id_mapping_w[,input$col_diff_1] != id_mapping_w[,input$col_diff_2],]
+    
+    
+    id_mapping_w %>% 
+     # filter(!!input$col_diff_1 != !!input$col_diff_2) %>% 
+     #id_mapping_w[id_mapping_w[,input$col_diff_1] != id_mapping_w[,input$col_diff_2],] %>% 
+      #dplyr::select(!!input$col_diff_1,!!input$col_diff_2)
+    
+      dplyr::select(!!input$col_diff_1,!!input$col_diff_2,everything())
+    
+  })
   ### Uniprot Web Services ####
   
   # up = reactive({
@@ -2284,7 +2317,7 @@ shinyServer(function(input, output) {
   
   #if(input$run_ratios[1] > process_values$run_ratios){
   ###_Run Ratios####      
-  observeEvent(input$run_ratios,{
+  observeEvent(input$upload_run_ratios,{
     print('run_ratios')
     values$dataset_list$ratio = list() 
     
@@ -2298,19 +2331,29 @@ shinyServer(function(input, output) {
     df_mean = values$dataset_list$data$expression_data_l_select %>% 
       group_by(id,data_type,sample_name,condition) %>% 
         summarise(mean = mean(value,na.rm = T)) %>% 
-      ungroup()
-    df_mean
-    values$dataset_list$data$expression_mean = df_mean
+      ungroup() %>% 
+      rename(mean = 'value') %>% 
+      mutate(data_type = paste('mean',data_type))
+    as.tbl(df_mean)
+    values$dataset_list$data$expression_data_l_select_mean = df_mean
     run_mean = F
-    if(run_mean == T){
-      df_l = values$dataset_list$data$expression_mean
-      id_select = 'row_id'
+    run_mean
+    if(input$upload_ratio_mean == T){
+      df_l = values$dataset_list$data$expression_data_l_select_mean
+      id_select = 'id'
     }else{
       df_l = values$dataset_list$data$expression_data_l_select
-      id_select = 'id'
+      id_select = 'row_id'
     }
+    id_select
+    values$dataset_list$ratio$mean = input$upload_ratio_mean
+    values$dataset_list$ratio$id_select = id_select
+    
+    as.tbl(df_l)
     print(values$dataset_list$input$data_type)
-    df_ratio_l = df_l
+    df_ratio_l = df_l %>% dplyr::select(one_of(id_select,'data_type','sample_name','condition','value'))
+    as.tbl(df_ratio_l)
+    #df_ratio_l = data.frame(NULL)
     if(values$dataset_list$input$data_type == 'Expression'){
       values$dataset_list$ratio$type = 'log2(Expression Ratio)'
       sample_df = values$dataset_list$data$expression_data_l_select %>% 
@@ -2325,6 +2368,7 @@ shinyServer(function(input, output) {
 
       df %>%  as.tbl
       dim(df)
+      #df_ratio_l = data.frame(NULL)
       withProgress(message = 'Calculating Ratios', {
         #unique(df_l$data_type)
         condition =  names(values$dataset_list$input$condition)[1]
@@ -2337,23 +2381,32 @@ shinyServer(function(input, output) {
           condition_name
           condition_columns = values$dataset_list$input$condition[[condition]][['columns']]
           condition_columns
+          sample_names = paste(rename_list[condition_columns])
+          sample_names
           #rownames(df) = df$row_id
           colnames(df_l)
-          rep_df = rep_ratio_function(df,condition_columns,rename_list) %>% as.tbl %>%  
+          #rep_df = rep_ratio_function(df,condition_columns,rename_list) %>% as.tbl %>%  
+          rep_df = rep_ratio_function_long(df_l,id_select,sample_names) %>% 
+          
             
-            
-            right_join(., 
-                       dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), 
-                       by = 'id') %>% 
+            #right_join(., 
+            #           dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), 
+            #           by = 'id') %>% 
             
             mutate(condition = condition_name) %>% 
             mutate(data_type = 'replicate_ratio') %>% 
             filter(is.finite(value)) %>%  
-            na.omit(value) %>% 
-            dplyr::select(colnames(df_l))
+            na.omit(value) 
+          #%>% 
+            #dplyr::select(colnames(df_l))
           
-          
+          colnames(df_ratio_l)
+          colnames(rep_df)
           rep_df %>% as.tbl
+          
+          #as.tbl(df_l)
+          #rep_df_l = rep_ratio_function_long(df_l,id_select,sample_names)
+          #rep_df_l
           
           df_ratio_l = rbind(df_ratio_l,rep_df)
           
@@ -2363,21 +2416,24 @@ shinyServer(function(input, output) {
         
         
         unique(df_ratio_l$data_type)
+        col_names_1 = paste(rename_list[values$dataset_list$input$condition[['1']][['columns']]])
+        col_names_2 = paste(rename_list[values$dataset_list$input$condition[['2']][['columns']]])
+        paired_ratio_df =  paired_ratio_function_long(df_l,id_select,col_names_2,col_names_1,rename_list)
+        paired_ratio_df %>% as.tbl
         
-        paired_ratio_df =  paired_ratio_function(as.data.frame(df),values$dataset_list$input$condition[['2']][['columns']],values$dataset_list$input$condition[['1']][['columns']],rename_list)
         paired_ratio_df = paired_ratio_df %>% 
           
           
           
-          right_join(., dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), by = 'row_id') %>% 
+          #right_join(., dplyr::select(df_l, -one_of(c('value','condition','full_sample_name', 'sample_name','data_type'))), by = 'row_id') %>% 
           mutate(condition = paste0(values$dataset_list$input$condition[['2']][['name']],' / ',values$dataset_list$input$condition[['1']][['name']])) %>% 
           mutate(data_type = 'comparison_ratio') %>% 
           filter(is.finite(value)) %>%
           na.omit(value) %>% 
-          dplyr::select(colnames(df_l)) %>% 
+          #dplyr::select(colnames(df_l)) %>% 
           as_tibble()
         paired_ratio_df %>% as.tbl
-        
+        df_ratio_l %>% as.tbl
         df_ratio_l = rbind(df_ratio_l,paired_ratio_df)
         df_ratio_l %>% as.tbl
         #View(df_ratio_l)
@@ -2392,7 +2448,8 @@ shinyServer(function(input, output) {
         
       })
     }
-    
+    unique(df_ratio_l$data_type)
+    as.tbl(df_ratio_l)
     if(values$dataset_list$input$data_type == 'Ratio'){
       values$dataset_list$ratio$type = 'log2(Ratio)'
       values$dataset_list$data$expression_data_l_select %>% as.tbl
@@ -2789,6 +2846,14 @@ shinyServer(function(input, output) {
     }
   })
   
+  output$upload_ratio_mean_ui = renderUI({
+      if(is.null(values$dataset_list$ratio$mean)){
+        select = F
+      }else{
+        select = values$dataset_list$ratio$mean 
+      }
+    radioButtons('upload_ratio_mean', 'Ratio Mean', c(F,T), select, inline = T)
+  })
   ###_ratio_boxplot -----
   
   output$upload_ratio_boxplot_x_ui = renderUI({
@@ -3079,9 +3144,62 @@ shinyServer(function(input, output) {
   
   ##_Stat #####
   
+  #observeEvent(reactiveValuesToList(input),{
+  
+  stat_change <- reactive({
+    paste(input$select_stat_test , 
+          input$p_adjust_select,
+          input$stat_mean_data_type,
+          input$p_value_threshold,
+          input$value_threshold,
+          input$cutoff_multiple,
+          input$upload_stat_volcano_show_sd
+          )
+  })
+  observeEvent(stat_change(),{
+      
+    print('stat_defaults_save')
+    print(paste('values$dataset_list$stat$test = ',input$select_stat_test))
+    values$dataset_list$stat$test = input$select_stat_test
+    
+    print(paste('values$dataset_list$stat$p_adjust = ',input$p_adjust_select))
+    values$dataset_list$stat$p_adjust = input$p_adjust_select
+    
+    print(paste('values$dataset_list$data$df_stat$data_type = ',input$stat_mean_data_type))    
+    values$dataset_list$stat$stat_mean_data_type = input$stat_mean_data_type
+    
+    print(paste('values$dataset_list$stat$p_value_threshold = ',input$p_value_threshold))
+    values$dataset_list$stat$p_value_threshold = input$p_value_threshold
+    
+    print(paste('values$dataset_list$stat$value_threshold = ',input$value_threshold))
+    values$dataset_list$stat$value_threshold = input$value_threshold
+    
+    print(paste('values$dataset_list$stat$cutoff_multiple = ',input$cutoff_multiple))
+    values$dataset_list$stat$cutoff_multiple = input$cutoff_multiple
+    
+    print(paste('values$dataset_list$stat$upload_stat_volcano_show_sd = ',input$upload_stat_volcano_show_sd))
+    values$dataset_list$stat$upload_stat_volcano_show_sd = input$upload_stat_volcano_show_sd
+    print('done')
+    #save_dataset(values)
+    # 
+    # rds_path = values$dataset_list[['rds_path']]
+    # #future({
+    # withProgress(message = 'Saving', {
+    #   #print(paste0('Saving : ',rds_path)
+    #   print(names(values$dataset_list))
+    #   
+    #   print(paste('saveRDS : ',rds_path))
+    #   saveRDS(values$dataset_list,rds_path)
+    # })
+    # beep()
+    # print('done save_dataset')
+    
+  })
   #### _stat_data ####
   
   #stat_df = reactiveVal()
+  
+  
   output$upload_select_stat_test_ui = renderUI({
     if(is.null(values$dataset_list$stat$test)){
       selected = 't_test'
@@ -3089,7 +3207,7 @@ shinyServer(function(input, output) {
       selected = values$dataset_list$stat$test
     }
     radioButtons('select_stat_test',
-                 'Select Statisitc',
+                 'Select Statistical Test',
                  list("Pairwise Students T test" = 't_test',
                       'One way ANOVA' = 'anova',
                       'MANOVA'= 'manova'),
@@ -3119,6 +3237,12 @@ shinyServer(function(input, output) {
   })
   
   
+  output$expression_data_type_text = renderText({
+    if(!is.null(values$dataset_list$stat$expression_data_type)){
+      print(values$dataset_list$stat$expression_data_type)
+    }
+  })
+  
   output$stat_mean_data_type_select_ui = renderUI({
     #if(!is.null(values$dataset_list$data$df_stat)){
     select_list = unique(values$dataset_list$data$df_stat$data_type)
@@ -3144,7 +3268,9 @@ shinyServer(function(input, output) {
     
     print('run_stat')
     values$dataset_list$stat = list()
-    values$dataset_list$stat$test = input$select_stat_test
+    
+    values$dataset_list$stat$value_threshold = values$dataset_list$ratio$cutoff
+    #values$dataset_list$stat$test = input$select_stat_test
     #values$dataset_list$stat$p_adjust = input$p_adjust
     #values$dataset_list$stat$p_value_threshold = input$p_value_threshold
     #values$dataset_list$stat$value_threshold = NULL
@@ -3157,10 +3283,20 @@ shinyServer(function(input, output) {
       
       unique(df_ratio_l$data_type)
       unique(df_ratio_l$condition)
-      unique(df_ratio_l$experiment)
+      #unique(df_ratio_l$experiment)
       if(input$select_stat_test == 't_test'){
-        
+        values$dataset_list$input$data_type
         if(values$dataset_list$input$data_type == 'Expression'){
+          expression_data_type = 'Expression'
+          var_id = values$dataset_list$ratio$id_select
+          values$dataset_list$ratio$mean
+          if(values$dataset_list$ratio$mean == T){
+            expression_data_type = 'mean Expression'
+            #var_id = 'id'
+          }
+          expression_data_type
+          
+          values$dataset_list$stat$expression_data_type = expression_data_type
           df_mean = df_ratio_l %>% as.tbl %>% 
             filter(data_type == 'comparison_ratio') %>% 
             group_by(id) %>% 
@@ -3169,15 +3305,16 @@ shinyServer(function(input, output) {
             mutate(data_type = 'mean_comparison_ratio')
           df_mean %>%  as.tbl
           df_count = df_ratio_l %>% 
-            filter(data_type == 'comparison_ratio') %>% 
+            filter(data_type == expression_data_type) %>% 
             group_by(id) %>% 
             count() %>% 
             ungroup()
           df_count %>% as.tbl
           df_mean = inner_join(df_mean,df_count)
           df_mean %>%  as.tbl
-          sample_names = unique(df_ratio_l %>% filter(data_type == 'Expression') %>%  pull(condition))
-          #sample_names
+
+          sample_names = unique(df_ratio_l %>% filter(data_type == expression_data_type) %>%  pull(condition))
+          sample_names
           #var1 = rlang::parse_quosures(paste(sample_names[1]))[[1]]
           #var1
           #var2 = rlang::parse_quosures(paste(sample_names[2]))[[1]]
@@ -3195,11 +3332,18 @@ shinyServer(function(input, output) {
           #   mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select))
           # 
           
+          #var <- rlang::parse_quosures(paste(input$result_mean_data_type))[[1]]
+          #var
+          #var <- rlang::parse_quosures(paste(values$dataset_list$ratio$id_select))[[1]]
+          #var
+          var <- rlang::parse_quosures(paste(var_id))[[1]]
+          var
+          as.tbl(df_ratio_l)
           df_t_test <-
             df_ratio_l %>% as.tbl() %>%
-            filter(data_type == 'Expression') %>% 
+            filter(data_type == expression_data_type) %>% 
             #spread(sample,value) %>% 
-            group_by(id,experiment) %>% 
+            group_by(!!var) %>% 
             
             summarise(
               
@@ -3208,9 +3352,9 @@ shinyServer(function(input, output) {
             #summarise(p_value = tryCatch(t.test(as.numeric(unlist(get(sample_names[1]))),as.numeric(unlist(get(sample_names[2]))))$p.value, error = function(e) NA)) %>% 
             
             ungroup() %>%
-            group_by(experiment) %>% 
-            mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select)) %>% 
-            ungroup()
+            #group_by(experiment) %>% 
+            mutate('p_adjust' = p.adjust(p_value,method = input$p_adjust_select))
+            #ungroup()
           
           
           df_t_test %>% as.tbl
@@ -3340,7 +3484,7 @@ shinyServer(function(input, output) {
         if(!is.null(input$p_adjust_select)){
           print('running be patient ...')
           
-          values$dataset_list$stat$p_adjust = input$p_adjust_select
+          #values$dataset_list$stat$p_adjust = input$p_adjust_select
           
           
           df_stat = values$dataset_list$data$df_stat %>% 
@@ -3359,14 +3503,23 @@ shinyServer(function(input, output) {
   
   
   #__fdr_plot -------
+  
+  output$fdr_plot_ui = renderUI({
+    if(input$run_stat_plot == T){
+      
+      plotOutput('fdr_plot')
+    }
+  })
+  
   output$fdr_plot = renderPlot({
     print('fdr_plot')
-    if(!is.null(input$stat_mean_data_type)){
-      values$dataset_list$stat$stat_mean_data_type = input$stat_mean_data_type
-    }
-    if(!is.null(input$p_value_threshold)){
-      values$dataset_list$stat$p_value_threshold = input$p_value_threshold
-    }
+      
+    # if(!is.null(input$stat_mean_data_type)){
+    #   values$dataset_list$stat$stat_mean_data_type = input$stat_mean_data_type
+    # }
+    # if(!is.null(input$p_value_threshold)){
+    #   values$dataset_list$stat$p_value_threshold = input$p_value_threshold
+    # }
     
     if(input$run_stat_plot == T){
       if(!is.null(values$dataset_list$data$df_stat)){
@@ -3495,20 +3648,19 @@ shinyServer(function(input, output) {
       df_stat_summary_data_type
     }
   })
+  
+
   output$upload_value_threshold_ui = renderUI({
-    # if(!is.null(values$dataset_list$ratio$cutoff)){
     selected = 0
-    if(is.null(values$dataset_list$stat$value_threshold)){
-      selected = 0
-      if(is.numeric(values$dataset_list$ratio$cutoff)){
-        selected = signif(values$dataset_list$ratio$cutoff,3)
-      }
-    }else{
+    iso_value = values$dataset_list$stat$value_threshold
+    
+      if(!is.null(values$dataset_list$stat$value_threshold)){
       selected = signif(values$dataset_list$stat$value_threshold,3)
-    }
+      }
+   
     numericInput('value_threshold','value threshold',selected)
-    #}
   })
+
   
   output$upload_cutoff_multiple_ui = renderUI({
     if(is.null(values$dataset_list$stat$cutoff_multiple)){
@@ -3528,7 +3680,7 @@ shinyServer(function(input, output) {
       selected = values$dataset_list$stat$upload_stat_volcano_show_sd
     }
     
-    radioButtons('upload_stat_volcano_show_sd','Show standard Deviations',c(T,F),selected)
+    radioButtons('upload_stat_volcano_show_sd','Show standard Deviations',c(T,F),selected,inline = T)
   })
   
   
@@ -3538,9 +3690,9 @@ shinyServer(function(input, output) {
       
       if(!is.null(input$value_threshold)){
         print('    runnning')
-        values$dataset_list$stat$value_threshold = input$value_threshold
-        values$dataset_list$stat$cutoff_multiple = input$cutoff_multiple
-        values$dataset_list$stat$upload_stat_volcano_show_sd = input$upload_stat_volcano_show_sd
+        #values$dataset_list$stat$value_threshold = input$value_threshold
+        #values$dataset_list$stat$cutoff_multiple = input$cutoff_multiple
+        #values$dataset_list$stat$upload_stat_volcano_show_sd = input$upload_stat_volcano_show_sd
         withProgress(message = 'Volcano plot', {
           rep_sd = values$dataset_list$ratio[['cutoff_rep']] 
           rep_sd
@@ -3592,6 +3744,12 @@ shinyServer(function(input, output) {
                 step = 0.1, round = TRUE,width = 1200)
   })
   
+  output$stat_num_plot_ui = renderUI({
+    if(input$run_stat_plot == T){
+      plotOutput('stat_num_plot')
+    }
+  })
+  
   output$stat_num_plot = renderPlot({
     print('stat_num_plot')
     if(input$run_stat_plot == T){
@@ -3617,7 +3775,7 @@ shinyServer(function(input, output) {
       if(!is.null(values$dataset_list$data$df_stat)){
         print('    running')
         withProgress(message = 'Info text', {
-          cutoff = values$dataset_list$stat$value_threshold
+          cutoff = input$value_threshold
           cutoff
           df_sig_up = values$dataset_list$data$df_stat  %>% 
             filter(data_type == input$stat_mean_data_type) %>% 
@@ -3707,7 +3865,7 @@ shinyServer(function(input, output) {
   
   output$upload_result_mean_data_type_select_ui = renderUI({
     #if(!is.null(values$dataset_list$data$df_stat)){
-    select_list = unique(values$dataset_list$data$df_stat$data_type)
+    select_list = unique(values$dataset_list$data$df_ratio_l$data_type)
     if(is.null(values$dataset_list$result$mean_data_type)){
       if(!is.null(values$dataset_list$data$df_stat)){
         
@@ -3737,7 +3895,8 @@ shinyServer(function(input, output) {
       values$dataset_list$input$taxonomy = 9606
     }
     input_list = values$dataset_list$input
-    
+    View(input_list)
+     
     df_info = data.frame(
       experiment = input_list$experiment_code,
       experiment_name = input_list$experiment_name,
@@ -3749,7 +3908,7 @@ shinyServer(function(input, output) {
       ratio_threshold = values$dataset_list$stat$value_threshold * values$dataset_list$stat$cutoff_multiple,
       ratio_sd_rep = values$dataset_list$ratio$cutoff_rep,
       ratio_sd_comp = values$dataset_list$ratio$cutoff_comp,
-      expression_data_type = values$dataset_list$result$expression_data_type,
+      expression_data_type = values$dataset_list$stat$expression_data_type,
       mean_value_type = values$dataset_list$stat$stat_mean_data_type,
       stat_test = values$dataset_list$stat$test,
       stat_adjust = values$dataset_list$stat$p_adjust,
@@ -3901,7 +4060,10 @@ shinyServer(function(input, output) {
       if("data" %in% input$sql_update_select){withProgress(message = 'ratio',{
           print('data')
           table_name = 'data'
+          table_columns = dbGetQuery(mydb,paste('DESCRIBE',table_name))$Field
+          table_columns
           colnames(values$dataset_list$data$df_ratio_l)
+          
           ratio_columns = c("row_id", "id","experiment",'original_experiment',"full_sample_name","value","data_type","sample_name","sample")
           ratio_columns
           if(!'experiment' %in% colnames(values$dataset_list$data$df_ratio_l)){
@@ -3910,11 +4072,19 @@ shinyServer(function(input, output) {
             values$dataset_list$data$df_ratio_l = values$dataset_list$data$df_ratio_l %>% 
               mutate(experiment = values$dataset_list$input$experiment_code)
           }
-          if(!'original_experiment' %in% colnames(values$dataset_list$data$df_ratio_l)){
-            print('original experiment missing')
-            values$dataset_list$data$df_ratio_l = values$dataset_list$data$df_ratio_l %>% 
-              mutate(original_experiment = NA)
+          for(table_column in table_columns){
+            #print(table_column)
+            if(!table_column %in% colnames(values$dataset_list$data$df_ratio_l)){
+              print(paste(table_column, 'missing'))
+     
+              varname  = paste(table_column)
+              varname
+              values$dataset_list$data$df_ratio_l = values$dataset_list$data$df_ratio_l %>% 
+                mutate(!!varname := NA)
+            }
           }
+
+          
           
           ratio_export = values$dataset_list$data$df_ratio_l %>% 
             #group_by(experiment,sample,row_id) %>% 
@@ -3945,11 +4115,13 @@ shinyServer(function(input, output) {
             print(cmd)
             dbGetQuery(mydb,cmd)
             print('  write : append')
-            
             dbWriteTable(mydb, table_name, ratio_export,append = T,row.names = F)
           }
 
-          
+          if(show_table == T){
+    
+            dbGetQuery(mydb,paste0("SELECT * FROM ",table_name," WHERE experiment = '",values$dataset_list$input$experiment_code,"';")) %>% as.tbl
+          }
           print('   write : done')
       })}
       if("stat" %in% input$sql_update_select){withProgress(message = 'stat',{  

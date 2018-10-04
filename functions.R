@@ -1688,6 +1688,52 @@ rep_ratio_function = function(df,col_names,rename_list){
   return(df_n)
   
 }
+rep_ratio_function_long = function(df_l,id_select,sample_names){
+  col_names = sample_names
+  df = df_l %>% 
+    dplyr::select(one_of(id_select,'sample_name','value')) %>% 
+    filter(sample_name %in% col_names) %>% 
+    filter(!duplicated(.)) %>% 
+    spread(key = sample_name, value = value)
+  as.tbl(df)
+  #df_n  = df[,NULL]
+  #df_n = data.frame(row_id = character(0),full_sample_name = character(0),sample_name = character(0), value = numeric(0))
+  df_n = data.frame(NULL)
+  #col_names = unique(df$sample_name)
+  col_names
+  for(i in c(1:length(col_names))){
+    for(j in c(1:length(col_names))){
+      if(i < j){
+        #print(paste(c(i,j),collapse = ' : '))
+        name = paste(col_names[i],col_names[j],sep=' / ')
+        print(name)
+        #full_name
+        #name = paste(rename_list[col_names[i]],rename_list[col_names[j]],sep = ' / ')
+        #name
+        ratio = log2(df[,col_names[i]]/df[,col_names[j]])
+        names(ratio) = 'value'
+        ratio
+        #ratio %>% as.tbl
+        #ratio[apply(ratio, 2 , function(x) !is.finite(x))] = NA
+        df_b = data.frame(id = df[,id_select],sample_name = name, value = ratio)
+        df_b %>%  as.tbl
+        #ratio
+        df_n = rbind(df_n,df_b)
+      }
+      #print(j)
+    }
+    #print(i)
+  }
+  df %>% as.tbl
+  df_n = df_n %>% 
+    rename(id = id_select)
+  df_n %>%  spread(key = sample_name,value = value) %>% as.tbl
+  
+  df_n %>% as.tbl
+  
+  return(df_n)
+  
+}
 
 paired_ratio_function = function(df,col_names_1,col_names_2,rename_list){
   #df_n  = df[,NULL]
@@ -1721,6 +1767,57 @@ paired_ratio_function = function(df,col_names_1,col_names_2,rename_list){
   return(df_n)
   
 }
+
+paired_ratio_function_long = function(df_l,id_select,col_names_1,col_names_2,rename_list){
+  as.tbl(df_l)
+  df = df_l %>% 
+    dplyr::select(one_of(id_select,'sample_name','value')) %>% 
+    #filter(sample_name %in% col_names) %>% 
+    filter(!duplicated(.)) %>% 
+    spread(key = sample_name, value = value)
+  as.tbl(df)
+  #df_n  = df[,NULL]
+  #df_n = data.frame(row_id = character(0),full_sample_name = character(0),sample_name = character(0), value = numeric(0))
+  df_n = data.frame(NULL)
+  i = 1
+  j = 1
+  for(i in c(1:length(col_names_1))){
+    for(j in c(1:length(col_names_2))){
+      #if(i <= j){
+        print(paste(c(i,j),collapse = ' : '))
+        name = paste(col_names_1[i],col_names_2[j],sep=' / ')
+        name
+        #name = paste(rename_list[col_names_1[i]],rename_list[col_names_2[j]],sep = ' / ')
+        
+        #name
+        print(name)
+        ratio = log2(df[,col_names_1[i]]/df[,col_names_2[j]])
+        names(ratio) = 'value'
+        ratio
+        #ratio[apply(ratio, 2 , function(x) !is.finite(x))] = NA
+        ratio
+        df_b = data.frame(id = df[,id_select],sample_name = name, value = ratio)
+        #df_b %>%  as.tbl
+        #ratio
+        df_n = rbind(df_n,df_b)
+        as.tbl(df_n)
+        #df_n[,name] = ratio
+      #}
+      #print(j)
+    }
+    #print(i)
+  }
+  colnames(df_n)
+  df_n = df_n %>% 
+    rename(id = id_select)
+  df_w = df_n %>% 
+
+    spread(key = sample_name,value = value) %>% as.tbl
+  df_w %>%  as.tbl
+  return(df_n)
+  
+}
+
 
 t_test_apply_function = function(row_data,cols1,cols2){
   c1 = row_data[cols1]
